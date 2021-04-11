@@ -4,11 +4,20 @@ import numpy as np
 from pathlib import Path
 import sys
 sys.path.append("C:\\Users\\Vito\\Downloads\\Python-utils-master\\vigan\\astro")
+import os
 from evolution import *
 from scipy.interpolate import interp1d
 from astropy.constants import M_jup,M_sun
 import time
 import pickle
+from astropy.coordinates import Angle, SkyCoord
+from astropy import units as u
+from astroquery.simbad import Simbad
+from astroquery.xmatch import XMatch
+import csv
+from astropy.table import Table
+from astropy.io import ascii
+from tabulate import tabulate
 
 
 def nan_helper(y):
@@ -77,37 +86,83 @@ def min_v(a,absolute=False):
     return a[ind],ind
 
 def is_phot_good(phot,phot_err,max_phot_err=0.1):
-    l=phot.shape
-    if len(l)<=1: gs=(np.isnan(phot)==False) & (phot_err < max_phot_err)
+    if type(phot)==float: dim=0
+    else:
+        l=phot.shape
+        dim=len(l)
+    if dim<=1: gs=(np.isnan(phot)==False) & (phot_err < max_phot_err) & (abs(phot) < 70)
     else:
         gs=np.zeros([l[0],l[1]])
         for i in range(l[1]): gs[:,i]=(np.isnan(phot[:,i])==False) & (phot_err[:,i] < max_phot_err)
     return gs
 
-def where_v(elements,array):
-    print(len(elements))
-    ind=np.zeros(len(elements),dtype=np.int16)
-    for i in range(len(elements)):
-        w,=np.where(array==elements[i])
-        ind[i]=w
-    return ind
+def where_v(elements,array,approx=False):
+    dim=n_dim(elements)
+    if approx==True:
+        if dim==0: 
+            w=closest(array,elements)
+            return w
+        ind=np.zeros(len(elements),dtype=np.int16)
+        for i in range(len(elements)):
+            ind[i]=closest(array,elements[i])
+        return ind
+    else:
+        if dim==0: 
+            w,=np.where(array==elements)
+            return w
+        ind=np.zeros(len(elements),dtype=np.int16)
+        for i in range(len(elements)):
+            w,=np.where(array==elements[i])
+            ind[i]=w
+        return ind
+
+def n_dim(x,shape=False):
+    if isinstance(x,str): 
+        dim=0
+        return dim
+    try:
+        b=len(x)
+        if shape: dim=x.shape
+        else: dim=len(x.shape)
+    except AttributeError:
+        shape = []
+        a = len(x)
+        shape.append(a)
+        b = x[0]
+        while a > 0:
+            try:
+                if isinstance(b,str): break
+                a = len(b)
+                shape.append(a)
+                b = b[0]
+
+            except:
+                break
+        if shape: dim=shape
+        else: dim=len(shape)
+    except TypeError: dim=0
+    return dim
 
 def app_to_abs_mag(app_mag,parallax,app_mag_error=False,parallax_error=False):
+    if isinstance(app_mag,list): app_mag=np.array(app_mag)
+    if isinstance(parallax,list): parallax=np.array(parallax)
     dm=5*np.log10(100./parallax) #modulo di distanza
-    if type(app_mag)==float: dim=0
-    else:
-        l=app_mag.shape
-        dim=len(l)
+    dim=n_dim(app_mag)
     if dim <= 1:
         result=app_mag-dm
         if (app_mag_error!=False) & (parallax_error!=False): 
+            if isinstance(app_mag_error,list): app_mag_error=np.array(app_mag_error)
+            if isinstance(parallax_error,list): parallax_error=np.array(parallax_error)
             total_error=np.sqrt(app_mag_error**2+(5/np.log(10)/parallax)**2*parallax_error**2)
             result=[result,total_error]
     else: #  se è 2D, bisogna capire se ci sono più filtri e se c'è anche l'errore fotometrico
+        l=n_dim(app_mag,shape=True)
         abs_mag=np.empty([l[0],l[1]])
         for i in range(l[0]): abs_mag[i,:]=app_mag[i,:]-dm
         result=abs_mag
         if (parallax_error.any()!=False):
+            if isinstance(app_mag_error,list): app_mag_error=np.array(app_mag_error)
+            if isinstance(parallax_error,list): parallax_error=np.array(parallax_error)
             total_error=np.empty([l[0],l[1]])
             for i in range(l[0]): 
                 total_error[i,:]=np.sqrt(app_mag_error[i,:]**2+(5/np.log(10)/parallax)**2*parallax_error**2)
@@ -276,7 +331,7 @@ def isochronal_age(phot_app,phot_err_app,par,par_err):
     ylen=l0[1] #n. stelle: 2
 
     filt=where_v(['J','H','K','G','Gbp','Grp'],fnew)
-    wc=np.array([[filt[2],filt[0],filt[1],filt[4]],[filt[3],filt[3],filt[3],filt[5]]]) #(G-K), (G-J), (G-H), (Gbp-Grp)
+    wc=np.array([[filt[2],filt[0],filt[1],filt[5]],[filt[3],filt[3],filt[3],filt[4]]]) #(G-K), (G-J), (G-H), (Gbp-Grp)
 
     red=np.zeros([xlen,ylen]) #reddening da applicare
     #for i in range(xlen): red[i,:]=extinction(redd,filt[i])
@@ -286,13 +341,9 @@ def isochronal_age(phot_app,phot_err_app,par,par_err):
     loga=np.zeros([4,ylen]) #stime di log(età) in ognuno dei quattro canali (4,10)
 
     #calcolare reddening
-    logmf=np.empty([4,ylen,n_est]) #stime di log(massa) per canale, stella e metodo (SRB ecc) (4,2,1)
-    logmf.fill(np.nan)
-    logaf=np.empty([4,ylen,n_est]) #stime di log(età) (4,2,1)
-    logaf.fill(np.nan)
-    m_cmsf=np.empty([4,ylen,n_est]) #stime di log(età) (4,2,1)
+    m_cmsf=np.empty([4,ylen,n_est]) #stime di massa (4,2,1)
     m_cmsf.fill(np.nan)
-    a_cmsf=np.empty([4,ylen,n_est]) #stime di log(età) (4,2,1)
+    a_cmsf=np.empty([4,ylen,n_est]) #stime di età (4,2,1)
     a_cmsf.fill(np.nan)
 
     n_val=np.zeros([4,n_est]) #numero di stelle usate per la stima per canale (0) e tipologia (SRB ecc, 1) (4,1)
@@ -323,16 +374,14 @@ def isochronal_age(phot_app,phot_err_app,par,par_err):
             phot0=phot_bnb
             wh='BNB'
 
-        sigma=100+np.zeros([l[0],l[1],xlen]) #(780,480,3) matrice delle distanze fotometriche
-
-        w_ok,=np.where(cont < max_flux_cont) #complement=ccc
-        count=len(w_ok)
-        
-        for i in range(count): #devo escludere poi i punti con errore fotometrico non valido     
-            w,=np.where(is_phot_good(phot[:,w_ok[i]],phot_err[:,w_ok[i]],max_phot_err=ph_cut))
+        sigma=np.empty([l[0],l[1],xlen]) #(780,480,3) matrice delle distanze fotometriche
+        sigma.fill(np.nan) #inizializzata a NaN
+         
+        for i in range(y_len): #devo escludere poi i punti con errore fotometrico non valido     
+            w,=np.where(is_phot_good(phot[:,i],phot_err[:,i],max_phot_err=ph_cut))
             if len(w)>0:
-                e_j=(-10.**(-0.4*phot_err[w,w_ok[i]])+10.**(+0.4*phot_err[w,w_ok[i]]))/2.
-                for h in range(len(w)): sigma[:,:,w[h]]=(10.**(-0.4*(newMC[:,:,w[h]]-phot0[w[h],w_ok[i]]))-1.)/e_j[h]
+                e_j=-10.**(-0.4*phot_err[w,i])+10.**(+0.4*phot_err[w,i])
+                for h in range(len(w)): sigma[:,:,w[h]]=(10.**(-0.4*(newMC[:,:,w[h]]-phot0[w[h],i]))-1.)/e_j[h]
             cr=np.zeros([l[0],l[1],4]) #(780,480,4) #per il momento comprende le distanze in G-K, G-J, G-H, Gbp-Grp
     #        wc=np.array([[2,3],[0,3],[1,3],[4,5]]) #(G-K), (G-J), (G-H), (Gbp-Grp)
             for j in range(4):
@@ -341,28 +390,24 @@ def isochronal_age(phot_app,phot_err_app,par,par_err):
                 colth.fill(np.nan)
                 asa=np.zeros(l[1])
                 for q in range(l[1]): #480
-                    asa[q],im0=min_v(newMC[:,q,wc[0,j]]-phot0[wc[0,j],w_ok[i]],absolute=True) #trova il punto teorico più vicino nel primo filtro per ogni isocrona
+                    asa[q],im0=min_v(newMC[:,q,wc[0,j]]-phot0[wc[0,j],i],absolute=True) #trova il punto teorico più vicino nel primo filtro per ogni isocrona
                     if abs(asa[q])<0.1: colth[q]=newMC[im0,q,wc[1,j]] #trova la magnitudine corrispondente nel secondo filtro della coppia
                 asb=min(asa,key=abs) #se la minima distanza nel primo filtro è maggiore della soglia, siamo al di fuori del range in massa delle isocrone
                 est,ind=min_v(cr[:,:,j])
-                if (est > 9 and (phot0[wc[1,j],w_ok[i]] < min(colth) or phot0[wc[1,j],w_ok[i]] > max(colth))) or np.isnan(est) or (np.isnan(min(colth)) and np.isnan(max(colth))): #se la stella non è dentro il set oppure se ne dista più di 3 sigma, oppure se le isocrone non hanno nessun valore valido
-                    logmf[j,w_ok[i],t]=np.nan
-                    logaf[j,w_ok[i],t]=np.nan
-                    m_cmsf[j,w_ok[i],t]=np.nan
-                    a_cmsf[j,w_ok[i],t]=np.nan
-                else:
-                    logmf[j,w_ok[i],t]=ind[0]
-                    logaf[j,w_ok[i],t]=ind[1]
-                    m_cmsf[j,w_ok[i],t]=mnew[ind[0]] #massa del CMS i-esimo
-                    a_cmsf[j,w_ok[i],t]=anew[ind[1]] #età del CMS i-esimo
+                if (est <= 2.25 or (phot0[wc[1,j],i] >= min(colth) and phot0[wc[1,j],i] <= max(colth))) and np.isnan(est)==False and (np.isnan(min(colth))==False and np.isnan(max(colth))==False):  #condizioni per buon fit: la stella entro griglia isocrone o a non più di 3 sigma, a condizione che esista almeno un'isocrona al taglio in "colth"
+                    m_cmsf[j,i,t]=mnew[ind[0]] #massa del CMS i-esimo
+                    a_cmsf[j,i,t]=anew[ind[1]] #età del CMS i-esimo
                     n_val[j,t]=n_val[j,t]+1
-                    tofit[j,w_ok[i],t]=1
+                    tofit[j,i,t]=1
 
-                if (is_phot_good(phot0[wc[0,j],w_ok[i]],phot_err[wc[0,j],w_ok[i]],max_phot_err=ph_cut)==0) or (is_phot_good(phot0[wc[1,j],w_ok[i]],phot_err[wc[1,j],w_ok[i]],max_phot_err=ph_cut)==0): pass #rimane 0
-                elif est > 9 and phot0[wc[1,j],w_ok[i]] < min(colth):  fate[j,w_ok[i],t]=2
-                elif est > 9 and phot0[wc[1,j],w_ok[i]] > max(colth):  fate[j,w_ok[i],t]=3
-                elif est > 9 and abs(asb) >= 0.1: fate[j,w_ok[i],t]=4
-                else: fate[j,w_ok[i],t]=5
+                if (is_phot_good(phot0[wc[0,j],i],phot_err[wc[0,j],i],max_phot_err=ph_cut)==0) or (is_phot_good(phot0[wc[1,j],i],phot_err[wc[1,j],i],max_phot_err=ph_cut)==0): pass #rimane 0
+                elif est > 2.25 and phot0[wc[1,j],i] < min(colth):  fate[j,i,t]=2
+                elif est > 2.25 and phot0[wc[1,j],i] > max(colth):  fate[j,i,t]=3
+                elif est > 2.25 and abs(asb) >= 0.1: fate[j,i,t]=4
+                else: fate[j,i,t]=5
+                if (border_age==True and est>=2.25 and phot0[wc[1,j],i]>max(colth):
+                    a_cmsf[j,i,t]=anew[0]
+                    tofit[j,i,t]=1
                 
         if anew[-1]<150: plot_ages=[1,3,5,10,20,30,100] #ossia l'ultimo elemento
         elif anew[-1]<250: plot_ages=[1,3,5,10,20,30,100,200]
@@ -383,3 +428,179 @@ def isochronal_age(phot_app,phot_err_app,par,par_err):
         m_final[i]=np.nanmean(m_cmsf[:,i])
 
     return a_final,m_final
+
+def extinction(ebv,col):
+    """
+    computes extinction/color excess in a filter "col", given a certain E(B-V) "ebv",
+    based on absorption coefficients from the literature
+
+    input:
+        ebv: E(B-V) of the source(s) (float or numpy array)
+        col: name of the required filter(s) (string)
+            if you want a color excess, it should be in the form 'c1-c2'
+    usage:
+        extinction(0.03,'G') gives the extinction in Gaia G band for E(B-V)=0.03 mag
+        extinction(0.1,'G-K') gives the color excess in Gaia G - 2MASS K bands for E(B-V)=0.1 mag
+
+    notes:
+    assumes a total-to-selective absorption R=3.16 (Wang & Chen 2019)
+    Alternative values of R=3.086 or R=3.1 are commonly used in the literature.
+
+    sources:
+    Johnson U: Rieke & Lebofsky (1985)
+    Johnson B: Wang & Chen (2019)
+        alternatives: A_B=1.36 (Indebetouw et al. 2005, SVO Filter Service)
+        or A_B=1.324 (Rieke & Lebofsky 1985)
+    Johnson V: *by definition*
+    Johnson R: Rieke & Lebofsky (1985)
+    Johnson I: Rieke & Lebofsky (1985)
+    Johnson L: Rieke & Lebofsky (1985)
+    Johnson M: Rieke & Lebofsky (1985)
+    2MASS J: Wang & Chen (2019)
+        alternatives: A_J=0.31 (Indebetouw et al. 2005, SVO Filter Service) 
+        or A_J=0.282 (Rieke & Lebofsky 1985)
+    2MASS H: Wang & Chen (2019)
+        alternatives: A_H=0.19 (Indebetouw et al. 2005, SVO Filter Service) 
+        or A_H=0.175 (Rieke & Lebofsky 1985)
+    2MASS K: Wang & Chen (2019)
+        alternatives: A_K=0.13 (Indebetouw et al. 2005, SVO Filter Service) 
+        or A_K=0.112 (Rieke & Lebofsky 1985)
+    GAIA G: Wang & Chen (2019)
+        alternative: a variable A(ext)=[0.95,0.8929,0.8426] per ext=[1,3,5] magnitudes (Jordi et al 2010)
+    GAIA Gbp: Wang & Chen (2019)
+    GAIA Grp: Wang & Chen (2019)
+    WISE W1: Wang & Chen (2019)
+    WISE W2: Wang & Chen (2019)
+    WISE W3: Wang & Chen (2019)
+    WISE W4: Indebetouw et al. (2005), SVO Filter Service
+    PANSTARRS g (gmag): Wang & Chen (2019)
+        alternative: A_g=1.18 (Indebetouw et al. 2005, SVO Filter Service) 
+    PANSTARRS r (rmag): Wang & Chen (2019)
+        alternative: A_r=0.88 (Indebetouw et al. 2005, SVO Filter Service) 
+    PANSTARRS i (imag): Wang & Chen (2019)
+        alternative: A_i=0.67 (Indebetouw et al. 2005, SVO Filter Service) 
+    PANSTARRS z (zmag): Wang & Chen (2019)
+        alternative: A_z=0.53 (Indebetouw et al. 2005, SVO Filter Service) 
+    PANSTARRS y (ymag): Wang & Chen (2019)
+        alternative: A_y=0.46 (Indebetouw et al. 2005, SVO Filter Service) 
+    """
+    A_law={'U':1.531,'B':1.317,'V':1,'R':0.748,'I':0.482,'L':0.058,'M':0.023,
+       'J':0.243,'H':0.131,'K':0.078,'G':0.789,'Gbp':1.002,'Grp':0.589,
+       'W1':0.039,'W2':0.026,'W3':0.040,'W4':0.020,
+       'gmag':1.155,'rmag':0.843,'imag':0.628,'zmag':0.487,'ymag':0.395
+      } #absorption coefficients
+
+    if '-' in col:
+        c1,c2=col.split('-')
+        A=A_law[c1]-A_law[c2]
+    else:
+        A=A_law[col]
+    return(3.16*A*ebv)
+
+
+#definisce range per plot CMD
+def axis_range(col_name,col_phot):
+    cmin=min(col_phot)
+    cmax=max(col_phot)
+    dic1={'G':[max(15,cmax),min(1,cmin)], 'Gbp':[max(15,cmax),min(1,cmin)], 'Grp':[max(15,cmax),min(1,cmin)],
+        'J':[max(10,cmax),min(0,cmin)], 'H':[max(10,cmax),min(0,cmin)], 'K':[max(10,cmax),min(0,cmin)],
+        'W1':[max(10,cmax),min(0,cmin)], 'W2':[max(10,cmax),min(0,cmin)], 'W3':[max(10,cmax),min(0,cmin)],
+        'W4':[max(10,cmax),min(0,cmin)], 'G-J':[min(0,cmin),max(5,cmax)],
+        'G-H':[min(0,cmin),max(5,cmax)], 'G-K':[min(0,cmin),max(5,cmax)],
+        'G-W1':[min(0,cmin),max(6,cmax)], 'G-W2':[min(0,cmin),max(6,cmax)],
+        'G-W3':[min(0,cmin),max(10,cmax)], 'G-W4':[min(0,cmin),max(12,cmax)],
+        'J-H':[min(0,cmin),max(1,cmax)], 'J-K':[min(0,cmin),max(1.5,cmax)],
+        'H-K':[min(0,cmin),max(0.5,cmax)], 'Gbp-Grp':[min(0,cmin),max(5,cmax)]
+        }
+
+    try:
+        xx=dic1[col_name]
+    except KeyError:
+        if '-' in col_name:
+            xx=[cmin,cmax]
+        else: xx=[cmax,cmin]
+    
+    return xx 
+
+
+def import_phot(filename,coordinates=False,surveys=['2MASS','GAIA_EDR3']): #coord_file
+
+    folder=os.path.dirname(filename)     #working path selection
+
+    #creates a .csv file with coordinates
+    if coordinates==False: 
+        with open(filename) as f:
+            target_list = np.genfromtxt(f,dtype="str")
+        n=len(target_list)
+        ra=np.zeros(n)
+        dec=np.zeros(n)
+        for i in range(n):
+            x=Simbad.query_object(target_list[i])
+            ra0=Angle(x['RA'],'hour')
+            dec0=Angle(x['DEC'],'degree')
+            ra[i]=ra0.degree
+            dec[i]=dec0.degree
+        coo=set(zip(ra,dec))
+        data = Table([ra, dec],names=['ra_v','dec_v'])
+        new_file=filename.replace('.txt','_coordinates.csv')
+        ascii.write(data, new_file, overwrite=True, format='csv', delimiter=',')
+    else:
+        if filename.endswith('.txt'):
+            with open(filename) as f:
+                data = np.genfromtxt(f,dtype="str")
+            new_file=filename.replace('.txt','.csv')
+            with open(new_file, newline='', mode='w') as f:
+                r_csv = csv.writer(f, delimiter=',')
+                for i in range(len(data)):
+                    r_csv.writerow(data[i])
+        else: new_file=filename
+
+    #VizieR queries. Results saved as .txt
+    index={'GAIA_EDR3':0, '2MASS':1, 'ALLWISE':2}
+
+    surv_prop=[['vizier:I/350/gaiaedr3',['angDist', 'source_id', 'ra', 'ra_error', 'dec', 'dec_error', 'parallax', 'parallax_error', 'parallax_over_error', 'pmra', 'pmra_error', 'pmdec', 'pmdec_error',  'ruwe', 'phot_g_mean_flux_error', 'phot_g_mean_mag', 'phot_bp_mean_flux_error', 'phot_bp_mean_mag', 'phot_rp_mean_mag', 'dr2_radial_velocity', 'dr2_radial_velocity_error', 'phot_g_mean_mag_error', 'phot_bp_mean_mag_error', 'phot_rp_mean_mag_error', 'phot_g_mean_mag_corrected', 'phot_g_mean_mag_error_corrected', 'phot_g_mean_flux_corrected', 'phot_bp_rp_excess_factor_corrected', 'ra_epoch2000_error', 'dec_epoch2000_error', 'ra_dec_epoch2000_corr'],['source_id','ra','ra_error','dec','dec_error','parallax','parallax_error','pmra','pmra_error','pmdec','pmdec_error','ruwe','phot_g_mean_mag','phot_g_mean_mag_error','phot_bp_mean_mag','phot_bp_mean_mag_error','phot_rp_mean_mag','phot_rp_mean_mag_error','dr2_radial_velocity','dr2_radial_velocity_error','phot_bp_rp_excess_factor_corrected']],
+               ['vizier:II/246/out',['2MASS','ra_v','dec_v','Jmag','e_Jmag','Hmag','e_Hmag','Kmag','e_Kmag','Qfl']],
+               ['vizier:II/328/allwise',['AllWISE','RAJ2000','DEJ2000','W1mag','e_W1mag','W2mag','e_W2mag','W3mag','e_W3mag','W4mag','e_W4mag','ccf','d2M']]
+              ]
+
+    
+#    angDist,ra_v,dec_v,AllWISE,RAJ2000,DEJ2000,eeMaj,eeMin,eePA,W1mag,W2mag,W3mag,W4mag,Jmag,Hmag,Kmag,e_W1mag,e_W2mag,e_W3mag,e_W4mag,e_Jmag,e_Hmag,e_Kmag,ID,ccf,ex,var,qph,pmRA,e_pmRA,pmDE,e_pmDE,d2M
+
+    
+    if isinstance(surveys,str):        
+        data_s = XMatch.query(cat1=open(Path(new_file)),cat2=surv_prop[index[surveys]][0],max_distance=2 * u.arcsec, colRA1='ra_v',colDec1='dec_v')
+        output_file=os.path.join(folder,str('py_cms_'+surveys+'.csv'))
+        f=open(os.path.join(folder,str(surveys+'_tab.txt')), "w+")
+        if surveys=='GAIA_EDR3':
+            f.write(tabulate(data_s[surv_prop[0][2]],
+                         headers=['source_id','ra','ra_error','dec','dec_error','parallax','parallax_error','pmra','pmra_error','pmdec','pmdec_error','ruwe','G','err_G','Gbp','err_GBP','GRP','err_GRP','radial_velocity', 'radial_velocity_error','bp_rp_excess_factor'], tablefmt='plain', stralign='right',floatfmt=(".5f",".11f",".4f",".11f",".4f",".7f",".7f",".7f",".7f",".7f",".7f",".3f",".4f",".4f",".4f",".4f",".4f",".4f",".4f",".4f",".4f")))
+            data_s=data_s[surv_prop[0][1]]
+        elif surveys=='2MASS':
+            f.write(tabulate(data_s[surv_prop[1][1]],
+                         headers=['ID','ra','dec','J','err_J','H','err_H','K','err_K','qfl'], tablefmt='plain', stralign='right',floatfmt=(".5f",".8f",".8f",".3f",".3f",".3f",".3f",".3f",".3f")))
+        elif surveys=='ALLWISE':
+            f.write(tabulate(data_s[surv_prop[2][1]],
+                         headers=['ID','ra','dec','W1','err_W1','W2','err_W2','W3','err_W3','W4','err_W4','ccf','d2M'], tablefmt='plain', stralign='right',floatfmt=(".5f",".8f",".8f",".3f",".3f",".3f",".3f",".3f",".3f",".3f",".3f",".3f",".4f")))
+        f.close()
+        data_s.write(output_file, overwrite=True)        
+    else:
+        for i in range(len(surveys)): 
+            if isinstance(surveys[i],str):        
+                data_s = XMatch.query(cat1=open(Path(new_file)),cat2=surv_prop[index[surveys[i]]][0],max_distance=2 * u.arcsec, colRA1='ra_v',colDec1='dec_v')
+                output_file=os.path.join(folder,str('py_cms_'+surveys[i]+'.csv'))
+                f=open(os.path.join(folder,str(surveys[i]+'_tab.txt')), "w+")
+                if surveys[i]=='GAIA_EDR3':
+                    f.write(tabulate(data_s[surv_prop[0][2]],
+                                 headers=['source_id','ra','ra_error','dec','dec_error','parallax','parallax_error','pmra','pmra_error','pmdec','pmdec_error','ruwe','G','err_G','Gbp','err_GBP','GRP','err_GRP','radial_velocity', 'radial_velocity_error','bp_rp_excess_factor'], tablefmt='plain', stralign='right',floatfmt=(".5f",".11f",".4f",".11f",".4f",".7f",".7f",".7f",".7f",".7f",".7f",".3f",".4f",".4f",".4f",".4f",".4f",".4f",".4f",".4f",".4f")))
+                    data_s=data_s[surv_prop[0][1]]
+                elif surveys[i]=='2MASS':
+                    f.write(tabulate(data_s[surv_prop[1][1]],
+                                 headers=['ID','ra','dec','J','err_J','H','err_H','K','err_K','qfl'], tablefmt='plain', stralign='right',floatfmt=(".5f",".8f",".8f",".3f",".3f",".3f",".3f",".3f",".3f")))
+                elif surveys[i]=='ALLWISE':
+                    f.write(tabulate(data_s[surv_prop[2][1]],
+                                 headers=['ID','ra','dec','W1','err_W1','W2','err_W2','W3','err_W3','W4','err_W4','ccf','d2M'], tablefmt='plain', stralign='right',floatfmt=(".5f",".8f",".8f",".3f",".3f",".3f",".3f",".3f",".3f",".3f",".3f",".3f",".4f")))
+                f.close()
+                data_s.write(output_file, overwrite=True)        
+
+    return None
+
