@@ -282,7 +282,7 @@ def retrieve_parameters():
 
 
 
-def isochronal_age(phot_app,phot_err_app,par,par_err):
+def isochronal_age(phot_app,phot_err_app,par,par_err,border_age=False):
 
     path=Path('C:/Users/Vito/Desktop/PhD/Progetti/BEAST/Stellar_ages/CMS/BT-Settl_stilism_cs0_GaiaDR3')
 
@@ -405,7 +405,7 @@ def isochronal_age(phot_app,phot_err_app,par,par_err):
                 elif est > 2.25 and phot0[wc[1,j],i] > max(colth):  fate[j,i,t]=3
                 elif est > 2.25 and abs(asb) >= 0.1: fate[j,i,t]=4
                 else: fate[j,i,t]=5
-                if (border_age==True and est>=2.25 and phot0[wc[1,j],i]>max(colth):
+                if (border_age==True and est>=2.25 and phot0[wc[1,j],i]>max(colth)):
                     a_cmsf[j,i,t]=anew[0]
                     tofit[j,i,t]=1
                 
