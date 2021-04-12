@@ -402,7 +402,7 @@ def isochronal_age(phot_app,phot_err_app,par,par_err,border_age=False):
         sigma=np.empty([l[0],l[1],xlen]) #(780,480,3) matrice delle distanze fotometriche
         sigma.fill(np.nan) #inizializzata a NaN
          
-        for i in range(y_len): #devo escludere poi i punti con errore fotometrico non valido     
+        for i in range(ylen): #devo escludere poi i punti con errore fotometrico non valido     
             w,=np.where(is_phot_good(phot[:,i],phot_err[:,i],max_phot_err=ph_cut))
             if len(w)>0:
                 e_j=-10.**(-0.4*phot_err[w,i])+10.**(+0.4*phot_err[w,i])
