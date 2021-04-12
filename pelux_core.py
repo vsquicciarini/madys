@@ -18,6 +18,7 @@ import csv
 from astropy.table import Table
 from astropy.io import ascii
 from tabulate import tabulate
+import math
 
 
 def nan_helper(y):
@@ -45,29 +46,53 @@ def n_elements(x):
     return size
 
 def closest(array,value):
-    '''Given an "array" and a "value", finds the j such that |array[j]-value|=min((array-value)).
+    '''Given an "array" and a (list of) "value"(s), finds the j(s) such that |array[j]-value|=min((array-value)).
     "array" must be monotonic increasing. j=-1 or j=len(array) is returned
     to indicate that ``value`` is out of range below and above respectively.'''
     n = len(array)
-    if (value < array[0]):
-        return 0
-    elif (value > array[n-1]):
-        return n-1
-    jl = 0# Initialize lower
-    ju = n-1# and upper limits.
-    while (ju-jl > 1):# If we are not yet done,
-        jm=(ju+jl) >> 1# compute a midpoint with a bitshift
-        if (value >= array[jm]):
-            jl=jm# and replace either the lower limit
+    nv=n_elements(value)
+    if nv==1:
+        if (value < array[0]):
+            return 0
+        elif (value > array[n-1]):
+            return n-1
+        jl = 0# Initialize lower
+        ju = n-1# and upper limits.
+        while (ju-jl > 1):# If we are not yet done,
+            jm=(ju+jl) >> 1# compute a midpoint with a bitshift
+            if (value >= array[jm]):
+                jl=jm# and replace either the lower limit
+            else:
+                ju=jm# or the upper limit, as appropriate.
+            # Repeat until the test condition is satisfied.
+        if (value == array[0]):# edge cases at bottom
+            return 0
+        elif (value == array[n-1]):# and top
+            return n-1
         else:
-            ju=jm# or the upper limit, as appropriate.
-        # Repeat until the test condition is satisfied.
-    if (value == array[0]):# edge cases at bottom
-        return 0
-    elif (value == array[n-1]):# and top
-        return n-1
+            jn=jl+np.argmin([value-array[jl],array[jl+1]-value])
+            return jn
     else:
-        jn=jl+np.argmin([value-array[jl],array[jl+1]-value])
+        jn=np.zeros(nv,dtype='int32')
+        for i in range(nv):
+            if (value[i] < array[0]): jn[i]=0
+            elif (value[i] > array[n-1]): jn[i]=n-1
+            else:
+                jl = 0# Initialize lower
+                ju = n-1# and upper limits.
+                while (ju-jl > 1):# If we are not yet done,
+                    jm=(ju+jl) >> 1# compute a midpoint with a bitshift
+                    if (value[i] >= array[jm]):
+                        jl=jm# and replace either the lower limit
+                    else:
+                        ju=jm# or the upper limit, as appropriate.
+                    # Repeat until the test condition is satisfied.
+                if (value[i] == array[0]):# edge cases at bottom
+                    jn[i]=0
+                elif (value[i] == array[n-1]):# and top
+                    jn[i]=n-1
+                else:
+                    jn[i]=jl+np.argmin([value[i]-array[jl],array[jl+1]-value[i]])
         return jn
 
 def min_v(a,absolute=False):
@@ -604,3 +629,84 @@ def import_phot(filename,coordinates=False,surveys=['2MASS','GAIA_EDR3']): #coor
 
     return None
 
+def Wu_line_integrate(f,x0,x1,y0,y1,z0,z1):
+    n=100*max(math.ceil(abs(max([x1-x0,y1-y0,z1-z0]))),500)
+    I=0
+    
+    x=np.linspace(x0,x1,num=n)
+    if n_dim(f)==2:
+        m=(y1-y0)/(x1-x0) #slope of the line
+        d10=np.sqrt((x1-x0)**2+(y1-y0)**2) #distance
+        
+        y=y0+m*(x-x0)
+        for i in range(n): I+=f[math.floor(x[i]),math.floor(y[i])]
+    elif n_dim(f)==3:
+        m=(y1-y0)/(x1-x0) #slope of the line
+        d10=np.sqrt((x1-x0)**2+(y1-y0)**2+(z1-z0)**2) #distance
+        
+        y=np.linspace(y0,y1,num=n)
+        z=np.linspace(z0,z1,num=n)
+        for i in range(n): I+=f[math.floor(x[i]),math.floor(y[i]),math.floor(z[i])]
+    
+    return I/n*d10
+
+def interstellar_ext(ra=None,dec=None,l=None,b=None,par=None,d=None,map_path=r'C:\Users\Vito\Desktop\PhD\Modelli\Extinction_maps',test_time=False,ext_map='leike',color='B-V'):
+    fits_image_filename=os.path.join(map_path,'leike_mean_std.h5')
+    f = h5py.File(fits_image_filename,'r')
+    data = f['mean']
+
+    x=np.arange(-370.,370.)
+    y=np.arange(-370.,370.)
+    z=np.arange(-270.,540.)
+
+    if type(ra)==type(None) and type(l)==type(None): raise NameError('At least one between RA and l must be supplied!') # ok=dialog_message(')
+    if type(dec)==type(None) and type(b)==type(None): raise NameError('At least one between dec and b must be supplied!')
+    if type(par)==type(None) and type(d)==type(None): raise NameError('At least one between parallax and distance must be supplied!')
+    if type(ra)!=type(None) and type(l)!=type(None): raise NameError('Only one between RA and l must be supplied!')
+    if type(dec)!=type(None) and type(b)!=type(None): raise NameError('Only one between dec and b must be supplied!')
+    if type(par)!=type(None) and type(d)!=type(None): raise NameError('Only one between parallax and distance must be supplied!')
+
+    sun=[closest(x,0),closest(z,0)]
+    
+    if type(ra)!=type(None): #computes galactic l and b, if missing
+        c_eq = SkyCoord(ra=ra*u.degree, dec=dec*u.degree, frame='icrs')
+        l=c_eq.galactic.l.degree
+        b=c_eq.galactic.b.degree
+    if type(d)==type(None): d=1000./par #computes heliocentric distance, if missing
+
+    #  ;Sun-centered cartesian Galactic coordinates. X and Y are in the midplane
+    x0=d*np.cos(l*np.pi/180)*np.cos(b*np.pi/180) #X is directed to the Galactic Center
+    y0=d*np.sin(l*np.pi/180)*np.cos(b*np.pi/180) #Y is in the sense of rotation
+    z0=d*np.sin(b*np.pi/180) #Z points to the north Galactic pole
+
+    px=closest(x,x0)
+    py=closest(y,y0)
+    pz=closest(z,z0)
+
+    dist=x[1]-x[0]
+
+
+    if n_elements(px)==1:
+        if px<len(x)-1: px2=(x0-x[px])/dist+px
+        if py<len(y)-1: py2=(y0-y[py])/dist+py
+        if pz<len(z)-1: pz2=(z0-z[pz])/dist+pz
+        if ext_map=='stilism': ebv=dist*Wu_line_integrate(data,sun[0],px2,sun[0],py2,sun[1],pz2)/3.16
+        elif ext_map=='leike': ebv=dist*(2.5*Wu_line_integrate(data,sun[0],px2,sun[0],py2,sun[1],pz2)*np.log10(np.exp(1)))/3.16/0.789
+    else:
+        wx,=np.where(px<len(x)-1)
+        wy,=np.where(py<len(y)-1)
+        wz,=np.where(pz<len(z)-1)
+        px2=np.zeros(len(px))    
+        py2=np.zeros(len(py))    
+        pz2=np.zeros(len(pz))    
+        px2[wx]=(x0[wx]-x[px[wx]])/dist+px[wx]
+        py2[wy]=(y0[wy]-y[py[wy]])/dist+py[wy]
+        pz2[wz]=(z0[wz]-z[pz[wz]])/dist+pz[wz]    
+        ebv=np.zeros(n_elements(x0))
+        if ext_map=='stilism':
+            for i in range(n_elements(x0)): ebv[i]=dist*Wu_line_integrate(data,sun[0],px2[i],sun[0],py2[i],sun[1],pz2[i])/3.16
+        elif ext_map=='leike':
+            for i in range(n_elements(x0)): ebv[i]=dist*(2.5*Wu_line_integrate(data,sun[0],px2[i],sun[0],py2[i],sun[1],pz2[i])*np.log10(np.exp(1)))/3.16/0.789
+
+    if color=='B-V': return(ebv)
+    else: return(extinction(ebv,color))
