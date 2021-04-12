@@ -696,9 +696,9 @@ def interstellar_ext(ra=None,dec=None,l=None,b=None,par=None,d=None,map_path=r'C
         wx,=np.where(px<len(x)-1)
         wy,=np.where(py<len(y)-1)
         wz,=np.where(pz<len(z)-1)
-        px2=np.zeros(len(px))    
-        py2=np.zeros(len(py))    
-        pz2=np.zeros(len(pz))    
+        px2=px.astype(float)
+        py2=py.astype(float)    
+        pz2=pz.astype(float)
         px2[wx]=(x0[wx]-x[px[wx]])/dist+px[wx]
         py2[wy]=(y0[wy]-y[py[wy]])/dist+py[wy]
         pz2[wz]=(z0[wz]-z[pz[wz]])/dist+pz[wz]    
