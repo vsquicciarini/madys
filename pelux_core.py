@@ -19,6 +19,8 @@ from astropy.table import Table
 from astropy.io import ascii
 from tabulate import tabulate
 import math
+import shutil
+import h5py
 
 
 def nan_helper(y):
@@ -174,24 +176,25 @@ def app_to_abs_mag(app_mag,parallax,app_mag_error=False,parallax_error=False):
     dm=5*np.log10(100./parallax) #modulo di distanza
     dim=n_dim(app_mag)
     if dim <= 1:
-        result=app_mag-dm
+        abs_mag=app_mag-dm
         if (app_mag_error!=False) & (parallax_error!=False): 
             if isinstance(app_mag_error,list): app_mag_error=np.array(app_mag_error)
             if isinstance(parallax_error,list): parallax_error=np.array(parallax_error)
             total_error=np.sqrt(app_mag_error**2+(5/np.log(10)/parallax)**2*parallax_error**2)
-            result=[result,total_error]
+            result=(abs_mag,total_error)
+        else: result=abs_mag
     else: #  se è 2D, bisogna capire se ci sono più filtri e se c'è anche l'errore fotometrico
         l=n_dim(app_mag,shape=True)
         abs_mag=np.empty([l[0],l[1]])
-        for i in range(l[0]): abs_mag[i,:]=app_mag[i,:]-dm
-        result=abs_mag
+        for i in range(l[1]): abs_mag[:,i]=app_mag[:,i]-dm
         if (parallax_error.any()!=False):
             if isinstance(app_mag_error,list): app_mag_error=np.array(app_mag_error)
             if isinstance(parallax_error,list): parallax_error=np.array(parallax_error)
             total_error=np.empty([l[0],l[1]])
-            for i in range(l[0]): 
-                total_error[i,:]=np.sqrt(app_mag_error[i,:]**2+(5/np.log(10)/parallax)**2*parallax_error**2)
-            result=[result,total_error]        
+            for i in range(l[1]): 
+                total_error[:,i]=np.sqrt(app_mag_error[:,i]**2+(5/np.log(10)/parallax)**2*parallax_error**2)
+            result=(abs_mag,total_error)
+        else: result=abs_mag
             
     return result #se l'input è un array 1D, non c'è errore ed è un unico filtro
 
@@ -548,9 +551,14 @@ def axis_range(col_name,col_phot):
     return xx 
 
 
-def import_phot(filename,coordinates=False,surveys=['2MASS','GAIA_EDR3']): #coord_file
+def search_phot(filename,coordinates=False,surveys=['2MASS','GAIA_EDR3']): #coord_file
 
     folder=os.path.dirname(filename)     #working path selection
+    sample_name=os.path.split(filename)[1]
+    i=0
+    while sample_name[i]!='.': i=i+1
+    sample_name=sample_name[0:i]
+    if sample_name.endswith('_coordinates'): sample_name=sample_name[0:-12]
 
     #creates a .csv file with coordinates
     if coordinates==False: 
@@ -559,12 +567,30 @@ def import_phot(filename,coordinates=False,surveys=['2MASS','GAIA_EDR3']): #coor
         n=len(target_list)
         ra=np.zeros(n)
         dec=np.zeros(n)
+        gex=0
         for i in range(n):
             x=Simbad.query_object(target_list[i])
-            ra0=Angle(x['RA'],'hour')
-            dec0=Angle(x['DEC'],'degree')
-            ra[i]=ra0.degree
-            dec[i]=dec0.degree
+            if type(x)!=type(None):
+                ra0=Angle(x['RA'],'hour')
+                dec0=Angle(x['DEC'],'degree')
+                ra[i]=ra0.degree
+                dec[i]=dec0.degree
+            else:
+                ra[i]=np.nan
+                dec[i]=np.nan
+                print('Star',target_list[i],' not found. Perhaps misspelling? Setting (ra,dec) to NaN.')
+                gex=1
+        if gex:
+            print('Some stars were not found. Would you like to end the program and check the spelling?')
+            print('If not, these stars will be treated as missing data')
+            key=str.lower(input('End program? [Y/N]'))
+            while 1:
+                if key=='yes' or key=='y':
+                    print('Program ended.')
+                    return
+                elif key=='no' or key=='n':
+                    break
+                key=str.lower(input('Unvalid choice. Type Y or N.'))                
         coo=set(zip(ra,dec))
         data = Table([ra, dec],names=['ra_v','dec_v'])
         new_file=filename.replace('.txt','_coordinates.csv')
@@ -573,12 +599,18 @@ def import_phot(filename,coordinates=False,surveys=['2MASS','GAIA_EDR3']): #coor
         if filename.endswith('.txt'):
             with open(filename) as f:
                 data = np.genfromtxt(f,dtype="str")
-            new_file=filename.replace('.txt','.csv')
+            new_file=filename.replace('.txt','_coordinates.csv')
             with open(new_file, newline='', mode='w') as f:
                 r_csv = csv.writer(f, delimiter=',')
                 for i in range(len(data)):
                     r_csv.writerow(data[i])
-        else: new_file=filename
+                n=len(data)
+        else: 
+            if filename.endswith('coordinates.csv')==0:
+                new_file=filename.replace('.','_coordinates.')
+                n=len(open(filename).readlines(  ))
+                shutil.copyfile(filename,new_file)
+            else: new_file=filename
 
     #VizieR queries. Results saved as .txt
     index={'GAIA_EDR3':0, '2MASS':1, 'ALLWISE':2}
@@ -594,38 +626,34 @@ def import_phot(filename,coordinates=False,surveys=['2MASS','GAIA_EDR3']): #coor
     
     if isinstance(surveys,str):        
         data_s = XMatch.query(cat1=open(Path(new_file)),cat2=surv_prop[index[surveys]][0],max_distance=2 * u.arcsec, colRA1='ra_v',colDec1='dec_v')
-        output_file=os.path.join(folder,str('py_cms_'+surveys+'.csv'))
-        f=open(os.path.join(folder,str(surveys+'_tab.txt')), "w+")
+        f=open(os.path.join(folder,str(sample_name+'_'+surveys+'_data.txt')), "w+")
         if surveys=='GAIA_EDR3':
             f.write(tabulate(data_s[surv_prop[0][2]],
-                         headers=['source_id','ra','ra_error','dec','dec_error','parallax','parallax_error','pmra','pmra_error','pmdec','pmdec_error','ruwe','G','err_G','Gbp','err_GBP','GRP','err_GRP','radial_velocity', 'radial_velocity_error','bp_rp_excess_factor'], tablefmt='plain', stralign='right',floatfmt=(".5f",".11f",".4f",".11f",".4f",".7f",".7f",".7f",".7f",".7f",".7f",".3f",".4f",".4f",".4f",".4f",".4f",".4f",".4f",".4f",".4f")))
+                         headers=['source_id','ra','ra_error','dec','dec_error','parallax','parallax_error','pmra','pmra_error','pmdec','pmdec_error','ruwe','G','G_err','GBP','GBP_err','GRP','GRP_err','radial_velocity', 'radial_velocity_error','bp_rp_excess_factor'], tablefmt='plain', stralign='right', numalign='right', floatfmt=(".5f",".11f",".4f",".11f",".4f",".7f",".7f",".7f",".7f",".7f",".7f",".3f",".4f",".4f",".4f",".4f",".4f",".4f",".4f",".4f",".4f")))
             data_s=data_s[surv_prop[0][1]]
         elif surveys=='2MASS':
             f.write(tabulate(data_s[surv_prop[1][1]],
-                         headers=['ID','ra','dec','J','err_J','H','err_H','K','err_K','qfl'], tablefmt='plain', stralign='right',floatfmt=(".5f",".8f",".8f",".3f",".3f",".3f",".3f",".3f",".3f")))
+                         headers=['ID','ra','dec','J','J_err','H','H_err','K','K_err','qfl'], tablefmt='plain', stralign='right', numalign='right', floatfmt=(".5f",".8f",".8f",".3f",".3f",".3f",".3f",".3f",".3f")))
         elif surveys=='ALLWISE':
             f.write(tabulate(data_s[surv_prop[2][1]],
-                         headers=['ID','ra','dec','W1','err_W1','W2','err_W2','W3','err_W3','W4','err_W4','ccf','d2M'], tablefmt='plain', stralign='right',floatfmt=(".5f",".8f",".8f",".3f",".3f",".3f",".3f",".3f",".3f",".3f",".3f",".3f",".4f")))
+                         headers=['ID','ra','dec','W1','W1_err','W2','W2_err','W3','W3_err','W4','W4_err','ccf','d2M'], tablefmt='plain', stralign='right', numalign='right', floatfmt=(".5f",".8f",".8f",".3f",".3f",".3f",".3f",".3f",".3f",".3f",".3f",".3f",".4f")))
         f.close()
-        data_s.write(output_file, overwrite=True)        
     else:
         for i in range(len(surveys)): 
             if isinstance(surveys[i],str):        
                 data_s = XMatch.query(cat1=open(Path(new_file)),cat2=surv_prop[index[surveys[i]]][0],max_distance=2 * u.arcsec, colRA1='ra_v',colDec1='dec_v')
-                output_file=os.path.join(folder,str('py_cms_'+surveys[i]+'.csv'))
-                f=open(os.path.join(folder,str(surveys[i]+'_tab.txt')), "w+")
+                f=open(os.path.join(folder,str(sample_name+'_'+surveys[i]+'_data.txt')), "w+")
                 if surveys[i]=='GAIA_EDR3':
                     f.write(tabulate(data_s[surv_prop[0][2]],
-                                 headers=['source_id','ra','ra_error','dec','dec_error','parallax','parallax_error','pmra','pmra_error','pmdec','pmdec_error','ruwe','G','err_G','Gbp','err_GBP','GRP','err_GRP','radial_velocity', 'radial_velocity_error','bp_rp_excess_factor'], tablefmt='plain', stralign='right',floatfmt=(".5f",".11f",".4f",".11f",".4f",".7f",".7f",".7f",".7f",".7f",".7f",".3f",".4f",".4f",".4f",".4f",".4f",".4f",".4f",".4f",".4f")))
+                                 headers=['source_id','ra','ra_error','dec','dec_error','parallax','parallax_error','pmra','pmra_error','pmdec','pmdec_error','ruwe','G','G_err','GBP','GBP_err','GRP','GRP_err','radial_velocity', 'radial_velocity_error','bp_rp_excess_factor'], tablefmt='plain', stralign='right', numalign='right', floatfmt=(".5f",".11f",".4f",".11f",".4f",".7f",".7f",".7f",".7f",".7f",".7f",".3f",".4f",".4f",".4f",".4f",".4f",".4f",".4f",".4f",".4f")))
                     data_s=data_s[surv_prop[0][1]]
                 elif surveys[i]=='2MASS':
                     f.write(tabulate(data_s[surv_prop[1][1]],
-                                 headers=['ID','ra','dec','J','err_J','H','err_H','K','err_K','qfl'], tablefmt='plain', stralign='right',floatfmt=(".5f",".8f",".8f",".3f",".3f",".3f",".3f",".3f",".3f")))
+                                 headers=['ID','ra','dec','J','J_err','H','H_err','K','K_err','qfl'], tablefmt='plain', stralign='right', numalign='right', floatfmt=(".5f",".8f",".8f",".3f",".3f",".3f",".3f",".3f",".3f")))
                 elif surveys[i]=='ALLWISE':
                     f.write(tabulate(data_s[surv_prop[2][1]],
-                                 headers=['ID','ra','dec','W1','err_W1','W2','err_W2','W3','err_W3','W4','err_W4','ccf','d2M'], tablefmt='plain', stralign='right',floatfmt=(".5f",".8f",".8f",".3f",".3f",".3f",".3f",".3f",".3f",".3f",".3f",".3f",".4f")))
+                                 headers=['ID','ra','dec','W1','W1_err','W2','W2_err','W3','W3_err','W4','W4_err','ccf','d2M'], tablefmt='plain', stralign='right', numalign='right', floatfmt=(".5f",".8f",".8f",".3f",".3f",".3f",".3f",".3f",".3f",".3f",".3f",".3f",".4f")))
                 f.close()
-                data_s.write(output_file, overwrite=True)        
 
     return None
 
@@ -702,11 +730,296 @@ def interstellar_ext(ra=None,dec=None,l=None,b=None,par=None,d=None,map_path=r'C
         px2[wx]=(x0[wx]-x[px[wx]])/dist+px[wx]
         py2[wy]=(y0[wy]-y[py[wy]])/dist+py[wy]
         pz2[wz]=(z0[wz]-z[pz[wz]])/dist+pz[wz]    
-        ebv=np.zeros(n_elements(x0))
+        ebv=np.empty(n_elements(x0))
+        ebv.fill(np.nan)
         if ext_map=='stilism':
-            for i in range(n_elements(x0)): ebv[i]=dist*Wu_line_integrate(data,sun[0],px2[i],sun[0],py2[i],sun[1],pz2[i])/3.16
+            for i in range(n_elements(x0)):
+                if np.isnan(px2[i])==0:
+                    ebv[i]=dist*Wu_line_integrate(data,sun[0],px2[i],sun[0],py2[i],sun[1],pz2[i])/3.16
         elif ext_map=='leike':
-            for i in range(n_elements(x0)): ebv[i]=dist*(2.5*Wu_line_integrate(data,sun[0],px2[i],sun[0],py2[i],sun[1],pz2[i])*np.log10(np.exp(1)))/3.16/0.789
+            for i in range(n_elements(x0)):
+                if np.isnan(px2[i])==0:
+                    ebv[i]=dist*(2.5*Wu_line_integrate(data,sun[0],px2[i],sun[0],py2[i],sun[1],pz2[i])*np.log10(np.exp(1)))/3.16/0.789
 
     if color=='B-V': return(ebv)
     else: return(extinction(ebv,color))
+
+def cross_match(cat1,cat2,max_difference=0.01,other_column=None,rule=None,exact=False):
+    """
+    given two catalogues cat1 and cat2, returns the indices ind1 and ind2 such that:
+    cat1[ind1]=cat2[ind2]
+    if the input are 1D, or
+    cat1[ind1,:]=cat2[ind2,:]
+    if they are 2D.
+    '=' must be thought as "for each i, |cat1[ind1[i]]-cat2[ind2[i]]|<max_difference",
+    if exact=False (default mode). If exact=True, it is a strict equality.
+    
+    input:
+        cat1: a 1D or 2D numpy array, specifying one raw per star, in the first catalogue
+        cat2: a 1D or 2D numpy array, specifying one raw per star, in the second catalogue
+            The number of columns of cat2 must be the same of cat1!
+        max_difference: the threshold k to cross-match two entries. If |cat1[i]-cat2[j]|<k,
+            the sources are considered the same and cross-matched
+        other_column (optional): a 1D array with one entry per cat2 row. If a source of cat1 has more than
+            1 source in cat2 meeting the cross-match criterion, it selects the one that has the lowest/highest
+            value in other_column. If not set, the first occurrence will be returned.
+        rule (optional): mandatory if other_column is set. rule='min' to select the lowest value,
+            rule='max' to select the highest value
+        exact: whether to look for an exact cross-match (e.g., for IDs or proper names) or not.
+
+    usage:
+        if exact=False (default mode):
+            let cat1, for instance, be a 2D array [[ra1],[dec1]], with coordinates of n stars
+            cat2 will be a similar [[ra2],[dec2]] in a second catalogue        
+            cross_match(cat1,cat2,max_difference=0.03,other_column=radius,rule='min')
+            tries to find, for each i, the star such that |ra1[i]-ra2|+|dec1[i]-dec2|<0.03.
+            If two stars cat2[j,:] and cat2[k,:] are returned, it picks the j-th if radius[j]<radius[k], the k-th otherwise
+        if exact=True:
+            cross_match(cat1,cat2,exact=True)
+            returns ind1, ind2 such that cat1[ind1]=cat2[ind2] (strict equality).
+        
+    notes:
+    if exact=False:
+        The number of columns of cat2 must be the same of cat1.
+        The number of elements in other_column must equal the number of rows of cat2.
+        rule must be set if other_column is set.
+    if exact=True:
+        no keyword other than cat1 and cat2 will be used.
+        cat1 and cat2 must be 1D arrays.
+        Be sure that cat2 does not contain any repeated entries, otherwise only one of them will be picked.
+
+    """
+
+    if exact==True:
+        if (n_dim(cat1)!=1) or (n_dim(cat2)!=1):
+            raise ValueError("cat1 and cat2 must be 1D!")
+        c1=np.argsort(cat2)
+        c=closest(cat2[c1],cat1)
+        ind1,=np.where(cat2[c1[c]]==cat1)
+        return ind1,c1[c[ind1]]
+
+    n=len(cat1)    
+    ind1=np.zeros(n,dtype='int32')
+    ind2=np.zeros(n,dtype='int32')
+    c=0
+    if n_dim(cat1)==1:
+        if type(other_column)==type(None):
+            for i in range(n):
+                k,=np.where(abs(cat2-cat1[i])<max_difference)
+                if len(k)==1:
+                    ind1[c]=i
+                    ind2[c]=k
+                    c+=1
+                elif len(k)>1:
+                    ind1[c]=i
+                    ind2[c]=k[0]
+                    c+=1
+        elif rule=='min':
+            for i in range(n):
+                k,=np.where(abs(cat2-cat1[i])<max_difference)
+                if len(k)==1:
+                    ind1[c]=i
+                    ind2[c]=k
+                    c+=1
+                elif len(k)>1:
+                    ind1[c]=i
+                    k1=np.argmin(other_column[k])
+                    ind2[c]=k[k1]
+                    c+=1
+        elif rule=='max':
+            for i in range(n):
+                k,=np.where(abs(cat2-cat1[i])<max_difference)
+                if len(k)==1:
+                    ind1[c]=i
+                    ind2[c]=k
+                    c+=1
+                elif len(k)>1:
+                    ind1[c]=i
+                    k1=np.argmax(other_column[k])
+                    ind2[c]=k[k1]
+                    c+=1
+        else: raise NameError("Keyword 'rule' not set! Specify if rule='min' or rule='max'")                    
+    else:
+        if len(cat1[0])!=len(cat2[0]): 
+            raise ValueError("The number of columns of cat1 must equal that of cat2.")
+        if type(other_column)==type(None):
+            for i in range(n):
+                d=0
+                for j in range(len(cat1[0])): d+=abs(cat2[:,j]-cat1[i,j])
+                k,=np.where(d<max_difference)
+                if len(k)==1:
+                    ind1[c]=i
+                    ind2[c]=k
+                    c+=1
+                elif len(k)>1:
+                    ind1[c]=i
+                    ind2[c]=k[0]
+                    c+=1
+        elif rule=='min':
+            if len(other_column)!=len(cat2): 
+                raise ValueError("The length of other_column must equal the no. of rows of cat2.")
+            for i in range(n):
+                d=0
+                for j in range(len(cat1[0])): d+=abs(cat2[:,j]-cat1[i,j])
+                k,=np.where(d<max_difference)
+                if len(k)==1:
+                    ind1[c]=i
+                    ind2[c]=k
+                    c+=1
+                elif len(k)>1:
+                    ind1[c]=i
+                    k1=np.argmin(other_column[k])
+                    ind2[c]=k[k1]
+                    c+=1
+        elif rule=='max':
+            if len(other_column)!=len(cat2): 
+                raise ValueError("The length of other_column must equal the no. of rows of cat2.")
+            for i in range(n):
+                d=0
+                for j in range(len(cat1[0])): d+=abs(cat2[:,j]-cat1[i,j])
+                k,=np.where(d<max_difference)
+                if len(k)==1:
+                    ind1[c]=i
+                    ind2[c]=k
+                    c+=1
+                elif len(k)>1:
+                    ind1[c]=i
+                    k1=np.argmax(other_column[k])
+                    ind2[c]=k[k1]
+                    c+=1
+        else: raise NameError("Keyword 'rule' not set! Specify if rule='min' or rule='max'")                
+    ind1=ind1[0:c]
+    ind2=ind2[0:c]
+    return ind1,ind2
+
+def file_search(files):
+    """
+    given one or more files, returns 1 if all of them exist, 0 otherwise
+    if n_elements(files)==1:
+
+    input:
+        files: a string, a list of strings or a numpy array of strings,
+            specifying the full path of the file(s) whose existence is questioned
+
+    usage:
+        c=[file1,file2,file3]
+        file_search(c)=1 if all files exist, 0 otherwise
+
+    notes:
+    case insensitive.
+
+    """
+    if isinstance(files,str):
+        try:
+            open(files,'r')
+        except IOError:
+            return 0
+    else:
+        for i in range(n_elements(files)):
+            try:
+                open(files[i],'r')
+            except IOError:
+                return 0
+    return 1
+
+def load_phot(filename,surveys):
+
+    if n_elements(surveys)==1: surveys=[surveys]
+    is_g=0
+    while 'gaia' not in str.lower(surveys[is_g]):
+        is_g+=1
+        if is_g==len(surveys): break
+    if is_g==len(surveys):
+        print('Gaia is missing! Perhaps you should consider using it to have reliable parallaxes.')
+
+    path=os.path.dirname(filename)
+    sample_name=os.path.split(filename)[1]
+    i=0
+    while sample_name[i]!='.': i=i+1
+    sample_name=sample_name[0:i]
+    if sample_name.endswith('_coordinates'): sample_name=sample_name[0:-12]
+
+    file=''+sample_name
+    for i in range(len(surveys)): file+='_'+surveys[i]
+    PIK=os.path.join(path,('photometry_'+file+'.pkl'))
+
+    try: #se c'è
+        open(PIK,'r')
+        with open(PIK,'rb') as f:
+            phot=pickle.load(f)
+            phot_err=pickle.load(f)
+            filt=pickle.load(f)
+            kin=pickle.load(f)
+    except IOError:
+        survey_files = [os.path.join(path,sample_name+'_'+x+'_data.txt') for x in surveys]
+        if file_search(survey_files)==0:
+            search_phot(os.path.join(path,(sample_name+'.txt')),coordinates=False,surveys=['GAIA_EDR3','2MASS','ALLWISE'])
+        coo_file=os.path.join(path,(sample_name+'_coordinates.csv'))
+        coo = np.genfromtxt(coo_file, names=True, delimiter=',') #coo_h=coo.dtype.names
+        nst=len(coo)
+        cat1=np.zeros([nst,2])
+        cat1[:,0]=coo['ra_v']
+        cat1[:,1]=coo['dec_v']    
+
+        crit={'GAIA_EDR3':'G','2MASS':'J','ALLWISE':'W1'}
+        n_filters={'GAIA_EDR3':3, '2MASS':3, 'ALLWISE':4}
+        f_list={'GAIA_EDR3':['G','GBP','GRP'],'2MASS':['J','H','K'],'ALLWISE':['W1','W2','W3','W4']}
+        kin_list=['ra','ra_error','dec','dec_error','parallax','parallax_error','pmra','pmra_error','pmdec','pmdec_error','radial_velocity','radial_velocity_error']
+
+        nf=0
+        for i in range(len(surveys)): nf+=n_filters[surveys[i]]
+
+        phot=np.empty([nst,nf])
+        phot.fill(np.nan)
+        phot_err=np.empty([nst,nf])
+        phot_err.fill(np.nan)
+        kin=np.empty([nst,12])
+        kin.fill(np.nan)
+
+        p=0
+        filt=[]
+        for i in range(len(surveys)):
+            cat2_data = np.genfromtxt(survey_files[i], names=True) #header=cat2_data.dtype.names
+            n_cat2=len(cat2_data)
+            cat2=np.zeros([n_cat2,2])
+            cat2[:,0]=cat2_data['ra']
+            cat2[:,1]=cat2_data['dec']
+            mag=cat2_data[crit[surveys[i]]]
+            indG1,indG2=cross_match(cat1,cat2,max_difference=0.001,other_column=mag,rule='min')
+            for j in range(len(f_list[surveys[i]])):
+                f_i=f_list[surveys[i]][j]
+                mag_i=cat2_data[f_i]
+                phot[indG1,j+p]=mag_i[indG2]
+                mag_err=cat2_data[f_i+'_err']
+                phot_err[indG1,j+p]=mag_err[indG2]
+            p+=len(f_list[surveys[i]])
+            filt.extend(f_list[surveys[i]])
+            if i==is_g:
+                for j in range(len(kin_list)):
+                    kin_i=cat2_data[kin_list[j]] 
+                    kin[indG1,j]=kin_i[indG2]
+
+        filt2=[s+'_err' for s in filt]
+
+        fff=[]
+        fff.extend(filt)
+        fff.extend(filt2)
+
+        np.concatenate((phot,phot_err),axis=1)
+        f=open(os.path.join(path,(sample_name+'_photometry.txt')), "w+")
+        f.write(tabulate(np.concatenate((phot,phot_err),axis=1),
+                     headers=fff, tablefmt='plain', stralign='right', numalign='right'))
+        f.close()
+
+        f=open(os.path.join(path,(sample_name+'_kinematics.txt')), "w+")
+        f.write(tabulate(kin,
+                     headers=kin_list, tablefmt='plain', stralign='right', numalign='right'))
+        f.close()
+
+    with open(PIK,'wb') as f:
+        pickle.dump(phot,f)
+        pickle.dump(phot_err,f)
+        pickle.dump(filt,f)
+        pickle.dump(kin,f)
+    
+    return phot,phot_err,filt,kin
