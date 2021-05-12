@@ -13,9 +13,10 @@ import pickle
 from astropy.coordinates import Angle, SkyCoord
 from astropy import units as u
 from astroquery.simbad import Simbad
+from astroquery.vizier import Vizier
 from astroquery.xmatch import XMatch
 import csv
-from astropy.table import Table
+from astropy.table import Table, vstack
 from astropy.io import ascii
 from tabulate import tabulate
 import math
@@ -152,32 +153,32 @@ def n_dim(x,shape=False):
         if shape: dim=x.shape
         else: dim=len(x.shape)
     except AttributeError:
-        shape = []
+        sh = []
         a = len(x)
-        shape.append(a)
+        sh.append(a)
         b = x[0]
         while a > 0:
             try:
                 if isinstance(b,str): break
                 a = len(b)
-                shape.append(a)
+                sh.append(a)
                 b = b[0]
 
             except:
                 break
-        if shape: dim=shape
-        else: dim=len(shape)
+        if shape: dim=sh
+        else: dim=len(sh)
     except TypeError: dim=0
     return dim
 
-def app_to_abs_mag(app_mag,parallax,app_mag_error=False,parallax_error=False):
+def app_to_abs_mag(app_mag,parallax,app_mag_error=None,parallax_error=None):
     if isinstance(app_mag,list): app_mag=np.array(app_mag)
     if isinstance(parallax,list): parallax=np.array(parallax)
     dm=5*np.log10(100./parallax) #modulo di distanza
     dim=n_dim(app_mag)
     if dim <= 1:
         abs_mag=app_mag-dm
-        if (app_mag_error!=False) & (parallax_error!=False): 
+        if type(app_mag_error)!=type(None) & type(parallax_error)!=type(None): 
             if isinstance(app_mag_error,list): app_mag_error=np.array(app_mag_error)
             if isinstance(parallax_error,list): parallax_error=np.array(parallax_error)
             total_error=np.sqrt(app_mag_error**2+(5/np.log(10)/parallax)**2*parallax_error**2)
@@ -187,7 +188,7 @@ def app_to_abs_mag(app_mag,parallax,app_mag_error=False,parallax_error=False):
         l=n_dim(app_mag,shape=True)
         abs_mag=np.empty([l[0],l[1]])
         for i in range(l[1]): abs_mag[:,i]=app_mag[:,i]-dm
-        if (parallax_error.any()!=False):
+        if type(parallax_error)!=type(None):
             if isinstance(app_mag_error,list): app_mag_error=np.array(app_mag_error)
             if isinstance(parallax_error,list): parallax_error=np.array(parallax_error)
             total_error=np.empty([l[0],l[1]])
@@ -550,36 +551,117 @@ def axis_range(col_name,col_phot):
     
     return xx 
 
+def ang_deg(ang,form='hms'):    
+    ang2=ang.split(' ')
+    ang2=ang2[0]+form[0]+ang2[1]+form[1]+ang2[2]+form[2]
+    return(ang2)
 
-def search_phot(filename,coordinates=False,surveys=['2MASS','GAIA_EDR3']): #coord_file
+def search_phot(filename,surveys,coordinates=True,verbose=False):
+    """
+    given a file of coordinates or star names and a list of surveys, returns
+    a dictionary with astrometry, kinematics and photometry retrieved from the catalogs
+    The returned tables can have different dimensions: they should be cross-matched with
+    the function cross_match    
+    
+    input:
+        filename: full path of the input file
+        surveys: a list of surveys to be used. Available: 'GAIA_EDR3', '2MASS', 'ALLWISE'
+        coordinates: if True, the file is read as a 2D matrix, each row specifying (ra,dec) or (l,b) of a star
+            if False, it is a list of star names. Default: True
+        verbose: set to True to create output files with the retrieved coordinates and data. Default: False
 
-    folder=os.path.dirname(filename)     #working path selection
-    sample_name=os.path.split(filename)[1]
+    usage:
+        search_phot(filename,['GAIA_EDR3','2MASS','ALLWISE'],coordinates=False,verbose=True)
+        will search for all the stars in the input file and return the results both as a Table object
+        and as .txt files, each named filename+'_ithSURVEYNAME.txt'. It will create a file with equatorial coordinates
+        named filename+'_coordinates.txt'.
+        search_phot(filename,['GAIA_EDR3','2MASS','ALLWISE'],coordinates=False,verbose=False)
+        will not create any file.
+        
+    notes:
+        if coordinates=True (default mode):
+            the input file must begin with a 1-row header like this:
+            #coordinate system: 'equatorial'
+            or this:
+            #coordinate system: 'galactic'
+            Coordinates are interpreted as J2000: be careful to it.
+            This mode is faster, but might include some field stars.
+        if coordinates=False:
+            the input file must not have a header, and be a mere list of stars.
+            This mode is slower, because every star will be searched for individually in Simbad and,
+            if not found, tries on Vizier (sometimes Simbad does not find Gaia IDs).
+            An alert is raised if some stars are missing, and the resulting row are filled with NaNs.
+            The returned coordinate array has the same length as the input file,
+            while the output Tables might not.
+    """
+
+
+    #stores path, file name, extension
+    folder=os.path.dirname(filename)     #working path
+    sample_name=os.path.split(filename)[1] #file name
     i=0
     while sample_name[i]!='.': i=i+1
-    sample_name=sample_name[0:i]
-    if sample_name.endswith('_coordinates'): sample_name=sample_name[0:-12]
-
-    #creates a .csv file with coordinates
-    if coordinates==False: 
+    ext=sample_name[i:] #estension
+    if ext=='.csv': delim=','
+    else: delim=None
+    sample_name=sample_name[0:i].replace('_coordinates','') #root name
+    new_file=os.path.join(folder,sample_name+'_coordinates.csv')
+    
+    
+    #survey properties
+    index={'GAIA_EDR3':0, '2MASS':1, 'ALLWISE':2}
+    surv_prop=[['vizier:I/350/gaiaedr3',['angDist', 'source_id', 'ra', 'ra_error', 'dec', 'dec_error', 'parallax', 'parallax_error', 'parallax_over_error', 'pmra', 'pmra_error', 'pmdec', 'pmdec_error',  'ruwe', 'phot_g_mean_flux_error', 'phot_g_mean_mag', 'phot_bp_mean_flux_error', 'phot_bp_mean_mag', 'phot_rp_mean_mag', 'dr2_radial_velocity', 'dr2_radial_velocity_error', 'phot_g_mean_mag_error', 'phot_bp_mean_mag_error', 'phot_rp_mean_mag_error', 'phot_g_mean_mag_corrected', 'phot_g_mean_mag_error_corrected', 'phot_g_mean_flux_corrected', 'phot_bp_rp_excess_factor_corrected', 'ra_epoch2000_error', 'dec_epoch2000_error', 'ra_dec_epoch2000_corr'],['source_id','ra','ra_error','dec','dec_error','parallax','parallax_error','pmra','pmra_error','pmdec','pmdec_error','ruwe','phot_g_mean_mag','phot_g_mean_mag_error','phot_bp_mean_mag','phot_bp_mean_mag_error','phot_rp_mean_mag','phot_rp_mean_mag_error','dr2_radial_velocity','dr2_radial_velocity_error','phot_bp_rp_excess_factor_corrected']],
+               ['vizier:II/246/out',['2MASS','RA','DEC','Jmag','e_Jmag','Hmag','e_Hmag','Kmag','e_Kmag','Qfl']],
+               ['vizier:II/328/allwise',['AllWISE','RAJ2000','DEJ2000','W1mag','e_W1mag','W2mag','e_W2mag','W3mag','e_W3mag','W4mag','e_W4mag','ccf','d2M']]
+              ]
+    short={'GAIA_EDR3':'Gaia', '2MASS':'2MASS', 'ALLWISE':'ALLWISE'}
+    cat_code={'GAIA_EDR3':'I/350/gaiaedr3', '2MASS':'II/246/out', 'ALLWISE':'II/328/allwise'}
+    if isinstance(surveys,str): surveys=[surveys]
+    ns=len(surveys)
+    
+    #is the input file a coordinate file or a list of star names?
+    if coordinates==True: #list of coordinates
+        header = str(np.genfromtxt(filename, delimiter=',', dtype=str, max_rows=1, comments='-'))
+        old_coo = np.genfromtxt(filename,delimiter=delim,skip_header=1,comments='#')
+        if "galactic" in header:
+            gc = SkyCoord(l=old_coo[:,0]*u.degree, b=old_coo[:,1]*u.degree, frame='galactic')
+            ec=gc.icrs
+            coo_array=np.transpose([ec.ra.deg,ec.dec.deg])
+        elif "equatorial" in header:
+            coo_array=old_coo        
+        n=len(coo_array)
+    else: #list of star names
         with open(filename) as f:
             target_list = np.genfromtxt(f,dtype="str")
         n=len(target_list)
-        ra=np.zeros(n)
-        dec=np.zeros(n)
         gex=0
+        coo_array=np.zeros([n,2])
         for i in range(n):
             x=Simbad.query_object(target_list[i])
-            if type(x)!=type(None):
-                ra0=Angle(x['RA'],'hour')
-                dec0=Angle(x['DEC'],'degree')
-                ra[i]=ra0.degree
-                dec[i]=dec0.degree
+            if type(x)==type(None):
+                x=Vizier.query_object(target_list[i],catalog='I/350/gaiaedr3',radius=1*u.arcsec) #tries alternative resolver
+                if len(x)>0:
+                    if len(x[0]['RAJ2000'])>1:
+                        if 'Gaia' in target_list[i]:
+                            c=0
+                            while str(x[0]['Source'][c]) not in obj1:
+                                c=c+1
+                                if c==len(x[0]['RAJ2000']): break
+                            if c==len(x[0]['RAJ2000']): c=np.argmin(x[0]['Gmag'])
+                            coo_array[i,0]=x[0]['RAJ2000'][c]
+                            coo_array[i,1]=x[0]['DEJ2000'][c]
+                    else:
+                        coo_array[i,0]=x[0]['RAJ2000']
+                        coo_array[i,1]=x[0]['DEJ2000']
+                else:
+                    coo_array[i,0]=np.nan
+                    coo_array[i,1]=np.nan                
+                    print('Star',target_list[i],' not found. Perhaps misspelling? Setting row to NaN.')
+                    gex=1
             else:
-                ra[i]=np.nan
-                dec[i]=np.nan
-                print('Star',target_list[i],' not found. Perhaps misspelling? Setting (ra,dec) to NaN.')
-                gex=1
+                coo_array[i,0]=Angle(ang_deg(x['RA'].data.data[0])).degree
+                coo_array[i,1]=Angle(ang_deg(x['DEC'].data.data[0],form='dms')).degree                
+                
         if gex:
             print('Some stars were not found. Would you like to end the program and check the spelling?')
             print('If not, these stars will be treated as missing data')
@@ -591,71 +673,40 @@ def search_phot(filename,coordinates=False,surveys=['2MASS','GAIA_EDR3']): #coor
                 elif key=='no' or key=='n':
                     break
                 key=str.lower(input('Unvalid choice. Type Y or N.'))                
-        coo=set(zip(ra,dec))
-        data = Table([ra, dec],names=['ra_v','dec_v'])
-        new_file=filename.replace('.txt','_coordinates.csv')
-        ascii.write(data, new_file, overwrite=True, format='csv', delimiter=',')
-    else:
-        if filename.endswith('.txt'):
-            with open(filename) as f:
-                data = np.genfromtxt(f,dtype="str")
-            new_file=filename.replace('.txt','_coordinates.csv')
-            with open(new_file, newline='', mode='w') as f:
-                r_csv = csv.writer(f, delimiter=',')
-                for i in range(len(data)):
-                    r_csv.writerow(data[i])
-                n=len(data)
-        else: 
-            if filename.endswith('coordinates.csv')==0:
-                new_file=filename.replace('.','_coordinates.')
-                n=len(open(filename).readlines(  ))
-                shutil.copyfile(filename,new_file)
-            else: new_file=filename
-
-    #VizieR queries. Results saved as .txt
-    index={'GAIA_EDR3':0, '2MASS':1, 'ALLWISE':2}
-
-    surv_prop=[['vizier:I/350/gaiaedr3',['angDist', 'source_id', 'ra', 'ra_error', 'dec', 'dec_error', 'parallax', 'parallax_error', 'parallax_over_error', 'pmra', 'pmra_error', 'pmdec', 'pmdec_error',  'ruwe', 'phot_g_mean_flux_error', 'phot_g_mean_mag', 'phot_bp_mean_flux_error', 'phot_bp_mean_mag', 'phot_rp_mean_mag', 'dr2_radial_velocity', 'dr2_radial_velocity_error', 'phot_g_mean_mag_error', 'phot_bp_mean_mag_error', 'phot_rp_mean_mag_error', 'phot_g_mean_mag_corrected', 'phot_g_mean_mag_error_corrected', 'phot_g_mean_flux_corrected', 'phot_bp_rp_excess_factor_corrected', 'ra_epoch2000_error', 'dec_epoch2000_error', 'ra_dec_epoch2000_corr'],['source_id','ra','ra_error','dec','dec_error','parallax','parallax_error','pmra','pmra_error','pmdec','pmdec_error','ruwe','phot_g_mean_mag','phot_g_mean_mag_error','phot_bp_mean_mag','phot_bp_mean_mag_error','phot_rp_mean_mag','phot_rp_mean_mag_error','dr2_radial_velocity','dr2_radial_velocity_error','phot_bp_rp_excess_factor_corrected']],
-               ['vizier:II/246/out',['2MASS','ra_v','dec_v','Jmag','e_Jmag','Hmag','e_Hmag','Kmag','e_Kmag','Qfl']],
-               ['vizier:II/328/allwise',['AllWISE','RAJ2000','DEJ2000','W1mag','e_W1mag','W2mag','e_W2mag','W3mag','e_W3mag','W4mag','e_W4mag','ccf','d2M']]
-              ]
-
     
-#    angDist,ra_v,dec_v,AllWISE,RAJ2000,DEJ2000,eeMaj,eeMin,eePA,W1mag,W2mag,W3mag,W4mag,Jmag,Hmag,Kmag,e_W1mag,e_W2mag,e_W3mag,e_W4mag,e_Jmag,e_Hmag,e_Kmag,ID,ccf,ex,var,qph,pmRA,e_pmRA,pmDE,e_pmDE,d2M
+    if verbose==True:
+        with open(new_file, newline='', mode='w') as f:
+            r_csv = csv.writer(f, delimiter=',')
+            r_csv.writerow(['ra','dec'])
+            for i in range(len(coo_array)):
+                r_csv.writerow([coo_array[i,0],coo_array[i,1]])
+        
+    #turns coo_array into a Table for XMatch
+    coo_table = Table(coo_array, names=('RA', 'DEC'))
 
-    
-    if isinstance(surveys,str):        
-        data_s = XMatch.query(cat1=open(Path(new_file)),cat2=surv_prop[index[surveys]][0],max_distance=2 * u.arcsec, colRA1='ra_v',colDec1='dec_v')
-        f=open(os.path.join(folder,str(sample_name+'_'+surveys+'_data.txt')), "w+")
-        if surveys=='GAIA_EDR3':
-            f.write(tabulate(data_s[surv_prop[0][2]],
-                         headers=['source_id','ra','ra_error','dec','dec_error','parallax','parallax_error','pmra','pmra_error','pmdec','pmdec_error','ruwe','G','G_err','GBP','GBP_err','GRP','GRP_err','radial_velocity', 'radial_velocity_error','bp_rp_excess_factor'], tablefmt='plain', stralign='right', numalign='right', floatfmt=(".5f",".11f",".4f",".11f",".4f",".7f",".7f",".7f",".7f",".7f",".7f",".3f",".4f",".4f",".4f",".4f",".4f",".4f",".4f",".4f",".4f")))
-            data_s=data_s[surv_prop[0][1]]
-        elif surveys=='2MASS':
-            f.write(tabulate(data_s[surv_prop[1][1]],
-                         headers=['ID','ra','dec','J','J_err','H','H_err','K','K_err','qfl'], tablefmt='plain', stralign='right', numalign='right', floatfmt=(".5f",".8f",".8f",".3f",".3f",".3f",".3f",".3f",".3f")))
-        elif surveys=='ALLWISE':
-            f.write(tabulate(data_s[surv_prop[2][1]],
-                         headers=['ID','ra','dec','W1','W1_err','W2','W2_err','W3','W3_err','W4','W4_err','ccf','d2M'], tablefmt='plain', stralign='right', numalign='right', floatfmt=(".5f",".8f",".8f",".3f",".3f",".3f",".3f",".3f",".3f",".3f",".3f",".3f",".4f")))
-        f.close()
-    else:
-        for i in range(len(surveys)): 
-            if isinstance(surveys[i],str):        
-                data_s = XMatch.query(cat1=open(Path(new_file)),cat2=surv_prop[index[surveys[i]]][0],max_distance=2 * u.arcsec, colRA1='ra_v',colDec1='dec_v')
-                f=open(os.path.join(folder,str(sample_name+'_'+surveys[i]+'_data.txt')), "w+")
-                if surveys[i]=='GAIA_EDR3':
-                    f.write(tabulate(data_s[surv_prop[0][2]],
-                                 headers=['source_id','ra','ra_error','dec','dec_error','parallax','parallax_error','pmra','pmra_error','pmdec','pmdec_error','ruwe','G','G_err','GBP','GBP_err','GRP','GRP_err','radial_velocity', 'radial_velocity_error','bp_rp_excess_factor'], tablefmt='plain', stralign='right', numalign='right', floatfmt=(".5f",".11f",".4f",".11f",".4f",".7f",".7f",".7f",".7f",".7f",".7f",".3f",".4f",".4f",".4f",".4f",".4f",".4f",".4f",".4f",".4f")))
-                    data_s=data_s[surv_prop[0][1]]
-                elif surveys[i]=='2MASS':
-                    f.write(tabulate(data_s[surv_prop[1][1]],
-                                 headers=['ID','ra','dec','J','J_err','H','H_err','K','K_err','qfl'], tablefmt='plain', stralign='right', numalign='right', floatfmt=(".5f",".8f",".8f",".3f",".3f",".3f",".3f",".3f",".3f")))
-                elif surveys[i]=='ALLWISE':
-                    f.write(tabulate(data_s[surv_prop[2][1]],
-                                 headers=['ID','ra','dec','W1','W1_err','W2','W2_err','W3','W3_err','W4','W4_err','ccf','d2M'], tablefmt='plain', stralign='right', numalign='right', floatfmt=(".5f",".8f",".8f",".3f",".3f",".3f",".3f",".3f",".3f",".3f",".3f",".3f",".4f")))
-                f.close()
+    #finds data on VizieR through a query on XMatch
+    data_dic={}
+    for i in range(len(surveys)): 
+        data_s = XMatch.query(cat1=coo_table,cat2=surv_prop[index[surveys[i]]][0],max_distance=2 * u.arcsec, colRA1='RA',colDec1='DEC')
+        data_dic[surveys[i]]=data_s
+        if verbose==True:
+            f=open(os.path.join(folder,str(sample_name+'_'+surveys[i]+'_data.txt')), "w+")
+            if surveys[i]=='GAIA_EDR3':
+                f.write(tabulate(data_s[surv_prop[0][2]],
+                             headers=['source_id','ra','ra_error','dec','dec_error','parallax','parallax_error','pmra','pmra_error','pmdec','pmdec_error','ruwe','G','G_err','GBP','GBP_err','GRP','GRP_err','radial_velocity', 'radial_velocity_error','bp_rp_excess_factor'], tablefmt='plain', stralign='right', numalign='right', floatfmt=(".5f",".11f",".4f",".11f",".4f",".7f",".7f",".7f",".7f",".7f",".7f",".3f",".4f",".4f",".4f",".4f",".4f",".4f",".4f",".4f",".4f")))
+                data_s=data_s[surv_prop[0][1]]
+            elif surveys[i]=='2MASS':
+                f.write(tabulate(data_s[surv_prop[1][1]],
+                             headers=['ID','ra','dec','J','J_err','H','H_err','K','K_err','qfl'], tablefmt='plain', stralign='right', numalign='right', floatfmt=(".5f",".8f",".8f",".3f",".3f",".3f",".3f",".3f",".3f")))
+            elif surveys[i]=='ALLWISE':
+                f.write(tabulate(data_s[surv_prop[2][1]],
+                             headers=['ID','ra','dec','W1','W1_err','W2','W2_err','W3','W3_err','W4','W4_err','ccf','d2M'], tablefmt='plain', stralign='right', numalign='right', floatfmt=(".5f",".8f",".8f",".3f",".3f",".3f",".3f",".3f",".3f",".3f",".3f",".3f",".4f")))
+            f.close()
 
-    return None
+    #a Table per survey, retrievable through a keyword: e.g., data_dic['2MASS']        
+
+    return coo_array,data_dic
+
 
 def Wu_line_integrate(f,x0,x1,y0,y1,z0,z1):
     n=100*max(math.ceil(abs(max([x1-x0,y1-y0,z1-z0]))),500)
@@ -840,6 +891,11 @@ def cross_match(cat1,cat2,max_difference=0.01,other_column=None,rule=None,exact=
                     c+=1
         else: raise NameError("Keyword 'rule' not set! Specify if rule='min' or rule='max'")                    
     else:
+        if type(cat1)==Table: 
+            cat1=np.lib.recfunctions.structured_to_unstructured(np.array(cat1))        
+        if type(cat2)==Table: 
+            cat2=np.lib.recfunctions.structured_to_unstructured(np.array(cat2))
+        
         if len(cat1[0])!=len(cat2[0]): 
             raise ValueError("The number of columns of cat1 must equal that of cat2.")
         if type(other_column)==type(None):
