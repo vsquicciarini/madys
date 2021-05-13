@@ -644,7 +644,7 @@ def search_phot(filename,surveys,coordinates=True,verbose=False):
                     if len(x[0]['RAJ2000'])>1:
                         if 'Gaia' in target_list[i]:
                             c=0
-                            while str(x[0]['Source'][c]) not in obj1:
+                            while str(x[0]['Source'][c]) not in target_list[i]:
                                 c=c+1
                                 if c==len(x[0]['RAJ2000']): break
                             if c==len(x[0]['RAJ2000']): c=np.argmin(x[0]['Gmag'])
