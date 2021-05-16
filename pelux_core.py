@@ -530,7 +530,7 @@ def extinction(ebv,col):
 #definisce range per plot CMD
 def axis_range(col_name,col_phot):
     cmin=min(col_phot)
-    cmax=max(col_phot)
+    cmax=min(70,max(col_phot))
     dic1={'G':[max(15,cmax),min(1,cmin)], 'Gbp':[max(15,cmax),min(1,cmin)], 'Grp':[max(15,cmax),min(1,cmin)],
         'J':[max(10,cmax),min(0,cmin)], 'H':[max(10,cmax),min(0,cmin)], 'K':[max(10,cmax),min(0,cmin)],
         'W1':[max(10,cmax),min(0,cmin)], 'W2':[max(10,cmax),min(0,cmin)], 'W3':[max(10,cmax),min(0,cmin)],
@@ -632,7 +632,7 @@ def search_phot(filename,surveys,coordinates=True,verbose=False):
         n=len(coo_array)
     else: #list of star names
         with open(filename) as f:
-            target_list = np.genfromtxt(f,dtype="str")
+            target_list = np.genfromtxt(f,dtype="str",delimiter='*@.,')
         n=len(target_list)
         gex=0
         coo_array=np.zeros([n,2])
@@ -1079,3 +1079,121 @@ def load_phot(filename,surveys):
         pickle.dump(kin,f)
     
     return phot,phot_err,filt,kin
+
+
+def plot_CMD(x,y,isochrones,iso_filters,iso_ages,x_axis,y_axis,plot_ages=[1,3,5,10,20,30,100],ebv=None,tofile=False,x_error=None,y_error=None,groups=None,group_names=None,label_points=False):
+
+    """
+    plots the CMD of a given set of stars, with theoretical isochrones overimposed
+
+    input:
+        x: data to be plotted on the x-axis
+        y: data to be plotted on the y-axis
+        isochrones: a 3D isochrone grid M(masses,ages,filters)
+        iso_filters: isochrone grid filter list
+        iso_ages: isochrone grid ages
+        x_axis: name of the x axis, e.g. 'G-K'
+        y_axis: name of the y axis
+        plot_ages: ages (in Myr) of the isochrones to be plotted. Default: [1,3,5,10,20,30,100] 
+        ebv (optional): color excess E(B-V) of the sources
+        tofile: specify a filename if you want to save the output as a figure. Default: plots on the
+            command line
+        x_error (optional): errors on x
+        y_error (optional): errors on y
+        groups (optional): a vector with same size as x, indicating the group which the corresponding
+            star belongs to
+        group_names (mandatory if groups is set): labels of 'groups'
+        label_points (optional): an array with labels for each star. Default=False.
+        
+    usage:
+        let G, K be magnitudes of a set of stars with measured errors G_err, K_err;
+        isochrones the theoretical matrix, with 'filters' and 'ages' vectors
+        the stars are divided into two groups: label=['group0','group1'] through the array 'classes'
+        plot_CMD(G-K,G,isochrones,filters,ages,'G-K','G',x_error=col_err,y_error=mag_err,groups=classes,group_names=label,tofile=file)
+        draws the isochrones, plots the stars in two different colors and saves the CMD on the file 'file'
+        An array with the (median) extinction/color excess is plotted, pointing towards dereddening.
+        If label_points==True, sequential numbering 0,1,...,n-1 is used. If given an array, it uses them as labels
+
+    """
+
+    #axes ranges
+    x_range=axis_range(x_axis,x)
+    y_range=axis_range(y_axis,y)
+    
+    #finds color/magnitude isochrones to plot
+    if '-' in x_axis: 
+        col_n=x_axis.split('-')
+        w1,=np.where(iso_filters==col_n[0])
+        w2,=np.where(iso_filters==col_n[1])
+        col_th=isochrones[:,:,w1]-isochrones[:,:,w2]
+    else: 
+        w1,=np.where(iso_filters==x_axis)
+        col_th=isochrones[:,:,w1]
+    if '-' in y_axis: 
+        mag_n=y_axis.split('-')
+        w1,=np.where(iso_filters==mag_n[0])
+        w2,=np.where(iso_filters==mag_n[1])
+        mag_th=isochrones[:,:,w1]-isochrones[:,:,w2]
+    else: 
+        w1,=np.where(iso_filters==y_axis)
+        mag_th=isochrones[:,:,w1]
+
+
+    n=len(isochrones) #no. of grid masses
+    tot_iso=len(isochrones[0]) #no. of grid ages
+    npo=n_elements(x) #no. of stars
+    nis=len(plot_ages) #no. of isochrones to be plotted
+
+        
+#    fig=plt.figure(figsize=(16,12))
+    fig, ax = plt.subplots(figsize=(16,12))
+    
+    if type(ebv)!=type(None): #subtracts extinction, if E(B-V) is provided
+        x_ext=extinction(ebv,x_axis)
+        y_ext=extinction(ebv,y_axis)
+        x-=x_ext
+        y-=y_ext
+    plt.arrow(x_range[0]+0.2*(x_range[1]-x_range[0]),y_range[0]+0.1*(y_range[1]-y_range[0]),-np.median(x_ext),-np.median(y_ext),head_width=0.05, head_length=0.1, fc='k', ec='k', label='reddening')
+    
+    for i in range(len(plot_ages)):
+        ii=closest(iso_ages,plot_ages[i])
+        plt.plot(col_th[:,ii],mag_th[:,ii],label=str(plot_ages[i])+' Myr')
+
+    if (type(groups)==type(None)):        
+        if (type(x_error)==type(None)) & (type(y_error)==type(None)):
+            plt.scatter(x, y, s=50, facecolors='none', edgecolors='black')
+        else: plt.errorbar(x, y, yerr=y_error, xerr=x_error, fmt='o', color='black')
+    else:
+        nc=max(groups)
+        colormap = plt.cm.gist_ncar
+        colorst = [colormap(i) for i in np.linspace(0, 0.9,nc+1)]       
+        for j in range(nc+1):
+            w,=np.where(groups==j)
+            if len(w)>0:  
+                if (type(x_error)==type(None)) & (type(y_error)==type(None)):
+                    plt.scatter(x[w], y[w], s=50, facecolors='none', edgecolors=colorst[j], label=group_names[j])
+                else: plt.errorbar(x[w], y[w], yerr=y_error[w], xerr=x_error[w], fmt='o', color=colorst[j], label=group_names[j])
+
+    if label_points==True:
+        n=(np.linspace(0,npo-1,num=npo,dtype=int)).astype('str')
+        for i, txt in enumerate(n):
+            print(i,txt)
+            ax.annotate(txt, (x[i], y[i]))
+    elif label_points!=False:
+        if isinstance(label_points[0],str): label_points=label_points.astype('str')
+        for i, txt in enumerate(label_points):
+            ax.annotate(txt, (x[i], y[i]))
+        
+    
+    plt.ylim(y_range)
+    plt.xlim(x_range)
+    plt.xlabel(x_axis, fontsize=18)
+    plt.ylabel(y_axis, fontsize=18)
+    plt.legend()
+    if tofile==False:
+        plt.show()
+    else:
+        plt.savefig(tofile)
+        plt.close(fig)    
+    
+    return None
