@@ -3,7 +3,6 @@
 import numpy as np
 from pathlib import Path
 import sys
-sys.path.append("C:\\Users\\Vito\\Downloads\\Python-utils-master\\vigan\\astro")
 import os
 from evolution import *
 from scipy.interpolate import interp1d
@@ -201,21 +200,197 @@ def app_to_abs_mag(app_mag,parallax,app_mag_error=None,parallax_error=None):
 
 
 
-def load_isochrones(model,surveys=None,folder=Path('C:/Users/Vito/Desktop/PhD/Progetti/BEAST/Stellar_ages/CMS/BT-Settl_stilism_cs0_GaiaDR3')):
-    if surveys==None: surveys=['gaia','2mass','wise']
-    else: surveys=list(map(str.lower,surveys))
+def load_isochrones(model,surveys=['gaia','2mass','wise'],mass_range=[0.01,1.4],age_range=[1,1000],n_steps=[1000,500],feh=None,afe=None,v_vcrit=None,fspot=None):
 
+    #mass_range: massa minima e massima desiderata, in M_sun
+    #age_range: età minima e massima desiderata, in Myr
+    #n_steps: n. step desiderati in massa ed età
+    
+    #devo crearmi una funzione con un dizionario, che mi restituisca per il modello dato, per la survey di interesse e per
+    #il filtro specificato, il nome del filtro nel modello dato. Es. f('bt_settl','wise','W1')='W1_W10'
+
+    folder = os.path.dirname(os.path.realpath(__file__))
+    add_search_path(folder)
+    iso_y=False
+    for x in os.walk(folder):
+        add_search_path(x[0])
+        if x[0].endswith('isochrones') and iso_y==False:
+            PIK_path=x[0]
+            iso_y=True
+    if iso_y==False: PIK_path=folder
+
+
+    def filter_code(model,f_model,filt):
+        
+        if model=='bt_settl':
+            dic={'G':'G2018','Gbp':'G2018_BP','Grp':'G2018_RP','J':'J','H':'H','K':'K',
+                 'W1':'W1_W10','W2':'W2_W10','W3':'W3_W10','W4':'W4_W10','U':'U','B':'B',
+                 'V':'V','R':'R','I':'i','gmag':'g_p1','rmag':'r_p1','imag':'i_p1',
+                 'zmag':'z_p1','ymag':'y_p1','V_sl':'V','R_sl':'R','I_sl':'I','K_sl':'K',
+                 'R_sl2':'Rsloan','Z_sl':'Zsloan','M_sl':'Msloan',
+                 'Ymag':'B_Y','Jmag':'B_J','Hmag':'B_H','Kmag':'B_Ks','H2mag':'D_H2','H3mag':'D_H3',
+                 'H4mag':'D_H4','J2mag':'D_J2','J3mag':'D_J3','K1mag':'D_K1','K2mag':'D_K2',
+                 'Y2mag':'D_Y2','Y3mag':'D_Y3'}
+        elif model=='ames_cond':
+            dic={'G':'G','Gbp':'G_BP','Grp':'G_BP','J':'J','H':'H','K':'K',
+                 'W1':'W1_W10','W2':'W2_W10','W3':'W3_W10','W4':'W4_W10','U':'U','B':'B',
+                 'V':'V','R':'R','I':'i','gmag':'g_p1','rmag':'r_p1','imag':'i_p1',
+                 'zmag':'z_p1','ymag':'y_p1','V_sl':'V','R_sl':'R','I_sl':'I','K_sl':'K',
+                 'R_sl2':'Rsloan','Z_sl':'Zsloan','M_sl':'Msloan',
+                 'Ymag':'B_Y','Jmag':'B_J','Hmag':'B_H','Kmag':'B_Ks','H2mag':'D_H2','H3mag':'D_H3',
+                 'H4mag':'D_H4','J2mag':'D_J2','J3mag':'D_J3','K1mag':'D_K1','K2mag':'D_K2',
+                 'Y2mag':'D_Y2','Y3mag':'D_Y3'}
+        elif model=='ames_dusty':
+            dic={'G':'G','Gbp':'G_BP','Grp':'G_BP','J':'J','H':'H','K':'K',
+                 'W1':'W1_W10','W2':'W2_W10','W3':'W3_W10','W4':'W4_W10','U':'U','B':'B',
+                 'V':'V','R':'R','I':'i','gmag':'g_p1','rmag':'r_p1','imag':'i_p1',
+                 'zmag':'z_p1','ymag':'y_p1','V_sl':'V','R_sl':'R','I_sl':'I','K_sl':'K',
+                 'R_sl2':'Rsloan','Z_sl':'Zsloan','M_sl':'Msloan',
+                 'Ymag':'B_Y','Jmag':'B_J','Hmag':'B_H','Kmag':'B_Ks','H2mag':'D_H2','H3mag':'D_H3',
+                 'H4mag':'D_H4','J2mag':'D_J2','J3mag':'D_J3','K1mag':'D_K1','K2mag':'D_K2',
+                 'Y2mag':'D_Y2','Y3mag':'D_Y3'}
+        elif model=='mist':
+            dic={'G':'Gaia_G_EDR3','Gbp':'Gaia_BP_EDR3','Grp':'Gaia_RP_EDR3',
+                 'J':'2MASS_J','H':'2MASS_H','K':'2MASS_Ks',
+                 'W1':'WISE_W1','W2':'WISE_W2','W3':'WISE_W3','W4':'WISE_W4',
+                 'U':'Bessell_U','B':'Bessell_B','V':'Bessell_V','R':'Bessell_R','I':'Bessell_I',
+                 'Kp':'Kepler_Kp','KD51':'Kepler_D51','Hp':'Hipparcos_Hp',
+                 'B_tycho':'Tycho_B','V_tycho':'Tycho_V','TESS':'TESS'}            
+        elif model=='parsec':
+            dic={'G':'Gmag','Gbp':'G_BPmag','Grp':'G_RPmag',                 
+                 'J':'Jmag','H':'Hmag','K':'Ksmag','Spitzer_3.6':'IRAC_3.6mag',
+                 'Spitzer_4.5':'IRAC_4.5mag','Spitzer_5.8':'IRAC_5.8mag','Spitzer_8.0':'IRAC_8.0mag',
+                 'Spitzer_24':'MIPS_24mag','Spitzer_70':'MIPS_70mag','Spitzer_160':'MIPS_160mag',
+                 'W1':'W1mag','W2':'W2mag','W3':'W3mag','W4':'W4mag'} 
+        elif model=='spots':
+            dic={'G':'G_mag','Gbp':'BP_mag','Grp':'RP_mag',                 
+                 'J':'J_mag','H':'H_mag','K':'K_mag',
+                 'B':'B_mag','V':'V_mag','R':'Rc_mag','I':'Ic_mag',
+                 'W1':'W1_mag'} 
+        elif model=='dartmouth':
+            dic={'G':'Gaia_G','Gbp':'Gaia_BP','Grp':'Gaia_RP',                 
+                 'U':'U','B':'B','V':'V','R':'R','I':'I',
+                 'J':'J','H':'H','K':'Ks',
+                 'W1':'W1','W2':'W2','W3':'W3','W4':'W4',
+                 'Kp':'Kp','KD51':'D51'} 
+        elif model=='amard':
+            dic={'U':'M_U','B':'M_B','V':'M_V','R':'M_R','I':'M_I',
+                 'J':'M_J','H':'M_H','K':'M_K','G':'M_G','Gbp':'M_Gbp','Grp':'M_Grp'}
+        elif model=='bhac15':
+            dic={'G':'G','Gbp':'G_BP','Grp':'G_RP','J':'Mj','H':'Mh','K':'Mk',
+                 'gmag':'g_p1','rmag':'r_p1','imag':'i_p1',
+                 'zmag':'z_p1','ymag':'y_p1',
+                 'Ymag':'B_Y','Jmag':'B_J','Hmag':'B_H','Kmag':'B_Ks','H2mag':'D_H2','H3mag':'D_H3',
+                 'H4mag':'D_H4','J2mag':'D_J2','J3mag':'D_J3','K1mag':'D_K1','K2mag':'D_K2',
+                 'Y2mag':'D_Y2','Y3mag':'D_Y3'}
+        elif model=='atmo2020_ceq':
+            dic={'MKO_Y':'MKO_Y','MKO_J':'MKO_J','MKO_H':'MKO_H','MKO_K':'MKO_K','MKO_L':'MKO_Lp','MKO_M':'MKO_Mp',
+                 'W1':'W1','W2':'W2','W3':'W3','W4':'W4',
+                 'IRAC_CH1':'IRAC_CH1','IRAC_CH2':'IRAC_CH2'}
+        elif model=='atmo2020_neq_s':
+            dic={'MKO_Y':'MKO_Y','MKO_J':'MKO_J','MKO_H':'MKO_H','MKO_K':'MKO_K','MKO_L':'MKO_Lp','MKO_M':'MKO_Mp',
+                 'W1':'W1','W2':'W2','W3':'W3','W4':'W4',
+                 'IRAC_CH1':'IRAC_CH1','IRAC_CH2':'IRAC_CH2'}
+        elif model=='atmo2020_neq_w':
+            dic={'MKO_Y':'MKO_Y','MKO_J':'MKO_J','MKO_H':'MKO_H','MKO_K':'MKO_K','MKO_L':'MKO_Lp','MKO_M':'MKO_Mp',
+                 'W1':'W1','W2':'W2','W3':'W3','W4':'W4',
+                 'IRAC_CH1':'IRAC_CH1','IRAC_CH2':'IRAC_CH2'}
+        elif model=='mamajek': #Mv    B-V  Bt-Vt    G-V  Bp-Rp   G-Rp    M_G     b-y    U-B   V-Rc   V-Ic   V-Ks    J-H   H-Ks   M_J    M_Ks  Ks-W1   W1-W2  W1-W3  W1-W4
+            dic={}
+        elif model=='ekstrom': #farlo
+            dic={}
+        w,=np.where(f_model==dic[filt])
+        
+        return w
+
+    def model_name(model,feh=None,afe=None,v_vcrit=None,fspot=None):
+        if model=='bt_settl': model2=model
+        elif model=='mist':
+            feh_range=np.array([-4.,-3.5,-3.,-2.5,-2,-1.75,-1.5,-1.25,-1.0,-0.75,-0.5,-0.25,0.0,0.25,0.5])
+            afe_range=np.array([0.0])
+            vcrit_range=np.array([0.0,0.4])
+            if type(feh)!=type(None):
+                i=np.argmin(abs(feh_range-feh))
+                feh0=feh_range[i]
+                if feh0<0: s='m'
+                else: s='p'
+                feh1="{:.2f}".format(abs(feh0))            
+                model2=model+'_'+s+feh1
+            else: model2=model+'_p0.00'
+            if type(afe)!=type(None):
+                i=np.argmin(abs(afe_range-afe))
+                afe0=afe_range[i]
+                if afe0<0: s='m'
+                else: s='p'
+                afe1="{:.1f}".format(abs(afe0))            
+                model2+='_'+s+afe1
+            else: model2+='_p0.0'
+            if type(v_vcrit)!=type(None):
+                i=np.argmin(abs(vcrit_range-v_vcrit))
+                v_vcrit0=vcrit_range[i]
+                if v_vcrit0<0: s='m'
+                else: s='p'
+                v_vcrit1="{:.1f}".format(abs(v_vcrit0))            
+                model2+='_'+s+v_vcrit1
+            else: model2+='_p0.0'
+        elif model=='parsec':
+            feh_range=np.array([0.0])
+            if type(feh)!=type(None):
+                i=np.argmin(abs(feh_range-feh))
+                feh0=feh_range[i]
+                if feh0<0: s='m'
+                else: s='p'
+                feh1="{:.2f}".format(abs(feh0))            
+                model2=model+'_'+s+feh1
+            else: model2=model+'_p0.00'
+        elif model=='amard':
+            feh_range=np.array([-0.813,-0.336,-0.211,-0.114,0.0,0.165,0.301])
+            vcrit_range=np.array([0.0,0.2,0.4,0.6])
+            if type(feh)!=type(None):
+                i=np.argmin(abs(feh_range-feh))
+                feh0=feh_range[i]
+                if feh0<0: s='m'
+                else: s='p'
+                feh1="{:.2f}".format(abs(feh0))            
+                model2=model+'_'+s+feh1
+            else: model2=model+'_p0.00'
+            if type(v_vcrit)!=type(None):
+                i=np.argmin(abs(vcrit_range-v_vcrit))
+                v_vcrit0=vcrit_range[i]
+                if v_vcrit0<0: s='m'
+                else: s='p'
+                v_vcrit1="{:.1f}".format(abs(v_vcrit0))            
+                model2+='_'+s+v_vcrit1
+            else: model2+='_p0.0'
+        elif model=='spots':
+            fspot_range=np.array([0.00,0.17,0.34,0.51,0.68,0.85])
+            if type(fspot)!=type(None):
+                i=np.argmin(abs(fspot_range-fspot))
+                fspot0=fspot_range[i]
+                fspot1="{:.2f}".format(abs(fspot))            
+                model2=model+'_p'+fspot1
+            else: model2=model+'_p0.00'
+        else: model2=model
+        return model2
+
+    filter_vec={'gaia':['G','Gbp','Grp'],'2mass':['J','H','K'],
+        'wise':['W1','W2','W3','W4'],'johnson':['U','B','V','R','i'],
+         'panstarrs':['gmag','rmag','imag','zmag','ymag'],
+         'sloan':['V_sl','R_sl','I_sl','K_sl','R_sl2','Z_sl','M_sl'],
+         'sphere':['Ymag','Jmag','Hmag','Kmag','H2mag','H3mag','H4mag','J2mag','J3mag','K1mag','K2mag','Y2mag','Y3mag']}
+    
+    surveys=list(map(str.lower,surveys))    
     model=(str.lower(model)).replace('-','_')
-
-    file=model
-    for i in range(len(surveys)): file=file+'_'+surveys[i]
-    PIK=folder / (file+'.pkl')
+    model_code=model_name(model,feh=feh,afe=afe,v_vcrit=v_vcrit,fspot=fspot)
+    
+    file=model_code
+    for i in range(len(surveys)): file=file+'_'+sorted(surveys)[i]
+    PIK=Path(PIK_path) / (file+'.pkl')
 
     try: #se c'è
         open(PIK,'r')
     except IOError:
         fnew=[]
-        nf=0
 
         survey_list=['gaia','2mass','wise','johnson','panstarrs','sloan','sphere']
         survey_el=[3,3,4,5,5,7,13]
@@ -223,55 +398,56 @@ def load_isochrones(model,surveys=None,folder=Path('C:/Users/Vito/Desktop/PhD/Pr
         survey_col=[['G2018','G2018_BP','G2018_RP'],['J','H','K'],['W1_W10','W2_W10','W3_W10','W4_W10'],['U','B','V','R','i'],['g_p1','r_p1','i_p1','z_p1','y_p1'],['V','R','I','K','Rsloan','Zsloan','Msloan'],['B_Y','B_J','B_H','B_Ks','D_H2','D_H3','D_H4','D_J2','D_J3','D_K1','D_K2','D_Y2','D_Y3']]
 
 
-        nf=0
-        for i in range(len(survey_list)):
-            if survey_list[i] in surveys: nf+=survey_el[i]
-
+        fnew=[]
+        for i in range(len(surveys)):
+            fnew.extend(filter_vec[surveys[i]])
+        nf=len(fnew)
         c=0
-        for i in range(len(survey_list)):
-            if survey_list[i] in surveys:
-                fnew.extend(survey_filt[i])
-                masses, ages, v0, data0 = model_data(survey_list[i],model)
-                if 'data' not in locals():
-                    nm=len(masses)
-                    na=len(ages)
-                    data=np.zeros([nm,na,nf])
-                    n1=30*nm
-                    n2=10*na
-                    mnew=masses[0]+(masses[-1]-masses[0])/(n1-1)*np.arange(n1)
-                    anew=np.exp(np.log(ages[0])+(np.log(ages[-1])-np.log(ages[0]))/(n2-1)*np.arange(n2))
-                    iso_f=np.empty([n1,n2,nf]) #matrice con spline in età, devo completarla
-                    iso_f.fill(np.nan)
-                iso=np.empty([n1,len(ages),survey_el[i]]) #matrice con spline in massa, devo completarla
-                iso.fill(np.nan)
-                for j in range(len(survey_filt[i])):
-                    w,=np.where(v0==survey_col[i][j])
-                    for k in range(len(ages)): #spline in massa. Per ogni età
-                        nans, x= nan_helper(data0[:,k,w])
-                        nans=nans.reshape(len(nans))
-                        m0=masses[~nans]
-                        f=interp1d(masses[~nans],data0[~nans,k,w],kind='linear',fill_value='extrapolate')
-                        c1=0
-                        while mnew[c1]<m0[0]: c1=c1+1
-                        c2=c1
-                        while mnew[c2]<=m0[-1]: 
-                            c2=c2+1 #sarà il primo elemento maggiore, ma quando farò l'indexing, a[c1,c2] equivarrà ad a[c1,...,c2-1]
-                            if c2==n1: break
-                        iso[c1:c2,k,j]=f(mnew[c1:c2])
-                    for k in range(n1): #spline in età. Per ogni massa
-                        nans, x= nan_helper(iso[k,:,j])
-                        nans=nans.reshape(n_elements(nans))
-                        a0=ages[~nans]
-                        if n_elements(ages[~nans])==0: continue
-                        f=interp1d(ages[~nans],iso[k,~nans,j],kind='linear',fill_value='extrapolate')
-                        c1=0
-                        while anew[c1]<a0[0]: c1=c1+1
-                        c2=c1
-                        while anew[c2]<1.0001*a0[-1]:
-                            c2=c2+1 #sarà il primo elemento maggiore, ma quando farò l'indexing, a[c1,c2] equivarrà ad a[c1,...,c2-1]
-                            if c2==n2: break
-                        iso_f[k,c1:c2,j+c]=f(anew[c1:c2])
-                c+=survey_el[i]
+        
+        for i in range(len(surveys)):
+            masses, ages, v0, data0 = model_data(surveys[i],model_code)
+#            print('input:')
+#            print(masses.shape)
+#            print(ages.shape)
+#            print(v0.shape)
+#            print(data0.shape)
+#            print(surveys[i],model)
+
+#            print(masses)
+#            print(ages)
+#            print(v0)
+#            print(data0)
+#            sys.exit()
+            
+            if 'iso_f' not in locals():
+                nm=len(masses)
+                na=len(ages)
+                n1=n_steps[0]
+                n2=n_steps[1]
+                mnew=M_sun/M_jup*mass_range[0]+M_sun/M_jup*(mass_range[1]-mass_range[0])/(n1-1)*np.arange(n1)
+                anew=np.exp(np.log(age_range[0])+(np.log(age_range[1])-np.log(age_range[0]))/(n2-1)*np.arange(n2))
+                iso_f=np.full(([n1,n2,nf]), np.nan) #matrice con spline in età, devo completarla
+            iso=np.full(([n1,len(ages),len(filter_vec[surveys[i]])]),np.nan) #matrice con spline in massa, devo completarla        
+        
+            for j in range(len(filter_vec[surveys[i]])):
+                w=filter_code(model,v0,filter_vec[surveys[i]][j])
+                #print(v0,i,surveys[i],j,filter_vec[surveys[i]],w,type(v0))
+                for k in range(len(ages)): #spline in massa. Per ogni età
+                    nans, x= nan_helper(data0[:,k,w])
+                    nans=nans.reshape(len(nans))
+                    m0=masses[~nans]
+                    if len(x(~nans))>1:
+                        f=interp1d(masses[~nans],data0[~nans,k,w],kind='linear',fill_value=np.nan,bounds_error=False)
+                        iso[:,k,j]=f(mnew)
+                for k in range(n1): #spline in età. Per ogni massa
+                    nans, x= nan_helper(iso[k,:,j])
+                    nans=nans.reshape(n_elements(nans))
+                    a0=ages[~nans]
+                    if len(x(~nans))>1:
+                        f=interp1d(ages[~nans],iso[k,~nans,j],kind='linear',fill_value=np.nan,bounds_error=False)
+                        iso_f[k,:,j+c]=f(anew)
+            c+=len(filter_vec[surveys[i]])
+                        
         mnew=M_jup/M_sun*mnew
         fnew=np.array(fnew)
         with open(PIK,'wb') as f:
@@ -287,7 +463,6 @@ def load_isochrones(model,surveys=None,folder=Path('C:/Users/Vito/Desktop/PhD/Pr
             fnew=pickle.load(f)
 
     return mnew,anew,fnew,iso_f
-
 
 
 def retrieve_parameters():
@@ -524,7 +699,7 @@ def extinction(ebv,col):
         A=A_law[c1]-A_law[c2]
     else:
         A=A_law[col]
-    return(3.16*A*ebv)
+    return 3.16*A*ebv
 
 
 #definisce range per plot CMD
@@ -554,7 +729,7 @@ def axis_range(col_name,col_phot):
 def ang_deg(ang,form='hms'):    
     ang2=ang.split(' ')
     ang2=ang2[0]+form[0]+ang2[1]+form[1]+ang2[2]+form[2]
-    return(ang2)
+    return ang2
 
 def search_phot(filename,surveys,coordinates=True,verbose=False):
     """
@@ -729,8 +904,27 @@ def Wu_line_integrate(f,x0,x1,y0,y1,z0,z1):
     
     return I/n*d10
 
-def interstellar_ext(ra=None,dec=None,l=None,b=None,par=None,d=None,map_path=r'C:\Users\Vito\Desktop\PhD\Modelli\Extinction_maps',test_time=False,ext_map='leike',color='B-V'):
-    fits_image_filename=os.path.join(map_path,'leike_mean_std.h5')
+def interstellar_ext(ra=None,dec=None,l=None,b=None,par=None,d=None,test_time=False,ext_map='leike',color='B-V'):
+
+    if ext_map=='leike': fname='leike_mean_std.h5'
+    elif ext_map=='stilism': fname='STILISM_v.fits'
+    else: fname='leike_mean_std.h5' #change for other maps
+    folder = os.path.dirname(os.path.realpath(__file__))
+    paths=[x[0] for x in os.walk(folder)]
+    found = False
+    for path in paths:
+        if (Path(path) / fname).exists():
+            map_path = path
+            found = True
+            break
+    if not found:
+#        raise ValueError('Extinction map not found! Setting extinction to zero.')
+        print('Extinction map not found! Setting extinction to zero.')
+        if n_elements(ra)>1: ebv=np.zeros(n_elements(ra))
+        else: ebv=0.
+        return ebv
+
+    fits_image_filename=os.path.join(map_path,fname)
     f = h5py.File(fits_image_filename,'r')
     data = f['mean']
 
@@ -792,8 +986,8 @@ def interstellar_ext(ra=None,dec=None,l=None,b=None,par=None,d=None,map_path=r'C
                 if np.isnan(px2[i])==0:
                     ebv[i]=dist*(2.5*Wu_line_integrate(data,sun[0],px2[i],sun[0],py2[i],sun[1],pz2[i])*np.log10(np.exp(1)))/3.16/0.789
 
-    if color=='B-V': return(ebv)
-    else: return(extinction(ebv,color))
+    if color=='B-V': return ebv
+    else: return extinction(ebv,color)
 
 def cross_match(cat1,cat2,max_difference=0.01,other_column=None,rule=None,exact=False):
     """
@@ -1014,8 +1208,8 @@ def load_phot(filename,surveys):
         coo = np.genfromtxt(coo_file, names=True, delimiter=',') #coo_h=coo.dtype.names
         nst=len(coo)
         cat1=np.zeros([nst,2])
-        cat1[:,0]=coo['ra_v']
-        cat1[:,1]=coo['dec_v']    
+        cat1[:,0]=coo['ra']
+        cat1[:,1]=coo['dec']    
 
         crit={'GAIA_EDR3':'G','2MASS':'J','ALLWISE':'W1'}
         n_filters={'GAIA_EDR3':3, '2MASS':3, 'ALLWISE':4}
@@ -1151,8 +1345,11 @@ def plot_CMD(x,y,isochrones,iso_filters,iso_ages,x_axis,y_axis,plot_ages=[1,3,5,
     if type(ebv)!=type(None): #subtracts extinction, if E(B-V) is provided
         x_ext=extinction(ebv,x_axis)
         y_ext=extinction(ebv,y_axis)
-        x-=x_ext
-        y-=y_ext
+        x1=x-x_ext
+        y1=y-y_ext
+    else:
+        x1=x
+        y1=y
     plt.arrow(x_range[0]+0.2*(x_range[1]-x_range[0]),y_range[0]+0.1*(y_range[1]-y_range[0]),-np.median(x_ext),-np.median(y_ext),head_width=0.05, head_length=0.1, fc='k', ec='k', label='reddening')
     
     for i in range(len(plot_ages)):
@@ -1161,8 +1358,8 @@ def plot_CMD(x,y,isochrones,iso_filters,iso_ages,x_axis,y_axis,plot_ages=[1,3,5,
 
     if (type(groups)==type(None)):        
         if (type(x_error)==type(None)) & (type(y_error)==type(None)):
-            plt.scatter(x, y, s=50, facecolors='none', edgecolors='black')
-        else: plt.errorbar(x, y, yerr=y_error, xerr=x_error, fmt='o', color='black')
+            plt.scatter(x1, y1, s=50, facecolors='none', edgecolors='black')
+        else: plt.errorbar(x1, y1, yerr=y_error, xerr=x_error, fmt='o', color='black')
     else:
         nc=max(groups)
         colormap = plt.cm.gist_ncar
@@ -1171,18 +1368,18 @@ def plot_CMD(x,y,isochrones,iso_filters,iso_ages,x_axis,y_axis,plot_ages=[1,3,5,
             w,=np.where(groups==j)
             if len(w)>0:  
                 if (type(x_error)==type(None)) & (type(y_error)==type(None)):
-                    plt.scatter(x[w], y[w], s=50, facecolors='none', edgecolors=colorst[j], label=group_names[j])
-                else: plt.errorbar(x[w], y[w], yerr=y_error[w], xerr=x_error[w], fmt='o', color=colorst[j], label=group_names[j])
+                    plt.scatter(x1[w], y1[w], s=50, facecolors='none', edgecolors=colorst[j], label=group_names[j])
+                else: plt.errorbar(x1[w], y1[w], yerr=y_error[w], xerr=x_error[w], fmt='o', color=colorst[j], label=group_names[j])
 
     if label_points==True:
         n=(np.linspace(0,npo-1,num=npo,dtype=int)).astype('str')
         for i, txt in enumerate(n):
             print(i,txt)
-            ax.annotate(txt, (x[i], y[i]))
+            ax.annotate(txt, (x1[i], y1[i]))
     elif label_points!=False:
         if isinstance(label_points[0],str): label_points=label_points.astype('str')
         for i, txt in enumerate(label_points):
-            ax.annotate(txt, (x[i], y[i]))
+            ax.annotate(txt, (x1[i], y1[i]))
         
     
     plt.ylim(y_range)
