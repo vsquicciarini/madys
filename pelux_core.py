@@ -177,7 +177,7 @@ def app_to_abs_mag(app_mag,parallax,app_mag_error=None,parallax_error=None):
     dim=n_dim(app_mag)
     if dim <= 1:
         abs_mag=app_mag-dm
-        if type(app_mag_error)!=type(None) & type(parallax_error)!=type(None): 
+        if (type(app_mag_error)!=type(None)) & (type(parallax_error)!=type(None)): 
             if isinstance(app_mag_error,list): app_mag_error=np.array(app_mag_error)
             if isinstance(parallax_error,list): parallax_error=np.array(parallax_error)
             total_error=np.sqrt(app_mag_error**2+(5/np.log(10)/parallax)**2*parallax_error**2)
@@ -367,7 +367,7 @@ def load_isochrones(model,surveys=['gaia','2mass','wise'],mass_range=[0.01,1.4],
             if type(fspot)!=type(None):
                 i=np.argmin(abs(fspot_range-fspot))
                 fspot0=fspot_range[i]
-                fspot1="{:.2f}".format(abs(fspot))            
+                fspot1="{:.2f}".format(abs(fspot0))            
                 model2=model+'_p'+fspot1
             else: model2=model+'_p0.00'
         else: model2=model
@@ -484,134 +484,98 @@ def retrieve_parameters():
         print(surveys)
         print(ws0)
 
+def isochronal_age(phot_app,phot_err_app,par,par_err,iso,surveys,border_age=False,ebv=None):
 
+    mnew=iso[0]
+    anew=iso[1]
+    fnew=iso[2]
+    newMC=iso[3]
+    
 
-def isochronal_age(phot_app,phot_err_app,par,par_err,border_age=False):
-
-    path=Path('C:/Users/Vito/Desktop/PhD/Progetti/BEAST/Stellar_ages/CMS/BT-Settl_stilism_cs0_GaiaDR3')
-
-    #carica parametri da file
-    with open(path / 'options.txt') as f:
-        opt = np.genfromtxt(f,dtype="str")
-        parameters=opt[:,1]
-        max_r=float(parameters[1])
-        lit_file=parameters[2]
-        ph_cut=float(parameters[5])
-        max_flux_cont=float(parameters[6])
-        bin_frac=float(parameters[7])
-        fitting_method=parameters[9].strip()
-        if parameters[10]=='single': n_est=1
-        elif parameters[10]=='multiple': n_est=4 #SNU, SRU, BNU, BRU
-        surveys=parameters[12].split(',')
-        ws0=['2MASS' in surveys,'WISE' in surveys,'Panstarrs' in surveys] #quali survey oltre a Gaia devo usare?
-
-    #carica isocrone
-    upperpath=path.parent.absolute()
-    isochrones=None
-    if isochrones==None:
-        max_iso_age=float(parameters[3])
-        model=parameters[0]
-        iso_path=parameters[4]
-        mnew,anew,fnew,newMC=load_isochrones(model)
-
-    #una qualche lista di fotometria di stelle con errori
-    #in questo esempio, ho 6 filtri e 2 stelle
-#    phot_app=np.array([[16.08196,15.29399],[17.18979,16.95128],[15.01009,14.04471],[13.51800,11.99600],[12.82700,11.35400],[12.60300,11.01900]]) #una riga per filtro, una colonna per stella
-#    phot_err_app=np.array([[0.00093,0.00636],[0.00664,0.02289],[0.00170,0.02044],[0.02600,0.02200],[0.02600,0.02800],[0.03000,0.02300]])
-#    par=np.array([5.70005477,5.70101925])
-#    par_err=np.array([0.12052761,0.03417909])
-
-    #le trasformo in assolute
+    #CONSTANTS
+    ph_cut=0.2
+    bin_frac=0.0
+    
+    #trasformo fotometria in assoluta
     phot,phot_err=app_to_abs_mag(phot_app,par,app_mag_error=phot_err_app,parallax_error=par_err)
-
 
     #raggi per peso della media
 
     #contaminazione in flusso
     cont=np.zeros(2) #contaminazione nei filtri 2MASS per le stelle, in questo caso nulla
 
-    l0=phot.shape #(6,2)
-    xlen=l0[0] #n. filtri: 6
-    ylen=l0[1] #n. stelle: 2
+    l0=phot.shape
+    xlen=l0[0] #no. of stars: 85
+    ylen=l0[1] #no. of filters: 6
 
     filt=where_v(['J','H','K','G','Gbp','Grp'],fnew)
     wc=np.array([[filt[2],filt[0],filt[1],filt[5]],[filt[3],filt[3],filt[3],filt[4]]]) #(G-K), (G-J), (G-H), (Gbp-Grp)
+#    print(filt[wc])
 
     red=np.zeros([xlen,ylen]) #reddening da applicare
-    #for i in range(xlen): red[i,:]=extinction(redd,filt[i])
+    if type(ebv)!=type(None):
+        for i in range(ylen): red[:,i]=extinction(ebv,fnew[i])
 
     l=newMC.shape #(780,460,10) cioè masse, età e filtri
-    sigma=100+np.zeros([l[0],l[1],xlen]) #matrice delle distanze fotometriche (780,460,3)
-    loga=np.zeros([4,ylen]) #stime di log(età) in ognuno dei quattro canali (4,10)
+    sigma=100+np.zeros([l[0],l[1],ylen]) #matrice delle distanze fotometriche (780,460,3)
+    loga=np.zeros([4,xlen]) #stime di log(età) in ognuno dei quattro canali (4,85)
 
     #calcolare reddening
-    m_cmsf=np.empty([4,ylen,n_est]) #stime di massa (4,2,1)
-    m_cmsf.fill(np.nan)
-    a_cmsf=np.empty([4,ylen,n_est]) #stime di età (4,2,1)
-    a_cmsf.fill(np.nan)
+    m_cmsf=np.full(([4,xlen]),np.nan) #stime di massa (4,85,1)
+    a_cmsf=np.full(([4,xlen]),np.nan) #stime di età (4,85,1)
 
-    n_val=np.zeros([4,n_est]) #numero di stelle usate per la stima per canale (0) e tipologia (SRB ecc, 1) (4,1)
-    tofit=np.zeros([4,ylen,n_est]) #contiene, per ogni CMS, 1 se fittato, 0 se non fittato (4,2,1)
+    n_val=np.zeros(4) #numero di stelle usate per la stima per canale (0) e tipologia (SRB ecc, 1) (4,1)
+    tofit=np.zeros([4,xlen]) #contiene, per ogni CMS, 1 se fittato, 0 se non fittato (4,2,1)
 
     bin_corr=2.5*np.log10(2)*bin_frac #ossia, se le binarie sono identiche, la luminosità osservata è il doppio di quella della singola componente
 
-    if n_est==4:
-        phot_srb=phot-red #stelle singole (S), con reddening (R), biased. Se stima singola, include correzione binaria
-        phot_brb=phot-red+bin_corr #applico la correzione binaria (B)
-        phot_snb=phot #reddening nullo (N)
-        phot_bnb=phot+bin_corr    
-    else: phot_srb=phot-red+bin_corr #(6,2) come phot
+    phot0=phot-red+bin_corr #(6,2) come phot
 
-    fate=np.ones([4,ylen,n_est]) #(4,2,1)  ci dice se la stella i nella stima j e nel canale k è stata fittata, ha errori alti, contaminazione ecc. Di default è contaminata (1)
+    fate=np.ones([4,xlen]) #(4,85)  ci dice se la stella i nella stima j e nel canale k è stata fittata, ha errori alti, contaminazione ecc. Di default è contaminata (1)
 
-    for t in range(n_est):
-        if t==0:
-            phot0=phot_srb
-            wh='SRB'
-        elif t==1:
-            phot0=phot_brb
-            wh='BRB'
-        elif t==2:
-            phot0=phot_snb
-            wh='SNB'
-        elif t==3:
-            phot0=phot_bnb
-            wh='BNB'
 
-        sigma=np.empty([l[0],l[1],xlen]) #(780,480,3) matrice delle distanze fotometriche
-        sigma.fill(np.nan) #inizializzata a NaN
-         
-        for i in range(ylen): #devo escludere poi i punti con errore fotometrico non valido     
-            w,=np.where(is_phot_good(phot[:,i],phot_err[:,i],max_phot_err=ph_cut))
-            if len(w)>0:
-                e_j=-10.**(-0.4*phot_err[w,i])+10.**(+0.4*phot_err[w,i])
-                for h in range(len(w)): sigma[:,:,w[h]]=(10.**(-0.4*(newMC[:,:,w[h]]-phot0[w[h],i]))-1.)/e_j[h]
-            cr=np.zeros([l[0],l[1],4]) #(780,480,4) #per il momento comprende le distanze in G-K, G-J, G-H, Gbp-Grp
-    #        wc=np.array([[2,3],[0,3],[1,3],[4,5]]) #(G-K), (G-J), (G-H), (Gbp-Grp)
-            for j in range(4):
-                cr[:,:,j]=(sigma[:,:,wc[0,j]])**2+(sigma[:,:,wc[1,j]])**2 #equivale alla matrice delle distanze in (G,K), (G,J), (G,H), (Gbp,Grp)
-                colth=np.empty(l[1]) #480 voglio verificare se la stella si trova "in mezzo" al set di isocrone oppure all'esterno; voglio fare un taglio a mag costante
-                colth.fill(np.nan)
-                asa=np.zeros(l[1])
-                for q in range(l[1]): #480
-                    asa[q],im0=min_v(newMC[:,q,wc[0,j]]-phot0[wc[0,j],i],absolute=True) #trova il punto teorico più vicino nel primo filtro per ogni isocrona
-                    if abs(asa[q])<0.1: colth[q]=newMC[im0,q,wc[1,j]] #trova la magnitudine corrispondente nel secondo filtro della coppia
-                asb=min(asa,key=abs) #se la minima distanza nel primo filtro è maggiore della soglia, siamo al di fuori del range in massa delle isocrone
-                est,ind=min_v(cr[:,:,j])
-                if (est <= 2.25 or (phot0[wc[1,j],i] >= min(colth) and phot0[wc[1,j],i] <= max(colth))) and np.isnan(est)==False and (np.isnan(min(colth))==False and np.isnan(max(colth))==False):  #condizioni per buon fit: la stella entro griglia isocrone o a non più di 3 sigma, a condizione che esista almeno un'isocrona al taglio in "colth"
-                    m_cmsf[j,i,t]=mnew[ind[0]] #massa del CMS i-esimo
-                    a_cmsf[j,i,t]=anew[ind[1]] #età del CMS i-esimo
-                    n_val[j,t]=n_val[j,t]+1
-                    tofit[j,i,t]=1
+    sigma=np.full(([l[0],l[1],ylen]),np.nan) #(780,480,6) matrice delle distanze fotometriche
+             
+    for i in range(xlen): #devo escludere poi i punti con errore fotometrico non valido     
+        w,=np.where(is_phot_good(phot[i,:],phot_err[i,:],max_phot_err=ph_cut))
+     #   print('valid',i,w)
+        if len(w)==0: continue
+        go=0
+        for j in range(4):
+            go+=isnumber(phot0[i,wc[0,j]]+phot0[i,wc[1,j]],finite=True)
+        if go==0: continue
+        e_j=-10.**(-0.4*phot_err[i,w])+10.**(+0.4*phot_err[i,w])
+        for h in range(len(w)):
+    #        print(i,xlen,h,len(w),w[h],go,newMC[0,0,w[h]])
+            sigma[:,:,w[h]]=(10.**(-0.4*(newMC[:,:,w[h]]-phot0[i,w[h]]))-1.)/e_j[h]
+        cr=np.zeros([l[0],l[1],4]) #(780,480,4) #per il momento comprende le distanze in G-K, G-J, G-H, Gbp-Grp
+        for j in range(4):
+            if isnumber(phot0[i,wc[0,j]],finite=True)==0: continue
+            cr[:,:,j]=(sigma[:,:,wc[0,j]])**2+(sigma[:,:,wc[1,j]])**2 #equivale alla matrice delle distanze in (G,K), (G,J), (G,H), (Gbp,Grp)
+            colth=np.full(l[1],np.nan) #480 voglio verificare se la stella si trova "in mezzo" al set di isocrone oppure all'esterno; voglio fare un taglio a mag costante
+            asa=np.zeros(l[1])
+            for q in range(l[1]): #480
+    #            print(i,j,q,anew[q],phot0[i,wc[0,j]],np.nanmin(newMC[:,q,wc[0,j]]))
+                asa[q],im0=min_v(newMC[:,q,wc[0,j]]-phot0[i,wc[0,j]],absolute=True) #trova il punto teorico più vicino nel primo filtro per ogni isocrona
+                if abs(asa[q])<0.1: colth[q]=newMC[im0,q,wc[1,j]] #trova la magnitudine corrispondente nel secondo filtro della coppia
+            asb=min(asa,key=abs) #se la minima distanza nel primo filtro è maggiore della soglia, siamo al di fuori del range in massa delle isocrone
+    #        print(i,j,phot0[i,wc[0,j]],phot_err[i,wc[0,j]],asb)
+    #        print(cr[:,:,j])
+            est,ind=min_v(cr[:,:,j])
+            if (est <= 2.25 or (phot0[i,wc[1,j]] >= min(colth) and phot0[i,wc[1,j]] <= max(colth))) and np.isnan(est)==False and (np.isnan(min(colth))==False and np.isnan(max(colth))==False):  #condizioni per buon fit: la stella entro griglia isocrone o a non più di 3 sigma, a condizione che esista almeno un'isocrona al taglio in "colth"
+                m_cmsf[j,i]=mnew[ind[0]] #massa del CMS i-esimo
+                a_cmsf[j,i]=anew[ind[1]] #età del CMS i-esimo
+                n_val[j]+=1
+                tofit[j,i]=1
 
-                if (is_phot_good(phot0[wc[0,j],i],phot_err[wc[0,j],i],max_phot_err=ph_cut)==0) or (is_phot_good(phot0[wc[1,j],i],phot_err[wc[1,j],i],max_phot_err=ph_cut)==0): pass #rimane 0
-                elif est > 2.25 and phot0[wc[1,j],i] < min(colth):  fate[j,i,t]=2
-                elif est > 2.25 and phot0[wc[1,j],i] > max(colth):  fate[j,i,t]=3
-                elif est > 2.25 and abs(asb) >= 0.1: fate[j,i,t]=4
-                else: fate[j,i,t]=5
-                if (border_age==True and est>=2.25 and phot0[wc[1,j],i]>max(colth)):
-                    a_cmsf[j,i,t]=anew[0]
-                    tofit[j,i,t]=1
+            if (is_phot_good(phot0[i,wc[0,j]],phot_err[i,wc[0,j]],max_phot_err=ph_cut)==0) or (is_phot_good(phot0[i,wc[1,j]],phot_err[i,wc[1,j]],max_phot_err=ph_cut)==0): pass #rimane 0
+            elif est > 2.25 and phot0[i,wc[1,j]] < min(colth):  fate[j,i]=2
+            elif est > 2.25 and phot0[i,wc[1,j]] > max(colth):  fate[j,i]=3
+            elif est > 2.25 and abs(asb) >= 0.1: fate[j,i]=4
+            else: fate[j,i]=5
+            if (border_age==True and est>=2.25 and phot0[i,wc[1,j]]>max(colth)):
+                a_cmsf[j,i]=anew[0]
+                tofit[j,i]=1
                 
         if anew[-1]<150: plot_ages=[1,3,5,10,20,30,100] #ossia l'ultimo elemento
         elif anew[-1]<250: plot_ages=[1,3,5,10,20,30,100,200]
@@ -619,19 +583,21 @@ def isochronal_age(phot_app,phot_err_app,par,par_err,border_age=False):
         elif anew[-1]<1050: plot_ages=[1,3,5,10,20,30,100,200,500,1000]
         else: plot_ages=[1,3,5,10,20,30,100,200,500,1000]
 
-    if os.path.isfile(path / 'TestFile.txt')==0: print("Ora dovrebbe plottare una figura")
+#    if os.path.isfile(path / 'TestFile.txt')==0: print("Ora dovrebbe plottare una figura")
 #    if file_search(path+'G-K_G_'+wh+'.*') eq '' and keyword_set(no_img) eq 0 and keyword_set(silent) eq 0 then plot_stars2,phot0[3,*]-phot0[2,*],phot0[3,*],newMC,'G-K','G',plot_ages,iso_ages=anew,xerr=phot_err[2,*]+phot_err[3,*],yerr=phot_err[3,*],tofile=path+'G-K_G_'+wh+'.eps',label_points=1+indgen(ylen),sym_size=radius,highlight=tofit[0,*,t],/show_errors,charsize=0.3
 #    if file_search(path+'G-J_J_'+wh+'.*') eq '' and keyword_set(no_img) eq 0 and keyword_set(silent) eq 0 then plot_stars2,phot0[3,*]-phot0[0,*],phot0[0,*],newMC,'G-J','J',plot_ages,iso_ages=anew,xerr=phot_err[0,*]+phot_err[3,*],yerr=phot_err[0,*],tofile=path+'G-J_J_'+wh+'.eps',label_points=1+indgen(ylen),sym_size=radius,highlight=tofit[1,*,t],/show_errors,charsize=0.3
 #    if file_search(path+'G-H_H_'+wh+'.*') eq '' and keyword_set(no_img) eq 0 and keyword_set(silent) eq 0 then plot_stars2,phot0[3,*]-phot0[1,*],phot0[1,*],newMC,'G-H','H',plot_ages,iso_ages=anew,xerr=phot_err[1,*]+phot_err[3,*],yerr=phot_err[1,*],tofile=path+'G-H_H_'+wh+'.eps',label_points=1+indgen(ylen),sym_size=radius,highlight=tofit[2,*,t],/show_errors,charsize=0.3
 #    if file_search(path+'Gbp-Grp_G_'+wh+'.*') eq '' and keyword_set(no_img) eq 0 and keyword_set(silent) eq 0 then plot_stars2,phot0[4,*]-phot0[5,*],phot0[3,*],newMC,'Gbp-Grp','G',plot_ages,iso_ages=anew,xerr=phot_err[4,*]+phot_err[5,*],yerr=phot_err[3,*],tofile=path+'Gbp-Grp_G_'+wh+'.eps',label_points=1+indgen(ylen),sym_size=radius,highlight=tofit[3,*,t],/show_errors,charsize=0.3
 
-    a_final=np.empty(ylen)
-    m_final=np.empty(ylen)
-    for i in range(ylen): 
+    a_final=np.empty(xlen)
+    m_final=np.empty(xlen)
+    for i in range(xlen): 
         a_final[i]=np.nanmean(a_cmsf[:,i])
         m_final[i]=np.nanmean(m_cmsf[:,i])
+ #       print(i,phot_app[i,:],par[i],phot0[i,:],a_final[i],a_cmsf[:,i])
 
     return a_final,m_final
+
 
 def extinction(ebv,col):
     """
@@ -862,7 +828,7 @@ def search_phot(filename,surveys,coordinates=True,verbose=False):
     #finds data on VizieR through a query on XMatch
     data_dic={}
     for i in range(len(surveys)): 
-        data_s = XMatch.query(cat1=coo_table,cat2=surv_prop[index[surveys[i]]][0],max_distance=2 * u.arcsec, colRA1='RA',colDec1='DEC')
+        data_s = XMatch.query(cat1=coo_table,cat2=surv_prop[index[surveys[i]]][0],max_distance=1.3 * u.arcsec, colRA1='RA',colDec1='DEC')
         data_dic[surveys[i]]=data_s
         if verbose==True:
             f=open(os.path.join(folder,str(sample_name+'_'+surveys[i]+'_data.txt')), "w+")
@@ -886,6 +852,8 @@ def search_phot(filename,surveys,coordinates=True,verbose=False):
 def Wu_line_integrate(f,x0,x1,y0,y1,z0,z1):
     n=100*max(math.ceil(abs(max([x1-x0,y1-y0,z1-z0]))),500)
     I=0
+    dim=f.shape    
+    i=0
     
     x=np.linspace(x0,x1,num=n)
     if n_dim(f)==2:
@@ -893,14 +861,18 @@ def Wu_line_integrate(f,x0,x1,y0,y1,z0,z1):
         d10=np.sqrt((x1-x0)**2+(y1-y0)**2) #distance
         
         y=y0+m*(x-x0)
-        for i in range(n): I+=f[math.floor(x[i]),math.floor(y[i])]
+        while (x[i]<dim[0]) & (y[i]<dim[1]) & (i<n):
+            I+=f[math.floor(x[i]),math.floor(y[i])]
+            i+=1
     elif n_dim(f)==3:
         m=(y1-y0)/(x1-x0) #slope of the line
         d10=np.sqrt((x1-x0)**2+(y1-y0)**2+(z1-z0)**2) #distance
         
         y=np.linspace(y0,y1,num=n)
         z=np.linspace(z0,z1,num=n)
-        for i in range(n): I+=f[math.floor(x[i]),math.floor(y[i]),math.floor(z[i])]
+        while (x[i]<dim[0]) & (y[i]<dim[1]) & (z[i]<dim[2]) & (i<n):
+            I+=f[math.floor(x[i]),math.floor(y[i]),math.floor(z[i])]
+            i+=1
     
     return I/n*d10
 
@@ -989,7 +961,7 @@ def interstellar_ext(ra=None,dec=None,l=None,b=None,par=None,d=None,test_time=Fa
     if color=='B-V': return ebv
     else: return extinction(ebv,color)
 
-def cross_match(cat1,cat2,max_difference=0.01,other_column=None,rule=None,exact=False):
+def cross_match(cat1,cat2,max_difference=0.01,other_column=None,rule=None,exact=False,parallax=None,min_parallax=2):
     """
     given two catalogues cat1 and cat2, returns the indices ind1 and ind2 such that:
     cat1[ind1]=cat2[ind2]
@@ -1000,8 +972,8 @@ def cross_match(cat1,cat2,max_difference=0.01,other_column=None,rule=None,exact=
     if exact=False (default mode). If exact=True, it is a strict equality.
     
     input:
-        cat1: a 1D or 2D numpy array, specifying one raw per star, in the first catalogue
-        cat2: a 1D or 2D numpy array, specifying one raw per star, in the second catalogue
+        cat1: a 1D or 2D numpy array, specifying one row per star, in the first catalogue
+        cat2: a 1D or 2D numpy array, specifying one row per star, in the second catalogue
             The number of columns of cat2 must be the same of cat1!
         max_difference: the threshold k to cross-match two entries. If |cat1[i]-cat2[j]|<k,
             the sources are considered the same and cross-matched
@@ -1043,14 +1015,15 @@ def cross_match(cat1,cat2,max_difference=0.01,other_column=None,rule=None,exact=
         ind1,=np.where(cat2[c1[c]]==cat1)
         return ind1,c1[c[ind1]]
 
-    n=len(cat1)    
+    n=len(cat1)
     ind1=np.zeros(n,dtype='int32')
     ind2=np.zeros(n,dtype='int32')
     c=0
+    if type(parallax)==type(None): parallax=3.
     if n_dim(cat1)==1:
         if type(other_column)==type(None):
             for i in range(n):
-                k,=np.where(abs(cat2-cat1[i])<max_difference)
+                k,=np.where((abs(cat2-cat1[i])<max_difference) & (parallax>min_parallax))
                 if len(k)==1:
                     ind1[c]=i
                     ind2[c]=k
@@ -1061,7 +1034,7 @@ def cross_match(cat1,cat2,max_difference=0.01,other_column=None,rule=None,exact=
                     c+=1
         elif rule=='min':
             for i in range(n):
-                k,=np.where(abs(cat2-cat1[i])<max_difference)
+                k,=np.where((abs(cat2-cat1[i])<max_difference) & (parallax>min_parallax))
                 if len(k)==1:
                     ind1[c]=i
                     ind2[c]=k
@@ -1073,7 +1046,7 @@ def cross_match(cat1,cat2,max_difference=0.01,other_column=None,rule=None,exact=
                     c+=1
         elif rule=='max':
             for i in range(n):
-                k,=np.where(abs(cat2-cat1[i])<max_difference)
+                k,=np.where((abs(cat2-cat1[i])<max_difference) & (parallax>min_parallax))
                 if len(k)==1:
                     ind1[c]=i
                     ind2[c]=k
@@ -1096,7 +1069,7 @@ def cross_match(cat1,cat2,max_difference=0.01,other_column=None,rule=None,exact=
             for i in range(n):
                 d=0
                 for j in range(len(cat1[0])): d+=abs(cat2[:,j]-cat1[i,j])
-                k,=np.where(d<max_difference)
+                k,=np.where((d<max_difference) & (parallax>min_parallax))
                 if len(k)==1:
                     ind1[c]=i
                     ind2[c]=k
@@ -1111,7 +1084,7 @@ def cross_match(cat1,cat2,max_difference=0.01,other_column=None,rule=None,exact=
             for i in range(n):
                 d=0
                 for j in range(len(cat1[0])): d+=abs(cat2[:,j]-cat1[i,j])
-                k,=np.where(d<max_difference)
+                k,=np.where((d<max_difference) & (parallax>min_parallax))
                 if len(k)==1:
                     ind1[c]=i
                     ind2[c]=k
@@ -1127,7 +1100,7 @@ def cross_match(cat1,cat2,max_difference=0.01,other_column=None,rule=None,exact=
             for i in range(n):
                 d=0
                 for j in range(len(cat1[0])): d+=abs(cat2[:,j]-cat1[i,j])
-                k,=np.where(d<max_difference)
+                k,=np.where((d<max_difference) & (parallax>min_parallax))
                 if len(k)==1:
                     ind1[c]=i
                     ind2[c]=k
@@ -1234,8 +1207,11 @@ def load_phot(filename,surveys):
             cat2=np.zeros([n_cat2,2])
             cat2[:,0]=cat2_data['ra']
             cat2[:,1]=cat2_data['dec']
+            try:
+                para=cat2_data['parallax']
+            except ValueError: para=np.full(n_cat2,1000)
             mag=cat2_data[crit[surveys[i]]]
-            indG1,indG2=cross_match(cat1,cat2,max_difference=0.001,other_column=mag,rule='min')
+            indG1,indG2=cross_match(cat1,cat2,max_difference=0.001,other_column=mag,rule='min',parallax=para)
             for j in range(len(f_list[surveys[i]])):
                 f_i=f_list[surveys[i]][j]
                 mag_i=cat2_data[f_i]
@@ -1394,3 +1370,9 @@ def plot_CMD(x,y,isochrones,iso_filters,iso_ages,x_axis,y_axis,plot_ages=[1,3,5,
         plt.close(fig)    
     
     return None
+
+def ang_dist(ra1,dec1,ra2,dec2):  
+    
+    dist=2*np.arcsin(np.sqrt(np.sin((dec2-dec1)/2.*u.degree)**2+np.cos(dec2*u.degree)*np.cos(dec1*u.degree)*np.sin((ra2-ra1)/2.*u.degree)**2)).to(u.deg)
+
+    return dist.value
