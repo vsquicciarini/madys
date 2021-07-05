@@ -715,7 +715,9 @@ def axis_range(col_name,col_phot):
 def ang_deg(ang,form='hms'):    
     ang2=ang.split(' ')
     ang2=ang2[0]+form[0]+ang2[1]+form[1]+ang2[2]+form[2]
-    return ang2def complement_v(arr,n):
+    return ang2
+
+def complement_v(arr,n):
     compl=np.full(n,True)
     compl[arr]=False
     compl,=np.where(compl==True)
@@ -762,22 +764,7 @@ def search_phot(filename,surveys,coordinates='equatorial',verbose=False,overwrit
             The returned coordinate array has the same length as the input file,
             while the output Tables might not.
     """
-
-
-    #stores path, file name, extension
-    path=os.path.dirname(filename)     #working path
-    sample_name=os.path.split(filename)[1] #file name
-    i=0
-    while sample_name[i]!='.': i=i+1
-    ext=sample_name[i:] #estension
-    sample_name=sample_name[:i]
-    if ext=='.csv': delim=','
-    else: delim=None
-
-    file=''+sample_name
-    for i in range(len(surveys)): file+='_'+surveys[i]
-    PIK=os.path.join(path,(file+'.pkl'))
-    
+   
     def survey_properties(survey):
         if survey=='GAIA_EDR3':
             code='vizier:I/350/gaiaedr3'
@@ -816,28 +803,38 @@ def search_phot(filename,surveys,coordinates='equatorial',verbose=False,overwrit
             q_flags=['ccf_w']
             
         return code,col1,hea,fmt,f_list,q_flags
+
+    #stores path, file name, extension
+    path=os.path.dirname(filename)     #working path
+    sample_name=os.path.split(filename)[1] #file name
+    i=0
+    while sample_name[i]!='.': i=i+1
+    ext=sample_name[i:] #estension
+    sample_name=sample_name[:i]
+    if ext=='.csv': delim=','
+    else: delim=None
+
     
-    
-    
+    surveys0=['GAIA_EDR3','GAIA_DR2']
     if isinstance(surveys,str): surveys=[surveys]
     surveys=[x.upper() for x in surveys]
     if merge=='WISE':
         if 'WISE' not in surveys: surveys.append('WISE')
-        if 'ALLWISE' not in surveys: surveys.append('ALLWISE')    
+        if 'ALLWISE' not in surveys: surveys.append('ALLWISE')        
+    surveys0.extend(surveys)
+    surveys=surveys0
     ns=len(surveys)
+    print('aaaa',surveys)
+
+    file=''+sample_name
+    for i in range(len(surveys)): file+='_'+surveys[i]
+    PIK=os.path.join(path,(file+'.pkl'))
     
     nf=0 #total no. of filters
     nq=0 #total no. of quality flags
     for i in range(len(surveys)): 
         nf+=len(survey_properties(surveys[i])[4])
         nq+=len(survey_properties(surveys[i])[5])
-    
-    is_g=0
-    while 'GAIA' not in surveys[is_g]:
-        is_g+=1
-        if is_g==len(surveys): break
-    if is_g==len(surveys):
-        print('Gaia not selected! Perhaps you should consider using it to have reliable parallaxes.')
     
     if (file_search(PIK)) & (overwrite==0) : #see if the search result is already present
         with open(PIK,'rb') as f:
@@ -901,7 +898,7 @@ def search_phot(filename,surveys,coordinates='equatorial',verbose=False,overwrit
                         break
                     key=str.lower(input('Unvalid choice. Type Y or N.'))                
 
-        kin_list=['ra','ra_error','dec','dec_error','parallax','parallax_error','pmra','pmra_error','pmdec','pmdec_error','radial_velocity','radial_velocity_error']
+        kin_list=np.array(['ra','ra_error','dec','dec_error','parallax','parallax_error','pmra','pmra_error','pmdec','pmdec_error','radial_velocity','radial_velocity_error'])
 
         headers=[]
         phot=np.full([n,nf],np.nan)
@@ -919,7 +916,8 @@ def search_phot(filename,surveys,coordinates='equatorial',verbose=False,overwrit
         p1=0
         filt=[]
         flag_h=[]
-        for i in range(len(surveys)): 
+        for i in range(len(surveys)):
+            print('waa',surveys[i])
             cat_code,col2,hea,fmt,f_list,q_flags=survey_properties(surveys[i])
             n_f=len(f_list)
             n_q=len(q_flags)
@@ -952,7 +950,7 @@ def search_phot(filename,surveys,coordinates='equatorial',verbose=False,overwrit
                 phot_err[indG1,j+p]=np.ma.filled(mag_err[indG2],fill_value=np.nan) #missing values replaced by NaN
             p+=n_f
             filt.extend(f_list)
-            if i==is_g:
+            if i==0:
                 for j in range(len(kin_list)):
                     kin_i=data_s[kin_list[j]] 
                     kin[indG1,j]=kin_i[indG2]
@@ -994,19 +992,20 @@ def search_phot(filename,surveys,coordinates='equatorial',verbose=False,overwrit
         fff.extend(filt)
         fff.extend(filt2)
 
-        f=open(os.path.join(path,(sample_name+'_photometry.txt')), "w+")
-        f.write(tabulate(np.concatenate((phot,phot_err),axis=1),headers=fff, tablefmt='plain', stralign='right', 
-                         numalign='right', floatfmt=".4f"))
-        f.close()
+        if verbose==True:         
+            f=open(os.path.join(path,(sample_name+'_photometry.txt')), "w+")
+            f.write(tabulate(np.concatenate((phot,phot_err),axis=1),headers=fff, tablefmt='plain', stralign='right',
+                             numalign='right', floatfmt=".4f"))
+            f.close()
 
-        f=open(os.path.join(path,(sample_name+'_kinematics.txt')), "w+")
-        f.write(tabulate(kin,headers=kin_list, tablefmt='plain', stralign='right', numalign='right', 
-                         floatfmt=(".11f",".4f",".11f",".4f",".4f",".4f",".3f",".3f",".3f",".3f",".3f",".3f")))
-        f.close()
-        
-        f=open(os.path.join(path,(sample_name+'_properties.txt')), "w+")
-        f.write(tabulate(flags,headers=flag_h, tablefmt='plain', stralign='right', numalign='right'))
-        f.close()
+            f=open(os.path.join(path,(sample_name+'_kinematics.txt')), "w+")
+            f.write(tabulate(kin,headers=kin_list, tablefmt='plain', stralign='right', numalign='right', 
+                             floatfmt=(".11f",".4f",".11f",".4f",".4f",".4f",".3f",".3f",".3f",".3f",".3f",".3f")))
+            f.close()
+            
+            f=open(os.path.join(path,(sample_name+'_properties.txt')), "w+")
+            f.write(tabulate(flags,headers=flag_h, tablefmt='plain', stralign='right', numalign='right'))
+            f.close()
         
         with open(PIK,'wb') as f:
             pickle.dump(phot,f)
@@ -1018,7 +1017,7 @@ def search_phot(filename,surveys,coordinates='equatorial',verbose=False,overwrit
     return phot,phot_err,kin,flags,headers
 
 def Wu_line_integrate(f,x0,x1,y0,y1,z0,z1):
-    n=100*max(math.ceil(abs(max([x1-x0,y1-y0,z1-z0]))),500)
+    n=20*max(math.ceil(abs(max([x1-x0,y1-y0,z1-z0]))),500)
     I=0
     dim=f.shape    
     i=0
@@ -1038,7 +1037,7 @@ def Wu_line_integrate(f,x0,x1,y0,y1,z0,z1):
         
         y=np.linspace(y0,y1,num=n)
         z=np.linspace(z0,z1,num=n)
-        while (x[i]<dim[0]) & (y[i]<dim[1]) & (z[i]<dim[2]) & (i<n):
+        while (x[i]<dim[0]) & (y[i]<dim[1]) & (z[i]<dim[2]) & (i<n-1):
             I+=f[math.floor(x[i]),math.floor(y[i]),math.floor(z[i])]
             i+=1
     
