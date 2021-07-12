@@ -9,7 +9,7 @@ from scipy.interpolate import interp1d
 from astropy.constants import M_jup,M_sun
 import time
 import pickle
-from astropy.coordinates import Angle, SkyCoord
+from astropy.coordinates import Angle, SkyCoord, Galactocentric
 from astropy import units as u
 from astroquery.simbad import Simbad
 from astroquery.vizier import Vizier
@@ -303,6 +303,7 @@ def load_isochrones(model,surveys=['gaia','2mass','wise'],mass_range=[0.01,1.4],
         return w
 
     def model_name(model,feh=None,afe=None,v_vcrit=None,fspot=None,B=0):
+        param={'model':model,'feh':0.0,'afe':0.0,'v_vcrit':0.0,'fspot':0.0,'B':0}
         if model=='bt_settl': model2=model
         elif model=='mist':
             feh_range=np.array([-4.,-3.5,-3.,-2.5,-2,-1.75,-1.5,-1.25,-1.0,-0.75,-0.5,-0.25,0.0,0.25,0.5])
@@ -311,6 +312,7 @@ def load_isochrones(model,surveys=['gaia','2mass','wise'],mass_range=[0.01,1.4],
             if type(feh)!=type(None):
                 i=np.argmin(abs(feh_range-feh))
                 feh0=feh_range[i]
+                param['feh']=feh0
                 if feh0<0: s='m'
                 else: s='p'
                 feh1="{:.2f}".format(abs(feh0))            
@@ -319,6 +321,7 @@ def load_isochrones(model,surveys=['gaia','2mass','wise'],mass_range=[0.01,1.4],
             if type(afe)!=type(None):
                 i=np.argmin(abs(afe_range-afe))
                 afe0=afe_range[i]
+                param['afe']=afe0
                 if afe0<0: s='m'
                 else: s='p'
                 afe1="{:.1f}".format(abs(afe0))            
@@ -327,6 +330,7 @@ def load_isochrones(model,surveys=['gaia','2mass','wise'],mass_range=[0.01,1.4],
             if type(v_vcrit)!=type(None):
                 i=np.argmin(abs(vcrit_range-v_vcrit))
                 v_vcrit0=vcrit_range[i]
+                param['v_vcrit']=v_vcrit0
                 if v_vcrit0<0: s='m'
                 else: s='p'
                 v_vcrit1="{:.1f}".format(abs(v_vcrit0))            
@@ -337,6 +341,7 @@ def load_isochrones(model,surveys=['gaia','2mass','wise'],mass_range=[0.01,1.4],
             if type(feh)!=type(None):
                 i=np.argmin(abs(feh_range-feh))
                 feh0=feh_range[i]
+                param['feh']=feh0
                 if feh0<0: s='m'
                 else: s='p'
                 feh1="{:.2f}".format(abs(feh0))            
@@ -348,6 +353,7 @@ def load_isochrones(model,surveys=['gaia','2mass','wise'],mass_range=[0.01,1.4],
             if type(feh)!=type(None):
                 i=np.argmin(abs(feh_range-feh))
                 feh0=feh_range[i]
+                param['feh']=feh0
                 if feh0<0: s='m'
                 else: s='p'
                 feh1="{:.2f}".format(abs(feh0))            
@@ -356,6 +362,7 @@ def load_isochrones(model,surveys=['gaia','2mass','wise'],mass_range=[0.01,1.4],
             if type(v_vcrit)!=type(None):
                 i=np.argmin(abs(vcrit_range-v_vcrit))
                 v_vcrit0=vcrit_range[i]
+                param['v_vcrit']=v_vcrit0
                 if v_vcrit0<0: s='m'
                 else: s='p'
                 v_vcrit1="{:.1f}".format(abs(v_vcrit0))            
@@ -366,6 +373,7 @@ def load_isochrones(model,surveys=['gaia','2mass','wise'],mass_range=[0.01,1.4],
             if type(fspot)!=type(None):
                 i=np.argmin(abs(fspot_range-fspot))
                 fspot0=fspot_range[i]
+                param['fspot']=fspot0
                 fspot1="{:.2f}".format(abs(fspot0))            
                 model2=model+'_p'+fspot1
             else: model2=model+'_p0.00'
@@ -375,6 +383,7 @@ def load_isochrones(model,surveys=['gaia','2mass','wise'],mass_range=[0.01,1.4],
             if type(feh)!=type(None):
                 i=np.argmin(abs(feh_range-feh))
                 feh0=feh_range[i]
+                param['feh']=feh0
                 if feh0<0: s='m'
                 else: s='p'
                 feh1="{:.2f}".format(abs(feh0))            
@@ -383,15 +392,31 @@ def load_isochrones(model,surveys=['gaia','2mass','wise'],mass_range=[0.01,1.4],
             if type(afe)!=type(None):
                 i=np.argmin(abs(afe_range-afe))
                 afe0=afe_range[i]
+                param['afe']=afe0
                 if afe0<0: s='m'
                 else: s='p'
                 afe1="{:.1f}".format(abs(afe0))            
                 model2+='_'+s+afe1
             else: model2+='_p0.0'
-            if B==0: model2+='_nomag'
-            else: model2+='_mag'
+            if B==0: 
+                model2+='_nomag'
+            else: 
+                model2+='_mag'
+                param['B']=1  
         else: model2=model
-        return model2
+        return model2,param
+
+    def filter_model(survey,model):
+        if survey!='gaia': return survey
+        if model=='bt_settl': return 'gaia_dr2'
+        elif model=='mist': return 'gaia_edr3'
+        elif model=='parsec': return 'gaia_edr3'
+        elif model=='amard': return 'gaia_dr2'    
+        elif model=='spots': return 'gaia_dr2'
+        elif model=='dartmouth': return 'gaia_dr2'
+        elif model=='ames_cond': return 'gaia_dr2'
+        elif model=='ames_cond': return 'gaia_dr2'
+        elif model=='ames_cond': return 'gaia_dr2'
 
     filter_vec={'gaia':['G','Gbp','Grp'],'2mass':['J','H','K'],
         'wise':['W1','W2','W3','W4'],'johnson':['U','B','V','R','i'],
@@ -401,15 +426,30 @@ def load_isochrones(model,surveys=['gaia','2mass','wise'],mass_range=[0.01,1.4],
     
     surveys=list(map(str.lower,surveys))    
     model=(str.lower(model)).replace('-','_')
-    model_code=model_name(model,feh=feh,afe=afe,v_vcrit=v_vcrit,fspot=fspot,B=B)
+    model_code,param=model_name(model,feh=feh,afe=afe,v_vcrit=v_vcrit,fspot=fspot,B=B)
+    param['mass_range']=mass_range
+    param['age_range']=age_range
     
     file=model_code
     for i in range(len(surveys)): file=file+'_'+sorted(surveys)[i]
     PIK=Path(PIK_path) / (file+'.pkl')
 
-    try: #se c'è
-        open(PIK,'r')
-    except IOError:
+    do_it=0
+    if file_search(PIK)==0: do_it=1
+    else:
+        with open(PIK,'rb') as f:
+            iso_f=pickle.load(f)
+            mnew=pickle.load(f)
+            anew=pickle.load(f)
+            fnew=pickle.load(f)
+            param0=pickle.load(f)
+        if ((param0['mass_range'][0] > mass_range[0]) | (param0['mass_range'][1] < mass_range[1]) |
+            (param0['age_range'][0] > age_range[0]) | (param0['age_range'][1] < age_range[1]) |
+            (param0['feh']!=param['feh']) | (param0['afe']!=param['afe']) | (param0['v_vcrit']!=param['v_vcrit'])
+            | (param0['fspot']!=param['fspot']) | (param0['B']!=param['B'])): 
+            del iso_f,mnew,anew
+            do_it=1            
+    if do_it:
         fnew=[]
 
         survey_list=['gaia','2mass','wise','johnson','panstarrs','sloan','sphere']
@@ -424,27 +464,14 @@ def load_isochrones(model,surveys=['gaia','2mass','wise'],mass_range=[0.01,1.4],
         nf=len(fnew)
         c=0
         
+        n1=n_steps[0]
+        n2=n_steps[1]
         for i in range(len(surveys)):
             masses, ages, v0, data0 = model_data(surveys[i],model_code)
-#            print('input:')
-#            print(masses.shape)
-#            print(ages.shape)
-#            print(v0.shape)
-#            print(data0.shape)
-#            print(surveys[i],model)
-
-#            print(masses)
-#            print(ages)
-#            print(v0)
-#            print(data0)
-#            sys.exit()
-            
             if 'iso_f' not in locals():
                 nm=len(masses)
                 na=len(ages)
-                n1=n_steps[0]
-                n2=n_steps[1]
-                mnew=M_sun/M_jup*mass_range[0]+M_sun/M_jup*(mass_range[1]-mass_range[0])/(n1-1)*np.arange(n1)
+                mnew=M_sun.value/M_jup.value*mass_range[0]+M_sun.value/M_jup.value*(mass_range[1]-mass_range[0])/(n1-1)*np.arange(n1)
                 anew=np.exp(np.log(age_range[0])+(np.log(age_range[1])-np.log(age_range[0]))/(n2-1)*np.arange(n2))
                 iso_f=np.full(([n1,n2,nf]), np.nan) #matrice con spline in età, devo completarla
             iso=np.full(([n1,len(ages),len(filter_vec[surveys[i]])]),np.nan) #matrice con spline in massa, devo completarla        
@@ -468,19 +495,14 @@ def load_isochrones(model,surveys=['gaia','2mass','wise'],mass_range=[0.01,1.4],
                         iso_f[k,:,j+c]=f(anew)
             c+=len(filter_vec[surveys[i]])
                         
-        mnew=M_jup/M_sun*mnew
+        mnew=M_jup.value/M_sun.value*mnew
         fnew=np.array(fnew)
         with open(PIK,'wb') as f:
             pickle.dump(iso_f,f)
             pickle.dump(mnew,f)
             pickle.dump(anew,f)
             pickle.dump(fnew,f)
-    finally:
-        with open(PIK,'rb') as f:
-            iso_f=pickle.load(f)
-            mnew=pickle.load(f)
-            anew=pickle.load(f)
-            fnew=pickle.load(f)
+            pickle.dump(param,f)
 
     return mnew,anew,fnew,iso_f
 
@@ -504,7 +526,7 @@ def retrieve_parameters():
         print(surveys)
         print(ws0)
 
-def isochronal_age(phot_app,phot_err_app,par,par_err,iso,surveys,border_age=False,ebv=None):
+def isochronal_age(phot_app,phot_err_app,phot_filters,par,par_err,iso,surveys,border_age=False,ebv=None,verbose=False,filename=None):
 
     mnew=iso[0]
     anew=iso[1]
@@ -524,78 +546,81 @@ def isochronal_age(phot_app,phot_err_app,par,par_err,iso,surveys,border_age=Fals
     #contaminazione in flusso
     cont=np.zeros(2) #contaminazione nei filtri 2MASS per le stelle, in questo caso nulla
 
+    f_right=['J','H','K','G','Gbp','Grp'] #right order
     l0=phot.shape
     xlen=l0[0] #no. of stars: 85
-    ylen=l0[1] #no. of filters: 6
+    ylen=len(f_right) #no. of filters: 6
 
-    filt=where_v(['J','H','K','G','Gbp','Grp'],fnew)
+    filt=where_v(f_right,fnew)
+    filt2=where_v(f_right,phot_filters)
     wc=np.array([[filt[2],filt[0],filt[1],filt[5]],[filt[3],filt[3],filt[3],filt[4]]]) #(G-K), (G-J), (G-H), (Gbp-Grp)
-#    print(filt[wc])
+
+    newMC=newMC[:,:,filt] #ordered columns. Cuts unnecessary columns    
+    phot=phot[:,filt2] #ordered columns. Cuts unnecessary columns
+    phot_err=phot_err[:,filt2] #ordered columns. Cuts unnecessary columns
 
     red=np.zeros([xlen,ylen]) #reddening da applicare
     if type(ebv)!=type(None):
-        for i in range(ylen): red[:,i]=extinction(ebv,fnew[i])
+        for i in range(ylen): red[:,i]=extinction(ebv,f_right[i])
 
     l=newMC.shape #(780,460,10) cioè masse, età e filtri
     sigma=100+np.zeros([l[0],l[1],ylen]) #matrice delle distanze fotometriche (780,460,3)
-    loga=np.zeros([4,xlen]) #stime di log(età) in ognuno dei quattro canali (4,85)
-
+ 
     #calcolare reddening
-    m_cmsf=np.full(([4,xlen]),np.nan) #stime di massa (4,85,1)
-    a_cmsf=np.full(([4,xlen]),np.nan) #stime di età (4,85,1)
+    m_cmsf=np.full(([xlen,4]),np.nan) #stime di massa (85,4)
+    a_cmsf=np.full(([xlen,4]),np.nan) #stime di età (85,4)
 
     n_val=np.zeros(4) #numero di stelle usate per la stima per canale (0) e tipologia (SRB ecc, 1) (4,1)
-    tofit=np.zeros([4,xlen]) #contiene, per ogni CMS, 1 se fittato, 0 se non fittato (4,2,1)
+    tofit=np.zeros([xlen,4]) #contiene, per ogni CMS, 1 se fittato, 0 se non fittato (4,2,1)
 
     bin_corr=2.5*np.log10(2)*bin_frac #ossia, se le binarie sono identiche, la luminosità osservata è il doppio di quella della singola componente
+    phot=phot-red+bin_corr #(6,2) come phot
 
-    phot0=phot-red+bin_corr #(6,2) come phot
-
-    fate=np.ones([4,xlen]) #(4,85)  ci dice se la stella i nella stima j e nel canale k è stata fittata, ha errori alti, contaminazione ecc. Di default è contaminata (1)
+    fate=np.ones([xlen,4]) #(4,85)  ci dice se la stella i nella stima j e nel canale k è stata fittata, ha errori alti, contaminazione ecc. Di default è contaminata (1)
 
 
     sigma=np.full(([l[0],l[1],ylen]),np.nan) #(780,480,6) matrice delle distanze fotometriche
-             
+    
     for i in range(xlen): #devo escludere poi i punti con errore fotometrico non valido     
         w,=np.where(is_phot_good(phot[i,:],phot_err[i,:],max_phot_err=ph_cut))
-     #   print('valid',i,w)
+    #    print('valid',i,w)
         if len(w)==0: continue
         go=0
         for j in range(4):
-            go+=isnumber(phot0[i,wc[0,j]]+phot0[i,wc[1,j]],finite=True)
+            go+=isnumber(phot[i,wc[0,j]]+phot[i,wc[1,j]],finite=True)
         if go==0: continue
         e_j=-10.**(-0.4*phot_err[i,w])+10.**(+0.4*phot_err[i,w])
         for h in range(len(w)):
     #        print(i,xlen,h,len(w),w[h],go,newMC[0,0,w[h]])
-            sigma[:,:,w[h]]=(10.**(-0.4*(newMC[:,:,w[h]]-phot0[i,w[h]]))-1.)/e_j[h]
+            sigma[:,:,w[h]]=(10.**(-0.4*(newMC[:,:,w[h]]-phot[i,w[h]]))-1.)/e_j[h]
         cr=np.zeros([l[0],l[1],4]) #(780,480,4) #per il momento comprende le distanze in G-K, G-J, G-H, Gbp-Grp
         for j in range(4):
-            if isnumber(phot0[i,wc[0,j]],finite=True)==0: continue
+            if isnumber(phot[i,wc[0,j]],finite=True)==0: continue
             cr[:,:,j]=(sigma[:,:,wc[0,j]])**2+(sigma[:,:,wc[1,j]])**2 #equivale alla matrice delle distanze in (G,K), (G,J), (G,H), (Gbp,Grp)
             colth=np.full(l[1],np.nan) #480 voglio verificare se la stella si trova "in mezzo" al set di isocrone oppure all'esterno; voglio fare un taglio a mag costante
             asa=np.zeros(l[1])
             for q in range(l[1]): #480
-    #            print(i,j,q,anew[q],phot0[i,wc[0,j]],np.nanmin(newMC[:,q,wc[0,j]]))
-                asa[q],im0=min_v(newMC[:,q,wc[0,j]]-phot0[i,wc[0,j]],absolute=True) #trova il punto teorico più vicino nel primo filtro per ogni isocrona
+       #         print(i,j,q,anew[q],phot[i,wc[0,j]],np.nanmin(newMC[:,q,wc[0,j]]))
+                asa[q],im0=min_v(newMC[:,q,wc[0,j]]-phot[i,wc[0,j]],absolute=True) #trova il punto teorico più vicino nel primo filtro per ogni isocrona
                 if abs(asa[q])<0.1: colth[q]=newMC[im0,q,wc[1,j]] #trova la magnitudine corrispondente nel secondo filtro della coppia
             asb=min(asa,key=abs) #se la minima distanza nel primo filtro è maggiore della soglia, siamo al di fuori del range in massa delle isocrone
-    #        print(i,j,phot0[i,wc[0,j]],phot_err[i,wc[0,j]],asb)
-    #        print(cr[:,:,j])
+       #     print(i,j,phot[i,wc[0,j]],phot_err[i,wc[0,j]],asb)
+       #     print(cr[:,:,j])
             est,ind=min_v(cr[:,:,j])
-            if (est <= 2.25 or (phot0[i,wc[1,j]] >= min(colth) and phot0[i,wc[1,j]] <= max(colth))) and np.isnan(est)==False and (np.isnan(min(colth))==False and np.isnan(max(colth))==False):  #condizioni per buon fit: la stella entro griglia isocrone o a non più di 3 sigma, a condizione che esista almeno un'isocrona al taglio in "colth"
-                m_cmsf[j,i]=mnew[ind[0]] #massa del CMS i-esimo
-                a_cmsf[j,i]=anew[ind[1]] #età del CMS i-esimo
+            if (est <= 2.25 or (phot[i,wc[1,j]] >= min(colth) and phot[i,wc[1,j]] <= max(colth))) and np.isnan(est)==False and (np.isnan(min(colth))==False and np.isnan(max(colth))==False):  #condizioni per buon fit: la stella entro griglia isocrone o a non più di 3 sigma, a condizione che esista almeno un'isocrona al taglio in "colth"
+                m_cmsf[i,j]=mnew[ind[0]] #massa del CMS i-esimo
+                a_cmsf[i,j]=anew[ind[1]] #età del CMS i-esimo
                 n_val[j]+=1
-                tofit[j,i]=1
+                tofit[i,j]=1
 
-            if (is_phot_good(phot0[i,wc[0,j]],phot_err[i,wc[0,j]],max_phot_err=ph_cut)==0) or (is_phot_good(phot0[i,wc[1,j]],phot_err[i,wc[1,j]],max_phot_err=ph_cut)==0): pass #rimane 0
-            elif est > 2.25 and phot0[i,wc[1,j]] < min(colth):  fate[j,i]=2
-            elif est > 2.25 and phot0[i,wc[1,j]] > max(colth):  fate[j,i]=3
-            elif est > 2.25 and abs(asb) >= 0.1: fate[j,i]=4
-            else: fate[j,i]=5
-            if (border_age==True and est>=2.25 and phot0[i,wc[1,j]]>max(colth)):
-                a_cmsf[j,i]=anew[0]
-                tofit[j,i]=1
+            if (is_phot_good(phot[i,wc[0,j]],phot_err[i,wc[0,j]],max_phot_err=ph_cut)==0) or (is_phot_good(phot[i,wc[1,j]],phot_err[i,wc[1,j]],max_phot_err=ph_cut)==0): pass #rimane 0
+            elif est > 2.25 and phot[i,wc[1,j]] < min(colth):  fate[i,j]=2
+            elif est > 2.25 and phot[i,wc[1,j]] > max(colth):  fate[i,j]=3
+            elif est > 2.25 and abs(asb) >= 0.1: fate[i,j]=4
+            else: fate[i,j]=5
+            if (border_age==True and est>=2.25 and phot[i,wc[1,j]]>max(colth)):
+                a_cmsf[i,j]=anew[0]
+                tofit[i,j]=1
                 
         if anew[-1]<150: plot_ages=[1,3,5,10,20,30,100] #ossia l'ultimo elemento
         elif anew[-1]<250: plot_ages=[1,3,5,10,20,30,100,200]
@@ -604,17 +629,29 @@ def isochronal_age(phot_app,phot_err_app,par,par_err,iso,surveys,border_age=Fals
         else: plot_ages=[1,3,5,10,20,30,100,200,500,1000]
 
 #    if os.path.isfile(path / 'TestFile.txt')==0: print("Ora dovrebbe plottare una figura")
-#    if file_search(path+'G-K_G_'+wh+'.*') eq '' and keyword_set(no_img) eq 0 and keyword_set(silent) eq 0 then plot_stars2,phot0[3,*]-phot0[2,*],phot0[3,*],newMC,'G-K','G',plot_ages,iso_ages=anew,xerr=phot_err[2,*]+phot_err[3,*],yerr=phot_err[3,*],tofile=path+'G-K_G_'+wh+'.eps',label_points=1+indgen(ylen),sym_size=radius,highlight=tofit[0,*,t],/show_errors,charsize=0.3
-#    if file_search(path+'G-J_J_'+wh+'.*') eq '' and keyword_set(no_img) eq 0 and keyword_set(silent) eq 0 then plot_stars2,phot0[3,*]-phot0[0,*],phot0[0,*],newMC,'G-J','J',plot_ages,iso_ages=anew,xerr=phot_err[0,*]+phot_err[3,*],yerr=phot_err[0,*],tofile=path+'G-J_J_'+wh+'.eps',label_points=1+indgen(ylen),sym_size=radius,highlight=tofit[1,*,t],/show_errors,charsize=0.3
-#    if file_search(path+'G-H_H_'+wh+'.*') eq '' and keyword_set(no_img) eq 0 and keyword_set(silent) eq 0 then plot_stars2,phot0[3,*]-phot0[1,*],phot0[1,*],newMC,'G-H','H',plot_ages,iso_ages=anew,xerr=phot_err[1,*]+phot_err[3,*],yerr=phot_err[1,*],tofile=path+'G-H_H_'+wh+'.eps',label_points=1+indgen(ylen),sym_size=radius,highlight=tofit[2,*,t],/show_errors,charsize=0.3
-#    if file_search(path+'Gbp-Grp_G_'+wh+'.*') eq '' and keyword_set(no_img) eq 0 and keyword_set(silent) eq 0 then plot_stars2,phot0[4,*]-phot0[5,*],phot0[3,*],newMC,'Gbp-Grp','G',plot_ages,iso_ages=anew,xerr=phot_err[4,*]+phot_err[5,*],yerr=phot_err[3,*],tofile=path+'Gbp-Grp_G_'+wh+'.eps',label_points=1+indgen(ylen),sym_size=radius,highlight=tofit[3,*,t],/show_errors,charsize=0.3
+#    if file_search(path+'G-K_G_'+wh+'.*') eq '' and keyword_set(no_img) eq 0 and keyword_set(silent) eq 0 then plot_stars2,phot[3,*]-phot[2,*],phot[3,*],newMC,'G-K','G',plot_ages,iso_ages=anew,xerr=phot_err[2,*]+phot_err[3,*],yerr=phot_err[3,*],tofile=path+'G-K_G_'+wh+'.eps',label_points=1+indgen(ylen),sym_size=radius,highlight=tofit[0,*,t],/show_errors,charsize=0.3
+#    if file_search(path+'G-J_J_'+wh+'.*') eq '' and keyword_set(no_img) eq 0 and keyword_set(silent) eq 0 then plot_stars2,phot[3,*]-phot[0,*],phot[0,*],newMC,'G-J','J',plot_ages,iso_ages=anew,xerr=phot_err[0,*]+phot_err[3,*],yerr=phot_err[0,*],tofile=path+'G-J_J_'+wh+'.eps',label_points=1+indgen(ylen),sym_size=radius,highlight=tofit[1,*,t],/show_errors,charsize=0.3
+#    if file_search(path+'G-H_H_'+wh+'.*') eq '' and keyword_set(no_img) eq 0 and keyword_set(silent) eq 0 then plot_stars2,phot[3,*]-phot[1,*],phot[1,*],newMC,'G-H','H',plot_ages,iso_ages=anew,xerr=phot_err[1,*]+phot_err[3,*],yerr=phot_err[1,*],tofile=path+'G-H_H_'+wh+'.eps',label_points=1+indgen(ylen),sym_size=radius,highlight=tofit[2,*,t],/show_errors,charsize=0.3
+#    if file_search(path+'Gbp-Grp_G_'+wh+'.*') eq '' and keyword_set(no_img) eq 0 and keyword_set(silent) eq 0 then plot_stars2,phot[4,*]-phot[5,*],phot[3,*],newMC,'Gbp-Grp','G',plot_ages,iso_ages=anew,xerr=phot_err[4,*]+phot_err[5,*],yerr=phot_err[3,*],tofile=path+'Gbp-Grp_G_'+wh+'.eps',label_points=1+indgen(ylen),sym_size=radius,highlight=tofit[3,*,t],/show_errors,charsize=0.3
 
     a_final=np.empty(xlen)
     m_final=np.empty(xlen)
     for i in range(xlen): 
-        a_final[i]=np.nanmean(a_cmsf[:,i])
-        m_final[i]=np.nanmean(m_cmsf[:,i])
- #       print(i,phot_app[i,:],par[i],phot0[i,:],a_final[i],a_cmsf[:,i])
+        a_final[i]=np.nanmean(a_cmsf[i,:])
+        m_final[i]=np.nanmean(m_cmsf[i,:])
+
+    if verbose==True:
+        path=os.path.dirname(filename)     #working path
+        sample_name=os.path.split(filename)[1] #file name
+        i=0
+        while sample_name[i]!='.': i=i+1
+        ext=sample_name[i:] #estension
+        sample_name=sample_name[:i]
+        
+        f=open(os.path.join(path,str(sample_name+'_ages.txt')), "w+")
+        f.write(tabulate(np.column_stack((m_cmsf,a_cmsf,m_final,a_final)),
+                         headers=['G-K_MASS','G-J_MASS','G-H_MASS','Gbp-Grp_MASS','G-K_AGE','G-J_AGE','G-H_AGE','Gbp-Grp_AGE','MASS','AGE'], tablefmt='plain', stralign='right', numalign='right', floatfmt=".2f"))
+        f.close()
 
     return a_final,m_final
 
@@ -676,6 +713,7 @@ def extinction(ebv,col):
     """
     A_law={'U':1.531,'B':1.317,'V':1,'R':0.748,'I':0.482,'L':0.058,'M':0.023,
        'J':0.243,'H':0.131,'K':0.078,'G':0.789,'Gbp':1.002,'Grp':0.589,
+           'G2':0.789,'Gbp2':1.002,'Grp2':0.589,
        'W1':0.039,'W2':0.026,'W3':0.040,'W4':0.020,
        'gmag':1.155,'rmag':0.843,'imag':0.628,'zmag':0.487,'ymag':0.395
       } #absorption coefficients
@@ -769,9 +807,9 @@ def search_phot(filename,surveys,coordinates='equatorial',verbose=False,overwrit
         if survey=='GAIA_EDR3':
             code='vizier:I/350/gaiaedr3'
             col1=['source_id','ra','ra_error','dec','dec_error','parallax','parallax_error','pmra','pmra_error','pmdec','pmdec_error','ruwe','phot_g_mean_mag','phot_g_mean_mag_error','phot_bp_mean_mag','phot_bp_mean_mag_error','phot_rp_mean_mag','phot_rp_mean_mag_error','dr2_radial_velocity','dr2_radial_velocity_error','phot_bp_rp_excess_factor_corrected']
-            hea=['source_id','ra','ra_error','dec','dec_error','parallax','parallax_error','pmra','pmra_error','pmdec','pmdec_error','ruwe','G','G_err','GBP','GBP_err','GRP','GRP_err','radial_velocity', 'radial_velocity_error','bp_rp_excess_factor']
+            hea=['source_id','ra','ra_error','dec','dec_error','parallax','parallax_error','pmra','pmra_error','pmdec','pmdec_error','ruwe','G','G_err','Gbp','Gbp_err','Grp','Grp_err','radial_velocity', 'radial_velocity_error','bp_rp_excess_factor']
             fmt=(".5f",".11f",".4f",".11f",".4f",".4f",".4f",".4f",".4f",".4f",".4f",".3f",".4f",".4f",".4f",".4f",".4f",".4f",".4f",".4f",".4f")
-            f_list=['G','GBP','GRP']
+            f_list=['G','Gbp','Grp']
             q_flags=['ruwe','bp_rp_excess_factor']
         elif survey=='2MASS':
             code='vizier:II/246/out'
@@ -790,9 +828,9 @@ def search_phot(filename,surveys,coordinates='equatorial',verbose=False,overwrit
         elif survey=='GAIA_DR2':
             code='vizier:I/345/gaia2'
             col1=['source_id','ra','ra_error','dec','dec_error','parallax','parallax_error','pmra','pmra_error','pmdec','pmdec_error','phot_g_mean_flux','phot_g_mean_flux_error','phot_g_mean_mag','phot_bp_mean_flux','phot_bp_mean_flux_error','phot_bp_mean_mag','phot_rp_mean_flux','phot_rp_mean_flux_error','phot_rp_mean_mag','radial_velocity','radial_velocity_error']
-            hea=['source_id','ra','ra_error','dec','dec_error','parallax','parallax_error','pmra','pmra_error','pmdec','pmdec_error','G2_flux','G2_flux_err','G2','GBP2_flux','GBP2_flux_err','GBP2','GRP2_flux','GRP2_flux_err','GRP2','radial_velocity','radial_velocity_error']
+            hea=['source_id','ra','ra_error','dec','dec_error','parallax','parallax_error','pmra','pmra_error','pmdec','pmdec_error','G2_flux','G2_flux_err','G2','Gbp2_flux','Gbp2_flux_err','Gbp2','Grp2_flux','Grp2_flux_err','Grp2','radial_velocity','radial_velocity_error']
             fmt=(".5f",".11f",".4f",".11f",".4f",".4f",".4f",".4f",".4f",".4f",".4f",".4f",".4f",".4f",".4f",".4f",".4f",".4f",".4f",".4f",".4f",".4f")
-            f_list=['G2','GBP2','GRP2']            
+            f_list=['G2','Gbp2','Grp2']            
             q_flags=[]
         elif survey=='WISE':
             code='vizier:II/311/wise'
@@ -824,7 +862,6 @@ def search_phot(filename,surveys,coordinates='equatorial',verbose=False,overwrit
     surveys0.extend(surveys)
     surveys=surveys0
     ns=len(surveys)
-    print('aaaa',surveys)
 
     file=''+sample_name
     for i in range(len(surveys)): file+='_'+surveys[i]
@@ -1016,38 +1053,43 @@ def search_phot(filename,surveys,coordinates='equatorial',verbose=False,overwrit
     
     return phot,phot_err,kin,flags,headers
 
-def Wu_line_integrate(f,x0,x1,y0,y1,z0,z1):
-    n=20*max(math.ceil(abs(max([x1-x0,y1-y0,z1-z0]))),500)
-    I=0
+def Wu_line_integrate(f,x0,x1,y0,y1,z0,z1,layer=None):
+    n=int(10*np.ceil(abs(max([x1-x0,y1-y0,z1-z0],key=abs))))    
     dim=f.shape    
-    i=0
-    
-    x=np.linspace(x0,x1,num=n)
-    if n_dim(f)==2:
-        m=(y1-y0)/(x1-x0) #slope of the line
-        d10=np.sqrt((x1-x0)**2+(y1-y0)**2) #distance
-        
-        y=y0+m*(x-x0)
-        while (x[i]<dim[0]) & (y[i]<dim[1]) & (i<n):
-            I+=f[math.floor(x[i]),math.floor(y[i])]
-            i+=1
-    elif n_dim(f)==3:
-        m=(y1-y0)/(x1-x0) #slope of the line
-        d10=np.sqrt((x1-x0)**2+(y1-y0)**2+(z1-z0)**2) #distance
-        
-        y=np.linspace(y0,y1,num=n)
-        z=np.linspace(z0,z1,num=n)
-        while (x[i]<dim[0]) & (y[i]<dim[1]) & (z[i]<dim[2]) & (i<n-1):
-            I+=f[math.floor(x[i]),math.floor(y[i]),math.floor(z[i])]
-            i+=1
-    
+
+    x=np.floor(np.linspace(x0,x1,num=n)).astype(int)
+    y=np.floor(np.linspace(y0,y1,num=n)).astype(int)
+    I=0
+
+    if type(layer)==type(None):
+        if n_dim(f)==2:
+            d10=np.sqrt((x1-x0)**2+(y1-y0)**2) #distance
+            w,=np.where((x<dim[0]) & (y<dim[1]))
+            for i in range(len(w)): I+=f[x[w[i]],y[w[i]]]
+        elif n_dim(f)==3:
+            d10=np.sqrt((x1-x0)**2+(y1-y0)**2+(z1-z0)**2) #distance        
+            z=np.floor(np.linspace(z0,z1,num=n)).astype(int)
+            w,=np.where((x<dim[0]) & (y<dim[1]) & (z<dim[2]))
+            for i in range(len(w)): I+=f[x[w[i]],y[w[i]],z[w[i]]]
+    else:
+        if n_dim(f)==3:
+            d10=np.sqrt((x1-x0)**2+(y1-y0)**2) #distance
+            w,=np.where((x<dim[1]) & (y<dim[2]))
+            for i in range(len(w)): I+=f[layer,x[w[i]],y[w[i]]]
+        elif n_dim(f)==4:
+            d10=np.sqrt((x1-x0)**2+(y1-y0)**2+(z1-z0)**2) #distance        
+            z=np.floor(np.linspace(z0,z1,num=n)).astype(int)
+            w,=np.where((x<dim[1]) & (y<dim[2]) & (z<dim[3]))
+            for i in range(len(w)): I+=f[layer,x[w[i]],y[w[i]],z[w[i]]]
+                
     return I/n*d10
 
-def interstellar_ext(ra=None,dec=None,l=None,b=None,par=None,d=None,test_time=False,ext_map='leike',color='B-V'):
+def interstellar_ext(ra=None,dec=None,l=None,b=None,par=None,d=None,test_time=False,ext_map='leike',color='B-V',error=False):
 
-    if ext_map=='leike': fname='leike_mean_std.h5'
-    elif ext_map=='stilism': fname='STILISM_v.fits'
-    else: fname='leike_mean_std.h5' #change for other maps
+    if (ext_map=='leike') & (error==False): fname='leike_mean_std.h5'
+    elif (ext_map=='leike') & (error==True): fname='leike_samples.h5'
+    if (ext_map=='stilism'): fname='STILISM_v.fits'
+
     folder = os.path.dirname(os.path.realpath(__file__))
     paths=[x[0] for x in os.walk(folder)]
     found = False
@@ -1063,13 +1105,19 @@ def interstellar_ext(ra=None,dec=None,l=None,b=None,par=None,d=None,test_time=Fa
         else: ebv=0.
         return ebv
 
-    fits_image_filename=os.path.join(map_path,fname)
-    f = h5py.File(fits_image_filename,'r')
-    data = f['mean']
-
-    x=np.arange(-370.,370.)
-    y=np.arange(-370.,370.)
-    z=np.arange(-270.,540.)
+    if ext_map=='leike': 
+        x=np.arange(-370.,370.)
+        y=np.arange(-370.,370.)
+        z=np.arange(-270.,270.)
+        if error==False: obj='mean'
+        else: obj='dust_samples'
+        fits_image_filename=os.path.join(map_path,fname)
+        f = h5py.File(fits_image_filename,'r')
+        data = f[obj]
+    elif ext_map=='stilism': 
+        x=np.arange(-3000.,3005.,5)
+        y=np.arange(-3000.,3005.,5)
+        z=np.arange(-400.,405.,5)    
 
     if type(ra)==type(None) and type(l)==type(None): raise NameError('At least one between RA and l must be supplied!') # ok=dialog_message(')
     if type(dec)==type(None) and type(b)==type(None): raise NameError('At least one between dec and b must be supplied!')
@@ -1080,16 +1128,26 @@ def interstellar_ext(ra=None,dec=None,l=None,b=None,par=None,d=None,test_time=Fa
 
     sun=[closest(x,0),closest(z,0)]
     
-    if type(ra)!=type(None): #computes galactic l and b, if missing
-        c_eq = SkyCoord(ra=ra*u.degree, dec=dec*u.degree, frame='icrs')
-        l=c_eq.galactic.l.degree
-        b=c_eq.galactic.b.degree
+    #  ;Sun-centered Cartesian Galactic coordinates (right-handed frame)
     if type(d)==type(None): d=1000./par #computes heliocentric distance, if missing
+    if type(ra)!=type(None): #equatorial coordinates
+        c1 = SkyCoord(ra=ra*u.degree, dec=dec*u.degree,
+                            distance=d*u.pc,
+                            frame='icrs')
+    else:
+        c1 = SkyCoord(l=l*u.degree, b=b*u.degree, #galactic coordinates
+                            distance=d*u.pc,
+                            frame='galactic')
 
-    #  ;Sun-centered cartesian Galactic coordinates. X and Y are in the midplane
-    x0=d*np.cos(l*np.pi/180)*np.cos(b*np.pi/180) #X is directed to the Galactic Center
-    y0=d*np.sin(l*np.pi/180)*np.cos(b*np.pi/180) #Y is in the sense of rotation
-    z0=d*np.sin(b*np.pi/180) #Z points to the north Galactic pole
+    gc1 = c1.transform_to(Galactocentric)
+    x0=(gc1.x+gc1.galcen_distance).value #X is directed to the Galactic Center
+    y0=gc1.y.value #Y is in the sense of rotation
+    z0=(gc1.z-gc1.z_sun).value #Z points to the north Galactic pole    
+
+#    #  ;Sun-centered cartesian Galactic coordinates. X and Y are in the midplane
+#    x0=d*np.cos(l*np.pi/180)*np.cos(b*np.pi/180) #X is directed to the Galactic Center
+#    y0=d*np.sin(l*np.pi/180)*np.cos(b*np.pi/180) #Y is in the sense of rotation
+#    z0=d*np.sin(b*np.pi/180) #Z points to the north Galactic pole
 
     px=closest(x,x0)
     py=closest(y,y0)
@@ -1097,14 +1155,8 @@ def interstellar_ext(ra=None,dec=None,l=None,b=None,par=None,d=None,test_time=Fa
 
     dist=x[1]-x[0]
 
-
-    if n_elements(px)==1:
-        if px<len(x)-1: px2=(x0-x[px])/dist+px
-        if py<len(y)-1: py2=(y0-y[py])/dist+py
-        if pz<len(z)-1: pz2=(z0-z[pz])/dist+pz
-        if ext_map=='stilism': ebv=dist*Wu_line_integrate(data,sun[0],px2,sun[0],py2,sun[1],pz2)/3.16
-        elif ext_map=='leike': ebv=dist*(2.5*Wu_line_integrate(data,sun[0],px2,sun[0],py2,sun[1],pz2)*np.log10(np.exp(1)))/3.16/0.789
-    else:
+    try:
+        len(px)        
         wx,=np.where(px<len(x)-1)
         wy,=np.where(py<len(y)-1)
         wz,=np.where(pz<len(z)-1)
@@ -1114,19 +1166,51 @@ def interstellar_ext(ra=None,dec=None,l=None,b=None,par=None,d=None,test_time=Fa
         px2[wx]=(x0[wx]-x[px[wx]])/dist+px[wx]
         py2[wy]=(y0[wy]-y[py[wy]])/dist+py[wy]
         pz2[wz]=(z0[wz]-z[pz[wz]])/dist+pz[wz]    
-        ebv=np.empty(n_elements(x0))
-        ebv.fill(np.nan)
+        ebv=np.full(len(x0),np.nan)
         if ext_map=='stilism':
             for i in range(n_elements(x0)):
                 if np.isnan(px2[i])==0:
                     ebv[i]=dist*Wu_line_integrate(data,sun[0],px2[i],sun[0],py2[i],sun[1],pz2[i])/3.16
         elif ext_map=='leike':
-            for i in range(n_elements(x0)):
-                if np.isnan(px2[i])==0:
-                    ebv[i]=dist*(2.5*Wu_line_integrate(data,sun[0],px2[i],sun[0],py2[i],sun[1],pz2[i])*np.log10(np.exp(1)))/3.16/0.789
-
-    if color=='B-V': return ebv
-    else: return extinction(ebv,color)
+            if error==False: 
+                for i in range(n_elements(x0)):
+                    if np.isnan(px2[i])==0:
+                        ebv[i]=dist*(2.5*Wu_line_integrate(data,sun[0],px2[i],sun[0],py2[i],sun[1],pz2[i])*np.log10(np.exp(1)))/3.16/0.789
+            else:
+                dim=data.shape
+                ebv0=np.full([len(x0),dim[0]],np.nan)
+                ebv_s=np.full(len(x0),np.nan)
+                for i in range(n_elements(x0)):
+                    if np.isnan(px2[i])==0:
+                        for k in range(dim[0]):
+                            ebv0[i,k]=dist*(2.5*Wu_line_integrate(data,sun[0],px2[i],sun[0],py2[i],sun[1],pz2[i],layer=k)*np.log10(np.exp(1)))/3.16/0.789
+                    ebv[i]=np.mean(ebv0[i,:])
+                    ebv_s[i]=np.std(ebv0[i,:],ddof=1) #sample std dev                
+    except TypeError:
+        if px<len(x)-1: px2=(x0-x[px])/dist+px
+        if py<len(y)-1: py2=(y0-y[py])/dist+py
+        if pz<len(z)-1: pz2=(z0-z[pz])/dist+pz
+        if ext_map=='stilism': ebv=dist*Wu_line_integrate(data,sun[0],px2,sun[0],py2,sun[1],pz2)/3.16
+        elif ext_map=='leike': 
+            if error==False:
+                ebv=dist*(2.5*Wu_line_integrate(data,sun[0],px2,sun[0],py2,sun[1],pz2)*np.log10(np.exp(1)))/3.16/0.789
+            else:
+                dim=data.shape
+                ebv0=np.zeros(dim[0])
+                for k in range(dim[0]):
+                    ebv0[k]=dist*(2.5*Wu_line_integrate(data,sun[0],px2,sun[0],py2,sun[1],pz2,layer=k)*np.log10(np.exp(1)))/3.16/0.789
+                ebv=np.mean(ebv0)
+                ebv_s=np.std(ebv0,ddof=1) #sample std dev
+                    
+    if color=='B-V': 
+        if error==False:
+            return ebv
+        else: return ebv,ebv_s
+    else: 
+        if error==False:
+            return extinction(ebv,color)
+        else:
+            return extinction(ebv,color),extinction(ebv_s,color)
 
 def cross_match(cat1,cat2,max_difference=0.01,other_column=None,rule=None,exact=False,parallax=None,min_parallax=2):
     """
@@ -1299,7 +1383,7 @@ def file_search(files):
     case insensitive.
 
     """
-    if isinstance(files,str):
+    if (isinstance(files,str)) | (isinstance(files,Path)):
         try:
             open(files,'r')
         except IOError:
@@ -1312,7 +1396,7 @@ def file_search(files):
                 return 0
     return 1
 
-def plot_CMD(x,y,isochrones,iso_filters,iso_ages,x_axis,y_axis,plot_ages=[1,3,5,10,20,30,100],ebv=None,tofile=False,x_error=None,y_error=None,groups=None,group_names=None,label_points=False):
+def plot_CMD(x,y,iso,x_axis,y_axis,plot_ages=[1,3,5,10,20,30,100],ebv=None,tofile=False,x_error=None,y_error=None,groups=None,group_names=None,label_points=False,**kwargs):
 
     """
     plots the CMD of a given set of stars, with theoretical isochrones overimposed
@@ -1320,9 +1404,11 @@ def plot_CMD(x,y,isochrones,iso_filters,iso_ages,x_axis,y_axis,plot_ages=[1,3,5,
     input:
         x: data to be plotted on the x-axis
         y: data to be plotted on the y-axis
-        isochrones: a 3D isochrone grid M(masses,ages,filters)
-        iso_filters: isochrone grid filter list
-        iso_ages: isochrone grid ages
+        iso: a tuple containing the output of load_isochrones, i.e.:
+            -an array of isochrone grid ages
+            -an array of isochrone grid masses
+            -an array of isochrone grid filters
+            -a 3D isochrone grid M(masses,ages,filters)        
         x_axis: name of the x axis, e.g. 'G-K'
         y_axis: name of the y axis
         plot_ages: ages (in Myr) of the isochrones to be plotted. Default: [1,3,5,10,20,30,100] 
@@ -1335,18 +1421,25 @@ def plot_CMD(x,y,isochrones,iso_filters,iso_ages,x_axis,y_axis,plot_ages=[1,3,5,
             star belongs to
         group_names (mandatory if groups is set): labels of 'groups'
         label_points (optional): an array with labels for each star. Default=False.
+        plot_masses (optional): masses (in M_sun) of tracks to be plotted. Default=None.
         
     usage:
         let G, K be magnitudes of a set of stars with measured errors G_err, K_err;
-        isochrones the theoretical matrix, with 'filters' and 'ages' vectors
+        iso the tuple containing the theoretical matrix and its age, mass and filter labels
         the stars are divided into two groups: label=['group0','group1'] through the array 'classes'
-        plot_CMD(G-K,G,isochrones,filters,ages,'G-K','G',x_error=col_err,y_error=mag_err,groups=classes,group_names=label,tofile=file)
+        plot_CMD(G-K,G,iso,'G-K','G',x_error=col_err,y_error=mag_err,groups=classes,group_names=label,tofile=file)
         draws the isochrones, plots the stars in two different colors and saves the CMD on the file 'file'
         An array with the (median) extinction/color excess is plotted, pointing towards dereddening.
         If label_points==True, sequential numbering 0,1,...,n-1 is used. If given an array, it uses them as labels
+        If e.g. plot_masses=[0.3,0.7,1.0], three mass tracks are overplotted as gray dashed lines
 
     """
 
+    isochrones=iso[3]
+    iso_ages=iso[1]
+    iso_filters=iso[2]
+    iso_masses=iso[0]
+    
     #axes ranges
     x_range=axis_range(x_axis,x)
     y_range=axis_range(y_axis,y)
@@ -1374,9 +1467,7 @@ def plot_CMD(x,y,isochrones,iso_filters,iso_ages,x_axis,y_axis,plot_ages=[1,3,5,
     tot_iso=len(isochrones[0]) #no. of grid ages
     npo=n_elements(x) #no. of stars
     nis=len(plot_ages) #no. of isochrones to be plotted
-
         
-#    fig=plt.figure(figsize=(16,12))
     fig, ax = plt.subplots(figsize=(16,12))
     
     if type(ebv)!=type(None): #subtracts extinction, if E(B-V) is provided
@@ -1384,15 +1475,23 @@ def plot_CMD(x,y,isochrones,iso_filters,iso_ages,x_axis,y_axis,plot_ages=[1,3,5,
         y_ext=extinction(ebv,y_axis)
         x1=x-x_ext
         y1=y-y_ext
+        plt.arrow(x_range[0]+0.2*(x_range[1]-x_range[0]),y_range[0]+0.1*(y_range[1]-y_range[0]),-np.median(x_ext),-np.median(y_ext),head_width=0.05, head_length=0.1, fc='k', ec='k', label='reddening')
     else:
         x1=x
         y1=y
-    plt.arrow(x_range[0]+0.2*(x_range[1]-x_range[0]),y_range[0]+0.1*(y_range[1]-y_range[0]),-np.median(x_ext),-np.median(y_ext),head_width=0.05, head_length=0.1, fc='k', ec='k', label='reddening')
     
     for i in range(len(plot_ages)):
         ii=closest(iso_ages,plot_ages[i])
         plt.plot(col_th[:,ii],mag_th[:,ii],label=str(plot_ages[i])+' Myr')
 
+    if 'plot_masses' in kwargs:
+        plot_masses=kwargs['plot_masses']
+        for i in range(len(plot_masses)):
+            im=closest(iso_masses,plot_masses[i])
+            plt.plot(col_th[im,:],mag_th[im,:],linestyle='dashed',color='gray') 
+            plt.annotate(str(plot_masses[i]),(col_th[im,0],mag_th[im,0]),size='large')
+            
+        
     if (type(groups)==type(None)):        
         if (type(x_error)==type(None)) & (type(y_error)==type(None)):
             plt.scatter(x1, y1, s=50, facecolors='none', edgecolors='black')
@@ -1411,7 +1510,6 @@ def plot_CMD(x,y,isochrones,iso_filters,iso_ages,x_axis,y_axis,plot_ages=[1,3,5,
     if label_points==True:
         n=(np.linspace(0,npo-1,num=npo,dtype=int)).astype('str')
         for i, txt in enumerate(n):
-            print(i,txt)
             ax.annotate(txt, (x1[i], y1[i]))
     elif label_points!=False:
         if isinstance(label_points[0],str): label_points=label_points.astype('str')
