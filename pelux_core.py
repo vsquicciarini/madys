@@ -553,10 +553,11 @@ def isochronal_age(phot_app,phot_err_app,phot_filters,par,par_err,flags,iso,surv
         qfl=flags['GAIA_EDR3']['edr3_bp_rp_excess_factor_corr']
         s1=0.0059898+8.817481e-12*phot[:,3]**7.618399
         q1,=np.where(abs(qfl)>3*s1) #excluded
-    phot[q1,4]=np.nan
-    phot_err[q1,4]=np.nan
-    phot[q1,5]=np.nan
-    phot_err[q1,5]=np.nan
+    if len(q1)>0:       
+        phot[q1,4]=np.nan
+        phot_err[q1,4]=np.nan
+        phot[q1,5]=np.nan
+        phot_err[q1,5]=np.nan
 
     qfl=flags['2MASS']['qfl']
     qJ=[]
@@ -566,15 +567,18 @@ def isochronal_age(phot_app,phot_err_app,phot_filters,par,par_err,flags,iso,surv
         if qfl[i][0]!='A': qJ.append(i)
         if qfl[i][1]!='A': qH.append(i)
         if qfl[i][2]!='A': qK.append(i)
-    qJ=np.array(qJ)
-    qH=np.array(qH)
-    qK=np.array(qK)
-    phot[qJ,0]=np.nan
-    phot_err[qJ,0]=np.nan
-    phot[qH,1]=np.nan
-    phot_err[qH,1]=np.nan
-    phot[qK,2]=np.nan
-    phot_err[qK,2]=np.nan
+    if len(qJ)>0:
+        qJ=np.array(qJ)
+        phot[qJ,0]=np.nan
+        phot_err[qJ,0]=np.nan
+    if len(qH)>0:
+        qH=np.array(qH)
+        phot[qH,1]=np.nan
+        phot_err[qH,1]=np.nan
+    if len(qK)>0:
+        qK=np.array(qK)
+        phot[qK,2]=np.nan
+        phot_err[qK,2]=np.nan
 
     red=np.zeros([xlen,ylen]) #reddening da applicare
     if type(ebv)!=type(None):
@@ -925,9 +929,15 @@ def search_phot(filename,surveys,coordinates='equatorial',verbose=False,overwrit
             coo_array=np.transpose([ec.ra.deg,ec.dec.deg])
             n=len(coo_array)
         else: #list of star names
-            with open(filename) as f:
-                target_list = np.genfromtxt(f,dtype="str",delimiter='*@.,')
+            if ext!='.csv':            
+                with open(filename) as f:
+                    target_list = np.genfromtxt(f,dtype="str",delimiter='*@.,')
+            else:
+                target_list = (pd.read_csv(filename, sep=',', header=0, comment='#', usecols=['Name'])).to_numpy()
+                target_list = target_list.reshape(len(target_list))
             n=len(target_list)
+            print(type(target_list))
+            print(target_list.shape)
             gex=0
             coo_array=np.zeros([n,2])
             for i in range(n):
