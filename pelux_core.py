@@ -415,14 +415,16 @@ def load_isochrones(model,surveys=['gaia','2mass','wise'],mass_range=[0.01,1.4],
         elif model=='spots': return 'gaia_dr2'
         elif model=='dartmouth': return 'gaia_dr2'
         elif model=='ames_cond': return 'gaia_dr2'
-        elif model=='ames_cond': return 'gaia_dr2'
-        elif model=='ames_cond': return 'gaia_dr2'
+        elif model=='ames_dusty': return 'gaia_dr2'
+        elif model=='bt_nextgen': return 'gaia_dr2'
+        elif model=='nextgen': return 'gaia_dr2'
 
     filter_vec={'gaia':['G','Gbp','Grp'],'2mass':['J','H','K'],
         'wise':['W1','W2','W3','W4'],'johnson':['U','B','V','R','i'],
          'panstarrs':['gmag','rmag','imag','zmag','ymag'],
          'sloan':['V_sl','R_sl','I_sl','K_sl','R_sl2','Z_sl','M_sl'],
-         'sphere':['Ymag','Jmag','Hmag','Kmag','H2mag','H3mag','H4mag','J2mag','J3mag','K1mag','K2mag','Y2mag','Y3mag']}
+         'sphere':['Ymag','Jmag','Hmag','Kmag','H2mag','H3mag','H4mag','J2mag','J3mag','K1mag','K2mag','Y2mag','Y3mag'],
+                'gaia_dr2':['G2','Gbp2','Grp2'],'gaia_edr3':['G','Gbp','Grp']}
     
     surveys=list(map(str.lower,surveys))    
     model=(str.lower(model)).replace('-','_')
@@ -460,7 +462,7 @@ def load_isochrones(model,surveys=['gaia','2mass','wise'],mass_range=[0.01,1.4],
 
         fnew=[]
         for i in range(len(surveys)):
-            fnew.extend(filter_vec[surveys[i]])
+            fnew.extend(filter_vec[filter_model(surveys[i],model)])
         nf=len(fnew)
         c=0
         
@@ -506,27 +508,7 @@ def load_isochrones(model,surveys=['gaia','2mass','wise'],mass_range=[0.01,1.4],
 
     return mnew,anew,fnew,iso_f
 
-
-def retrieve_parameters():
-    with open(folder / 'options.txt') as f:
-        opt = np.genfromtxt(f,dtype="str")
-        parameters=opt[:,1]
-        max_r=float(parameters[1])
-        lit_file=parameters[2]
-        ph_cut=float(parameters[5])
-        max_flux_cont=float(parameters[6])
-        if parameters[10]=='single': n_est=1
-        elif parameters[10]=='multiple': n_est=4 #SNU, SRU, BNU, BRU
-        surveys=parameters[12].split(',')
-        ws0=['2MASS' in surveys,'WISE' in surveys,'Panstarrs' in surveys] #quali survey oltre a Gaia devo usare?
-        print(max_r)
-        print(lit_file)
-        print(ph_cut)
-        print(max_flux_cont)
-        print(surveys)
-        print(ws0)
-
-def isochronal_age(phot_app,phot_err_app,phot_filters,par,par_err,iso,surveys,border_age=False,ebv=None,verbose=False,filename=None):
+def isochronal_age(phot_app,phot_err_app,phot_filters,par,par_err,flags,iso,surveys,border_age=False,ebv=None,verbose=False,filename=None):
 
     mnew=iso[0]
     anew=iso[1]
@@ -546,18 +528,53 @@ def isochronal_age(phot_app,phot_err_app,phot_filters,par,par_err,iso,surveys,bo
     #contaminazione in flusso
     cont=np.zeros(2) #contaminazione nei filtri 2MASS per le stelle, in questo caso nulla
 
-    f_right=['J','H','K','G','Gbp','Grp'] #right order
+    #selects Gaia DR2 photometry if the isochrones have DR2 filters, EDR3 otherwise
+    if 'G2' in fnew: f_right=['J','H','K','G2','Gbp2','Grp2'] #right order
+    else: f_right=['J','H','K','G','Gbp','Grp']
+
     l0=phot.shape
     xlen=l0[0] #no. of stars: 85
     ylen=len(f_right) #no. of filters: 6
 
     filt=where_v(f_right,fnew)
     filt2=where_v(f_right,phot_filters)
-    wc=np.array([[filt[2],filt[0],filt[1],filt[5]],[filt[3],filt[3],filt[3],filt[4]]]) #(G-K), (G-J), (G-H), (Gbp-Grp)
 
     newMC=newMC[:,:,filt] #ordered columns. Cuts unnecessary columns    
     phot=phot[:,filt2] #ordered columns. Cuts unnecessary columns
     phot_err=phot_err[:,filt2] #ordered columns. Cuts unnecessary columns
+
+    wc=np.array([[2,0,1,5],[3,3,3,4]]) #(G-K), (G-J), (G-H), (Gbp-Grp)
+
+    if 'G2' in fnew:
+        qfl=flags['GAIA_DR2']['dr2_bp_rp_excess_factor_corr']
+        s1=0.004+8e-12*phot[:,3]**7.55
+        q1,=np.where(abs(qfl)>3*s1)
+    else:
+        qfl=flags['GAIA_EDR3']['edr3_bp_rp_excess_factor_corr']
+        s1=0.0059898+8.817481e-12*phot[:,3]**7.618399
+        q1,=np.where(abs(qfl)>3*s1) #excluded
+    phot[q1,4]=np.nan
+    phot_err[q1,4]=np.nan
+    phot[q1,5]=np.nan
+    phot_err[q1,5]=np.nan
+
+    qfl=flags['2MASS']['qfl']
+    qJ=[]
+    qH=[]
+    qK=[]
+    for i in range(len(qfl)):
+        if qfl[i][0]!='A': qJ.append(i)
+        if qfl[i][1]!='A': qH.append(i)
+        if qfl[i][2]!='A': qK.append(i)
+    qJ=np.array(qJ)
+    qH=np.array(qH)
+    qK=np.array(qK)
+    phot[qJ,0]=np.nan
+    phot_err[qJ,0]=np.nan
+    phot[qH,1]=np.nan
+    phot_err[qH,1]=np.nan
+    phot[qK,2]=np.nan
+    phot_err[qK,2]=np.nan
 
     red=np.zeros([xlen,ylen]) #reddening da applicare
     if type(ebv)!=type(None):
@@ -576,6 +593,17 @@ def isochronal_age(phot_app,phot_err_app,phot_filters,par,par_err,iso,surveys,bo
     bin_corr=2.5*np.log10(2)*bin_frac #ossia, se le binarie sono identiche, la luminosità osservata è il doppio di quella della singola componente
     phot=phot-red+bin_corr #(6,2) come phot
 
+    #tagli sulla qualità fotometrica (pseudocodice)
+    #phot[where(exc_factor>sigma(G)),col_BP]=np.nan
+    #phot[where(exc_factor>sigma(G)),col_RP]=np.nan
+    #phot[where(2MASS_J_flag!='A'),col_J]=np.nan
+    #phot[where(2MASS_H_flag!='A'),col_H]=np.nan
+    #phot[where(2MASS_K_flag!='A'),col_K]=np.nan
+    #phot[where(WISE_W1_flag!='0'),col_W1]=np.nan
+    #phot[where(WISE_W2_flag!='0'),col_W2]=np.nan
+    #phot[where(WISE_W3_flag!='0'),col_W3]=np.nan
+    #phot[where(WISE_W4_flag!='0'),col_W4]=np.nan
+    
     fate=np.ones([xlen,4]) #(4,85)  ci dice se la stella i nella stima j e nel canale k è stata fittata, ha errori alti, contaminazione ecc. Di default è contaminata (1)
 
 
@@ -806,11 +834,12 @@ def search_phot(filename,surveys,coordinates='equatorial',verbose=False,overwrit
     def survey_properties(survey):
         if survey=='GAIA_EDR3':
             code='vizier:I/350/gaiaedr3'
-            col1=['source_id','ra','ra_error','dec','dec_error','parallax','parallax_error','pmra','pmra_error','pmdec','pmdec_error','ruwe','phot_g_mean_mag','phot_g_mean_mag_error','phot_bp_mean_mag','phot_bp_mean_mag_error','phot_rp_mean_mag','phot_rp_mean_mag_error','dr2_radial_velocity','dr2_radial_velocity_error','phot_bp_rp_excess_factor_corrected']
-            hea=['source_id','ra','ra_error','dec','dec_error','parallax','parallax_error','pmra','pmra_error','pmdec','pmdec_error','ruwe','G','G_err','Gbp','Gbp_err','Grp','Grp_err','radial_velocity', 'radial_velocity_error','bp_rp_excess_factor']
+            col1=['source_id','ra','ra_error','dec','dec_error','parallax','parallax_error','pmra','pmra_error','pmdec','pmdec_error','ruwe','phot_g_mean_mag','phot_g_mean_mag_error','phot_bp_mean_mag','phot_bp_mean_mag_error','phot_rp_mean_mag','phot_rp_mean_mag_error','dr2_radial_velocity','dr2_radial_velocity_error','phot_bp_rp_excess_factor_corrected'] #last from Riello et al. 2020
+            hea=['source_id','ra','ra_error','dec','dec_error','parallax','parallax_error','pmra','pmra_error','pmdec','pmdec_error','ruwe','G','G_err','Gbp','Gbp_err','Grp','Grp_err','radial_velocity', 'radial_velocity_error','edr3_bp_rp_excess_factor_corr']
             fmt=(".5f",".11f",".4f",".11f",".4f",".4f",".4f",".4f",".4f",".4f",".4f",".3f",".4f",".4f",".4f",".4f",".4f",".4f",".4f",".4f",".4f")
             f_list=['G','Gbp','Grp']
-            q_flags=['ruwe','bp_rp_excess_factor']
+            q_flags=['ruwe','edr3_bp_rp_excess_factor_corr']
+            fill_value=np.nan
         elif survey=='2MASS':
             code='vizier:II/246/out'
             col1=['2MASS','RA','DEC','Jmag','e_Jmag','Hmag','e_Hmag','Kmag','e_Kmag','Qfl']
@@ -818,6 +847,7 @@ def search_phot(filename,surveys,coordinates='equatorial',verbose=False,overwrit
             fmt=(".5f",".8f",".8f",".3f",".3f",".3f",".3f",".3f",".3f")
             f_list=['J','H','K']
             q_flags=['qfl']
+            fill_value='ZZZ'
         elif survey=='ALLWISE':
             code='vizier:II/328/allwise'
             col1=['AllWISE','RAJ2000','DEJ2000','W1mag','e_W1mag','W2mag','e_W2mag','W3mag','e_W3mag','W4mag','e_W4mag','ccf','d2M']
@@ -825,13 +855,15 @@ def search_phot(filename,surveys,coordinates='equatorial',verbose=False,overwrit
             fmt=(".5f",".8f",".8f",".3f",".3f",".3f",".3f",".3f",".3f",".3f",".3f",".3f",".4f")
             f_list=['W1','W2','W3','W4']
             q_flags=['ccf']
+            fill_value='ZZZZ'
         elif survey=='GAIA_DR2':
             code='vizier:I/345/gaia2'
-            col1=['source_id','ra','ra_error','dec','dec_error','parallax','parallax_error','pmra','pmra_error','pmdec','pmdec_error','phot_g_mean_flux','phot_g_mean_flux_error','phot_g_mean_mag','phot_bp_mean_flux','phot_bp_mean_flux_error','phot_bp_mean_mag','phot_rp_mean_flux','phot_rp_mean_flux_error','phot_rp_mean_mag','radial_velocity','radial_velocity_error']
-            hea=['source_id','ra','ra_error','dec','dec_error','parallax','parallax_error','pmra','pmra_error','pmdec','pmdec_error','G2_flux','G2_flux_err','G2','Gbp2_flux','Gbp2_flux_err','Gbp2','Grp2_flux','Grp2_flux_err','Grp2','radial_velocity','radial_velocity_error']
+            col1=['source_id','ra','ra_error','dec','dec_error','parallax','parallax_error','pmra','pmra_error','pmdec','pmdec_error','phot_g_mean_flux','phot_g_mean_flux_error','phot_g_mean_mag','phot_bp_mean_flux','phot_bp_mean_flux_error','phot_bp_mean_mag','phot_rp_mean_flux','phot_rp_mean_flux_error','phot_rp_mean_mag','radial_velocity','radial_velocity_error','phot_bp_rp_excess_factor','phot_bp_rp_excess_factor_corrected']
+            hea=['source_id','ra','ra_error','dec','dec_error','parallax','parallax_error','pmra','pmra_error','pmdec','pmdec_error','G2_flux','G2_flux_err','G2','Gbp2_flux','Gbp2_flux_err','Gbp2','Grp2_flux','Grp2_flux_err','Grp2','radial_velocity','radial_velocity_error','dr2_bp_rp_excess_factor','dr2_bp_rp_excess_factor_corr']
             fmt=(".5f",".11f",".4f",".11f",".4f",".4f",".4f",".4f",".4f",".4f",".4f",".4f",".4f",".4f",".4f",".4f",".4f",".4f",".4f",".4f",".4f",".4f")
             f_list=['G2','Gbp2','Grp2']            
-            q_flags=[]
+            q_flags=['dr2_bp_rp_excess_factor','dr2_bp_rp_excess_factor_corr']
+            fill_value=np.nan
         elif survey=='WISE':
             code='vizier:II/311/wise'
             col1=['JNAME','ra','dec','W1mag','e_W1mag','W2mag','e_W2mag','W3mag','e_W3mag','W4mag','e_W4mag','cc_flags']
@@ -839,8 +871,9 @@ def search_phot(filename,surveys,coordinates='equatorial',verbose=False,overwrit
             fmt=(".5f",".8f",".8f",".3f",".3f",".3f",".3f",".3f",".3f",".3f",".3f",".3f")
             f_list=['W1_w','W2_w','W3_w','W4_w']
             q_flags=['ccf_w']
+            fill_value='ZZZZ'
             
-        return code,col1,hea,fmt,f_list,q_flags
+        return code,col1,hea,fmt,f_list,q_flags,fill_value
 
     #stores path, file name, extension
     path=os.path.dirname(filename)     #working path
@@ -878,7 +911,7 @@ def search_phot(filename,surveys,coordinates='equatorial',verbose=False,overwrit
             phot=pickle.load(f)
             phot_err=pickle.load(f)
             kin=pickle.load(f)
-            flags=pickle.load(f)
+            flags2=pickle.load(f)
             headers=pickle.load(f)
     else:
         #is the input file a coordinate file or a list of star names?
@@ -942,6 +975,7 @@ def search_phot(filename,surveys,coordinates='equatorial',verbose=False,overwrit
         phot_err=np.full([n,nf],np.nan)
         kin=np.full([n,12],np.nan)
         flags=np.full([n,nq],'',dtype='<U10')
+        flags2={}
         
         survey_files = [os.path.join(path,sample_name+'_'+x+'_data.txt') for x in surveys]
             
@@ -954,11 +988,22 @@ def search_phot(filename,surveys,coordinates='equatorial',verbose=False,overwrit
         filt=[]
         flag_h=[]
         for i in range(len(surveys)):
-            print('waa',surveys[i])
-            cat_code,col2,hea,fmt,f_list,q_flags=survey_properties(surveys[i])
+            cat_code,col2,hea,fmt,f_list,q_flags,fill_value=survey_properties(surveys[i])
             n_f=len(f_list)
             n_q=len(q_flags)
             data_s = XMatch.query(cat1=coo_table,cat2=cat_code,max_distance=1.3 * u.arcsec, colRA1='RA',colDec1='DEC')
+            if i==1: #aggiunge colonna per BP-RP excess factor
+                C0=(data_s['phot_bp_mean_flux']+data_s['phot_rp_mean_flux'])/data_s['phot_g_mean_flux']
+                data_s['phot_bp_rp_excess_factor']=C0
+                data_G=np.array(np.ma.filled(data_s['phot_g_mean_mag'],fill_value=np.nan))
+                data_dG=np.array(np.ma.filled(data_s['phot_bp_mean_mag']-data_s['phot_rp_mean_mag'],fill_value=np.nan))
+                a0=lambda x: -1.121221*np.heaviside(-(x-0.5),0)-1.1244509*np.heaviside(-(x-3.5),0)-(-1.1244509*np.heaviside(-(x-0.5),0))-0.9288966*np.heaviside(x-3.5,1)
+                a1=lambda x: 0.0505276*np.heaviside(-(x-0.5),0)+0.0288725*np.heaviside(-(x-3.5),0)-(0.0288725*np.heaviside(-(x-0.5),0))-0.168552*np.heaviside(x-3.5,1)
+                a2=lambda x: -0.120531*np.heaviside(-(x-0.5),0)-0.0682774*np.heaviside(-(x-3.5),0)-(-0.0682774*np.heaviside(-(x-0.5),0))
+                a3=lambda x: 0.00795258*np.heaviside(-(x-3.5),0)-(0.00795258*np.heaviside(-(x-0.5),0))
+                a4=lambda x: -0.00555279*np.heaviside(-(x-0.5),0)-0.00555279*np.heaviside(-(x-3.5),0)-(-0.00555279*np.heaviside(-(x-0.5),0))-0.00555279*np.heaviside(x-3.5,1)
+                C1 = C0 + a0(data_dG)+a1(data_dG)*data_dG+a2(data_dG)*data_dG**2+a3(data_dG)*data_dG**3+a4(data_dG)*data_G #final corrected factor
+                data_s['phot_bp_rp_excess_factor_corrected']=C1
             if verbose==True:
                 f=open(os.path.join(path,str(sample_name+'_'+surveys[i]+'_data.txt')), "w+")
                 f.write(tabulate(data_s[col2], 
@@ -978,7 +1023,7 @@ def search_phot(filename,surveys,coordinates='equatorial',verbose=False,overwrit
             indG1,indG2=cross_match(coo_array,cat2,max_difference=0.001,other_column=mag,rule='min',parallax=para)
             for j in range(n_f):
                 mag_i=data_s[f_list[j]]
-                phot[indG1,j+p]=mag_i[indG2]
+                phot[indG1,j+p]=np.ma.filled(mag_i[indG2],fill_value=np.nan) #missing values replaced by NaN
                 try:
                     mag_err=data_s[f_list[j]+'_err']
                 except KeyError:
@@ -990,11 +1035,16 @@ def search_phot(filename,surveys,coordinates='equatorial',verbose=False,overwrit
             if i==0:
                 for j in range(len(kin_list)):
                     kin_i=data_s[kin_list[j]] 
-                    kin[indG1,j]=kin_i[indG2]
+                    kin[indG1,j]=np.ma.filled(kin_i[indG2],fill_value=np.nan) #missing values replaced by NaN
 
+            flags2[surveys[i]]={}
             for j in range(n_q):
                 flag=data_s[q_flags[j]]
-                flags[indG1,j+p1]=flag[indG2]
+                flags[indG1,j+p1]=np.ma.filled(flag[indG2],fill_value=np.nan) #missing values replaced by NaN
+                temp_flag=np.array(np.ma.filled(flag[indG2],fill_value=np.nan))
+                dd=np.full_like(temp_flag,fill_value,shape=n)
+                dd[indG1]=temp_flag
+                flags2[surveys[i]][q_flags[j]]=dd
             p1+=n_q
             flag_h.extend(q_flags)
             
@@ -1015,6 +1065,7 @@ def search_phot(filename,surveys,coordinates='equatorial',verbose=False,overwrit
             filt2=filt2[nw_w]
             cc=where_v(['ccf','ccf_w'],flag_h)
             flags[:,cc[0]]=np.where(isnumber(phot_err[:,w_a[j]],finite=True), flags[:,cc[0]], flags[:,cc[1]])
+            flags2['WISE']['ccf']=flags[:,cc[0]]
             phot=phot[:,nw_w] #deletes WISE magn
             phot_err=phot_err[:,nw_w]
             ncc=complement_v(cc[1],len(flag_h))
@@ -1023,7 +1074,7 @@ def search_phot(filename,surveys,coordinates='equatorial',verbose=False,overwrit
         
         headers.append(filt)
         headers.append(kin_list)
-        headers.append(flag_h)
+#        headers.append(flag_h)
 
         fff=[]
         fff.extend(filt)
@@ -1048,10 +1099,10 @@ def search_phot(filename,surveys,coordinates='equatorial',verbose=False,overwrit
             pickle.dump(phot,f)
             pickle.dump(phot_err,f)
             pickle.dump(kin,f)
-            pickle.dump(flags,f)
+            pickle.dump(flags2,f)
             pickle.dump(headers,f)
     
-    return phot,phot_err,kin,flags,headers
+    return phot,phot_err,kin,flags2,headers
 
 def Wu_line_integrate(f,x0,x1,y0,y1,z0,z1,layer=None):
     n=int(10*np.ceil(abs(max([x1-x0,y1-y0,z1-z0],key=abs))))    
@@ -1439,6 +1490,11 @@ def plot_CMD(x,y,iso,x_axis,y_axis,plot_ages=[1,3,5,10,20,30,100],ebv=None,tofil
     iso_ages=iso[1]
     iso_filters=iso[2]
     iso_masses=iso[0]
+
+    #changes names of Gaia_DR2 filters into EDR3
+    if 'G2' in iso_filters: 
+        w=where_v(['G2','Gbp2','Grp2'],iso_filters)
+        iso_filters[w]=['G','Gbp','Grp']
     
     #axes ranges
     x_range=axis_range(x_axis,x)
@@ -1507,12 +1563,13 @@ def plot_CMD(x,y,iso,x_axis,y_axis,plot_ages=[1,3,5,10,20,30,100],ebv=None,tofil
                     plt.scatter(x1[w], y1[w], s=50, facecolors='none', edgecolors=colorst[j], label=group_names[j])
                 else: plt.errorbar(x1[w], y1[w], yerr=y_error[w], xerr=x_error[w], fmt='o', color=colorst[j], label=group_names[j])
 
-    if label_points==True:
-        n=(np.linspace(0,npo-1,num=npo,dtype=int)).astype('str')
-        for i, txt in enumerate(n):
-            ax.annotate(txt, (x1[i], y1[i]))
-    elif label_points!=False:
-        if isinstance(label_points[0],str): label_points=label_points.astype('str')
+    if n_elements(label_points)==1:
+        if label_points==True:
+            n=(np.linspace(0,npo-1,num=npo,dtype=int)).astype('str')
+            for i, txt in enumerate(n):
+                ax.annotate(txt, (x1[i], y1[i]))
+    else:
+        if isinstance(label_points[0],str)==0: label_points=label_points.astype('str')
         for i, txt in enumerate(label_points):
             ax.annotate(txt, (x1[i], y1[i]))
         

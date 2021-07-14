@@ -885,6 +885,115 @@ def _read_model_SPOTS(path, fname, instrument): #VS21
         
     return masses, ages, values, dat
 
+def _read_model_Dartmouth(path, fname, instrument): #VS21
+    '''
+    (Private) Read the Dartmouth models
+
+    Parameters
+    ----------
+    path : str
+        Full path to the directory containing the model files
+
+    fname : str
+        Full model file name
+
+    instrument : str
+        Name of the instrument (or observatory) for the file
+
+    Returns
+    -------
+    masses : vector
+        Numpy vector with unique masses, in MJup
+
+    ages : vector
+        Numpy vector with unique ages, in Myr
+
+    values : array
+        Array with names of parameters
+
+    data : array
+        Numpy data array, interpolated to have consistent masses for all ages
+    '''
+
+    # read column headers and number of values
+    p_cols = re.compile('\s*#*\s*Mass\s+(log\(Teff\)\s+log\(g\)\s+log\(L\).+)')
+    p_vals = re.compile('\s+[0-9]+\s+([0-9]+.+)')
+    p_age = re.compile('\s*#*\s*Age\s+=\s+([0-9]+.+)+(\s*.yr\s*)+(\[Fe/H\]+.+)')
+
+    
+    # get column names
+    cols  = ['Mass']
+    file = open(path / fname, 'r')
+    line = file.readline()
+    while len(cols) == 1:
+        m = p_cols.match(line)
+        if (m is not None):
+            names = m.group(1)
+            cols.extend(names.split())
+        line = file.readline()         #reads next line
+    file.close()    
+
+    c2=len(fname)-1
+    while (fname[c2:c2+3]!='myr') & (c2>0): c2-=1
+    files=os.listdir(path)
+    iso_list=[] #list of all the isochrones with given Fe/H and alpha
+    for i in range(len(files)):
+        if fname[c2:] in files[i]: iso_list.append(files[i])
+    
+
+    datas=[] #stores all data
+    ages = []
+    values=np.array(cols[1:]) #exclude mass
+    mass_range=[np.inf,0]
+    n_m=0
+    
+    w_m=0
+    for i in range(len(iso_list)):
+        file = open(path / iso_list[i], 'r') #recovers age
+        line = file.readline()
+        found = 0
+        while found==0:
+            a = p_age.match(line)
+            if (a is not None):
+                age = float(a.group(1))
+                unit = (a.group(2)).strip()
+                if unit=='Myr': pass
+                elif unit=='Gyr': age*=1000
+                elif unit=='yr': age*=10**-6
+                ages.append(age)
+                found=1
+            line = file.readline()
+        file.close()    
+        
+        data=pd.read_fwf(path / iso_list[i],header=None,comment='#',infer_nrows=10000)
+        w,=np.where((isnumber(data[0],finite=True)) & (isnumber(data[1],finite=True)) & (isnumber(data[2],finite=True)))
+        data=data.iloc[w,:] #slicing
+
+        #converts pandas to numpy
+        data2=data.to_numpy(dtype=float)
+        mass_range=[np.min([mass_range[0],np.min(data2[:,w_m])]),np.max([mass_range[1],np.max(data2[:,w_m])])]
+        n_m=int(np.max([n_m,len(data)]))
+        datas.append(data2)
+
+    #output values
+    ages=np.array(ages)        
+    n_m=int(1.1*n_m)
+    masses=np.logspace(np.log10(mass_range[0]),np.log10(mass_range[1]),n_m)    
+    dat=np.full((n_m, len(ages), len(values)), np.nan)
+
+    #interpolates across the grid to fill dat
+    for i in range(len(ages)):
+        data2=datas[i]
+        ma=data2[:,w_m].reshape(len(data2))
+        for j in range(len(values)):
+            y=data2[:,j+1]
+            f = interp.interp1d(ma, y, bounds_error=False, fill_value=np.nan)
+            dat[:,i,j]=f(masses)
+
+        
+    masses=masses*cst.M_sun.value / cst.M_jup.value #converts into M_Jup
+                
+    return masses, ages, values, dat
 
 def _reshape_data(dataframe):
     '''
@@ -1510,19 +1619,26 @@ models = {
         {'instrument': 'wise',      'name': 'atmo2020_ceq',           'file': '0.0005_ATMO_CEQ_vega.txt',                                      'function': _read_model_atmo2020},
 
         {'instrument': 'gaia',      'name': 'spots_p0.00',            'file': 'f000_all_filters.isoc',                                         'function': _read_model_SPOTS},
-        {'instrument': '2mass',     'name': 'spots_p0.00',            'file': 'f000_all_filters.isoc',                                        'function': _read_model_SPOTS},
+        {'instrument': '2mass',     'name': 'spots_p0.00',            'file': 'f000_all_filters.isoc',                                         'function': _read_model_SPOTS},
         {'instrument': 'gaia',      'name': 'spots_p0.17',            'file': 'f017_all_filters.isoc',                                         'function': _read_model_SPOTS},
-        {'instrument': '2mass',     'name': 'spots_p0.17',            'file': 'f017_all_filters.isoc',                                        'function': _read_model_SPOTS},
+        {'instrument': '2mass',     'name': 'spots_p0.17',            'file': 'f017_all_filters.isoc',                                         'function': _read_model_SPOTS},
         {'instrument': 'gaia',      'name': 'spots_p0.34',            'file': 'f034_all_filters.isoc',                                         'function': _read_model_SPOTS},
-        {'instrument': '2mass',     'name': 'spots_p0.34',            'file': 'f034_all_filters.isoc',                                        'function': _read_model_SPOTS},
+        {'instrument': '2mass',     'name': 'spots_p0.34',            'file': 'f034_all_filters.isoc',                                         'function': _read_model_SPOTS},
         {'instrument': 'gaia',      'name': 'spots_p0.51',            'file': 'f051_all_filters.isoc',                                         'function': _read_model_SPOTS},
-        {'instrument': '2mass',     'name': 'spots_p0.51',            'file': 'f051_all_filters.isoc',                                        'function': _read_model_SPOTS},
+        {'instrument': '2mass',     'name': 'spots_p0.51',            'file': 'f051_all_filters.isoc',                                         'function': _read_model_SPOTS},
         {'instrument': 'gaia',      'name': 'spots_p0.68',            'file': 'f068_all_filters.isoc',                                         'function': _read_model_SPOTS},
-        {'instrument': '2mass',     'name': 'spots_p0.68',            'file': 'f068_all_filters.isoc',                                        'function': _read_model_SPOTS},
+        {'instrument': '2mass',     'name': 'spots_p0.68',            'file': 'f068_all_filters.isoc',                                         'function': _read_model_SPOTS},
         {'instrument': 'gaia',      'name': 'spots_p0.85',            'file': 'f085_all_filters.isoc',                                         'function': _read_model_SPOTS},
-        {'instrument': '2mass',     'name': 'spots_p0.85',            'file': 'f085_all_filters.isoc',                                        'function': _read_model_SPOTS}
+        {'instrument': '2mass',     'name': 'spots_p0.85',            'file': 'f085_all_filters.isoc',                                         'function': _read_model_SPOTS},
 
-,#   INSERT DR2     {'instrument': 'gaia',      'name': 'mist_p1.00_p0.0_p0.4',   'file': 'MIST_v1.2_feh_p1.00_afe_p0.0_vvcrit0.4_WISE.iso.cmd.txt',       'function': _read_model_MIST}
+        {'instrument': 'johnson',   'name': 'dartmouth_p0.00_p0.0_nomag',  'file': 'dmestar_00001.0myr_z+0.00_a+0.00_gas07_mrc.JC2MASSGaia',   'function': _read_model_Dartmouth},
+        {'instrument': 'gaia',      'name': 'dartmouth_p0.00_p0.0_nomag',  'file': 'dmestar_00001.0myr_z+0.00_a+0.00_gas07_mrc.JC2MASSGaia',   'function': _read_model_Dartmouth},
+        {'instrument': '2mass',     'name': 'dartmouth_p0.00_p0.0_nomag',  'file': 'dmestar_00001.0myr_z+0.00_a+0.00_gas07_mrc.JC2MASSGaia',   'function': _read_model_Dartmouth},
+
+        {'instrument': 'johnson',   'name': 'dartmouth_p0.00_p0.0_mag',  'file': 'dmestar_00001.0myr_z+0.00_a+0.00_gas07_mrc_magBeq.JC2MASSGaia',   'function': _read_model_Dartmouth},
+        {'instrument': 'gaia',      'name': 'dartmouth_p0.00_p0.0_mag',  'file': 'dmestar_00001.0myr_z+0.00_a+0.00_gas07_mrc_magBeq.JC2MASSGaia',   'function': _read_model_Dartmouth},
+        {'instrument': '2mass',     'name': 'dartmouth_p0.00_p0.0_mag',  'file': 'dmestar_00001.0myr_z+0.00_a+0.00_gas07_mrc_magBeq.JC2MASSGaia',   'function': _read_model_Dartmouth}
+
 
     ],
     'data': {}
