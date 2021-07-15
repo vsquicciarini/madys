@@ -508,7 +508,7 @@ def load_isochrones(model,surveys=['gaia','2mass','wise'],mass_range=[0.01,1.4],
 
     return mnew,anew,fnew,iso_f
 
-def isochronal_age(phot_app,phot_err_app,phot_filters,par,par_err,flags,iso,surveys,border_age=False,ebv=None,verbose=False,filename=None):
+def isochronal_age(phot_app,phot_err_app,phot_filters,par,par_err,flags,iso,surveys,border_age=False,ebv=None,verbose=False,output=None):
 
     mnew=iso[0]
     anew=iso[1]
@@ -673,6 +673,8 @@ def isochronal_age(phot_app,phot_err_app,phot_filters,par,par_err,flags,iso,surv
         m_final[i]=np.nanmean(m_cmsf[i,:])
 
     if verbose==True:
+        filename=output[0]
+        model=output[1]
         path=os.path.dirname(filename)     #working path
         sample_name=os.path.split(filename)[1] #file name
         i=0
@@ -680,7 +682,7 @@ def isochronal_age(phot_app,phot_err_app,phot_filters,par,par_err,flags,iso,surv
         ext=sample_name[i:] #estension
         sample_name=sample_name[:i]
         
-        f=open(os.path.join(path,str(sample_name+'_ages.txt')), "w+")
+        f=open(os.path.join(path,str(sample_name+'_ages_'+model+'.txt')), "w+")
         f.write(tabulate(np.column_stack((m_cmsf,a_cmsf,m_final,a_final)),
                          headers=['G-K_MASS','G-J_MASS','G-H_MASS','Gbp-Grp_MASS','G-K_AGE','G-J_AGE','G-H_AGE','Gbp-Grp_AGE','MASS','AGE'], tablefmt='plain', stralign='right', numalign='right', floatfmt=".2f"))
         f.close()
@@ -879,6 +881,24 @@ def search_phot(filename,surveys,coordinates='equatorial',verbose=False,overwrit
             
         return code,col1,hea,fmt,f_list,q_flags,fill_value
 
+    def survey_radec(survey):
+        if survey=='GAIA_EDR3':
+            ra_name='ra_epoch2000'
+            dec_name='dec_epoch2000'
+        elif survey=='GAIA_DR2':
+            ra_name='ra_epoch2000'
+            dec_name='dec_epoch2000'
+        elif survey=='2MASS':
+            ra_name='RAJ2000'
+            dec_name='DEJ2000'
+        if survey=='ALLWISE':
+            ra_name='RAJ2000'
+            dec_name='DEJ2000'
+        if survey=='WISE':
+            ra_name='ra'
+            dec_name='dec'        
+        return ra_name,dec_name
+    
     #stores path, file name, extension
     path=os.path.dirname(filename)     #working path
     sample_name=os.path.split(filename)[1] #file name
@@ -964,7 +984,7 @@ def search_phot(filename,surveys,coordinates='equatorial',verbose=False,overwrit
                         gex=1
                 else:
                     coo_array[i,0]=Angle(ang_deg(x['RA'].data.data[0])).degree
-                    coo_array[i,1]=Angle(ang_deg(x['DEC'].data.data[0],form='dms')).degree                
+                    coo_array[i,1]=Angle(ang_deg(x['DEC'].data.data[0],form='dms')).degree
 
             if gex:
                 print('Some stars were not found. Would you like to end the program and check the spelling?')
@@ -985,9 +1005,7 @@ def search_phot(filename,surveys,coordinates='equatorial',verbose=False,overwrit
         phot_err=np.full([n,nf],np.nan)
         kin=np.full([n,12],np.nan)
         flags=np.full([n,nq],'',dtype='<U10')
-        flags2={}
-        
-        survey_files = [os.path.join(path,sample_name+'_'+x+'_data.txt') for x in surveys]
+        flags2={}        
             
         #turns coo_array into a Table for XMatch
         coo_table = Table(coo_array, names=('RA', 'DEC'))
@@ -1014,18 +1032,17 @@ def search_phot(filename,surveys,coordinates='equatorial',verbose=False,overwrit
                 a4=lambda x: -0.00555279*np.heaviside(-(x-0.5),0)-0.00555279*np.heaviside(-(x-3.5),0)-(-0.00555279*np.heaviside(-(x-0.5),0))-0.00555279*np.heaviside(x-3.5,1)
                 C1 = C0 + a0(data_dG)+a1(data_dG)*data_dG+a2(data_dG)*data_dG**2+a3(data_dG)*data_dG**3+a4(data_dG)*data_G #final corrected factor
                 data_s['phot_bp_rp_excess_factor_corrected']=C1
+            n_cat2=len(data_s)
+            cat2=np.zeros([n_cat2,2])
+            cat2[:,0]=data_s[survey_radec(surveys[i])[0]]
+            cat2[:,1]=data_s[survey_radec(surveys[i])[1]]
             if verbose==True:
                 f=open(os.path.join(path,str(sample_name+'_'+surveys[i]+'_data.txt')), "w+")
                 f.write(tabulate(data_s[col2], 
                                  headers=hea, tablefmt='plain', stralign='right', numalign='right', floatfmt=fmt))
                 data_s=data_s[col2]
                 data_s.rename_columns(col2,hea)        
-                f.close()
-                
-            n_cat2=len(data_s)
-            cat2=np.zeros([n_cat2,2])
-            cat2[:,0]=data_s['ra']
-            cat2[:,1]=data_s['dec']
+                f.close()                
             try:
                 para=data_s['parallax']
             except KeyError: para=np.full(n_cat2,1000)
@@ -1602,3 +1619,123 @@ def ang_dist(ra1,dec1,ra2,dec2):
     dist=2*np.arcsin(np.sqrt(np.sin((dec2-dec1)/2.*u.degree)**2+np.cos(dec2*u.degree)*np.cos(dec1*u.degree)*np.sin((ra2-ra1)/2.*u.degree)**2)).to(u.deg)
 
     return dist.value
+
+def isochronal_age2(phot_app,phot_err_app,phot_filters,par,par_err,flags,iso,surveys,border_age=False,ebv=None,verbose=False,output=None):
+
+    mnew=iso[0]
+    anew=iso[1]
+    fnew=iso[2]
+    newMC=iso[3]
+    
+
+    #CONSTANTS
+    ph_cut=0.2
+    bin_frac=0.0
+    
+    #trasformo fotometria in assoluta
+    phot,phot_err=app_to_abs_mag(phot_app,par,app_mag_error=phot_err_app,parallax_error=par_err)
+
+    #raggi per peso della media
+
+    #contaminazione in flusso
+    cont=np.zeros(2) #contaminazione nei filtri 2MASS per le stelle, in questo caso nulla
+
+    #selects Gaia DR2 photometry if the isochrones have DR2 filters, EDR3 otherwise
+    if 'G2' in fnew: f_right=['J','H','K','G2','Gbp2','Grp2'] #right order
+    else: f_right=['J','H','K','G','Gbp','Grp']
+
+    l0=phot.shape
+    xlen=l0[0] #no. of stars: 85
+    ylen=len(f_right) #no. of filters: 6
+
+    filt=where_v(f_right,fnew)
+    filt2=where_v(f_right,phot_filters)
+
+    newMC=newMC[:,:,filt] #ordered columns. Cuts unnecessary columns    
+    phot=phot[:,filt2] #ordered columns. Cuts unnecessary columns
+    phot_err=phot_err[:,filt2] #ordered columns. Cuts unnecessary columns
+
+    wc=np.array([[2,0,1,5],[3,3,3,4]]) #(G-K), (G-J), (G-H), (Gbp-Grp)
+
+    if 'G2' in fnew:
+        qfl=flags['GAIA_DR2']['dr2_bp_rp_excess_factor_corr']
+        s1=0.004+8e-12*phot[:,3]**7.55
+        q1,=np.where(abs(qfl)>3*s1)
+    else:
+        qfl=flags['GAIA_EDR3']['edr3_bp_rp_excess_factor_corr']
+        s1=0.0059898+8.817481e-12*phot[:,3]**7.618399
+        q1,=np.where(abs(qfl)>3*s1) #excluded
+    if len(q1)>0:       
+        phot[q1,4]=np.nan
+        phot_err[q1,4]=np.nan
+        phot[q1,5]=np.nan
+        phot_err[q1,5]=np.nan
+
+    qfl=flags['2MASS']['qfl']
+    qJ=[]
+    qH=[]
+    qK=[]
+    for i in range(len(qfl)):
+        if qfl[i][0]!='A': qJ.append(i)
+        if qfl[i][1]!='A': qH.append(i)
+        if qfl[i][2]!='A': qK.append(i)
+    if len(qJ)>0:
+        qJ=np.array(qJ)
+        phot[qJ,0]=np.nan
+        phot_err[qJ,0]=np.nan
+    if len(qH)>0:
+        qH=np.array(qH)
+        phot[qH,1]=np.nan
+        phot_err[qH,1]=np.nan
+    if len(qK)>0:
+        qK=np.array(qK)
+        phot[qK,2]=np.nan
+        phot_err[qK,2]=np.nan
+
+    red=np.zeros([xlen,ylen]) #reddening da applicare
+    if type(ebv)!=type(None):
+        for i in range(ylen): red[:,i]=extinction(ebv,f_right[i])
+
+    l=newMC.shape #(780,460,10) cioè masse, età e filtri
+    sigma=100+np.zeros([l[0],l[1],ylen]) #matrice delle distanze fotometriche (780,460,3)
+ 
+    a_final=np.full(xlen,np.nan)
+    m_final=np.full(xlen,np.nan)
+    a_err=np.full(xlen,np.nan)
+    m_err=np.full(xlen,np.nan)
+
+    bin_corr=2.5*np.log10(2)*bin_frac #ossia, se le binarie sono identiche, la luminosità osservata è il doppio di quella della singola componente
+    phot=phot-red+bin_corr #(6,2) come phot
+    
+    sigma=np.full(([l[0],l[1],ylen]),np.nan) #(780,480,6) matrice delle distanze fotometriche
+    
+    for i in range(xlen): #devo escludere poi i punti con errore fotometrico non valido     
+        w,=np.where(is_phot_good(phot[i,:],phot_err[i,:],max_phot_err=ph_cut))
+        if len(w)==0: continue
+        e_j=-10.**(-0.4*phot_err[i,w])+10.**(+0.4*phot_err[i,w])
+        for h in range(len(w)):
+            sigma[:,:,w[h]]=((10.**(-0.4*(newMC[:,:,w[h]]-phot[i,w[h]]))-1.)/e_j[h])**2
+        cr=np.sum(sigma[:,:,w],axis=2)
+        est,ind=min_v(cr)
+        if 1>0: #condizioni che aggiungerò
+            m_final[i]=mnew[ind[0]] #massa del CMS i-esimo
+            a_final[i]=anew[ind[1]] #età del CMS i-esimo
+            m_f1=np.zeros(10)
+            a_f1=np.zeros(10)
+            for j in range(10):
+                phot1=phot+phot_err*np.random.normal(size=(xlen,ylen))
+                for h in range(len(w)):
+                    sigma[:,:,w[h]]=((10.**(-0.4*(newMC[:,:,w[h]]-phot1[i,w[h]]))-1.)/e_j[h])**2
+                cr1=np.sum(sigma[:,:,w],axis=2)
+                est1,ind1=min_v(cr1)
+                m_f1[j]=mnew[ind1[0]]
+                a_f1[j]=anew[ind1[1]]
+            if i==54:
+                print('wqeq')
+                print(a_f1)
+            m_err[i]=np.std(m_f1,ddof=1)
+            a_err[i]=np.std(a_f1,ddof=1)
+            
+
+    return a_final,m_final,a_err,m_err
+

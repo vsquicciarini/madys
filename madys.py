@@ -13,12 +13,12 @@ class MADYS:
             if 'coord' in kwargs: self.coord = kwargs['coord']
             if 'model' in kwargs: self.model = kwargs['model']
         self.phot,self.phot_err,self.kin,self.flags,self.headers=search_phot(self.file,self.surveys,verbose=True,coordinates=self.coord)
-    def get_age(self,model):
         par=self.kin[:,4]
         par_err=self.kin[:,5]
         coo=self.kin[:,[0,2]]
-        iso=load_isochrones(model)
         self.ebv=interstellar_ext(ra=coo[:,0],dec=coo[:,1],par=par)
+    def get_age(self,model):
+        iso=load_isochrones(model)
         ages,masses=isochronal_age(self.phot,self.phot_err,self.headers[0],par,par_err,self.flags,iso,self.surveys,ebv=self.ebv,verbose=True,filename=self.file)
         return self.ebv,ages,masses
     def CMD(self,col,mag,model):
