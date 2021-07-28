@@ -344,7 +344,7 @@ def _read_model_atmo(path, fname, instrument):
 
 
 
-def _read_model_MIST(path, fname, instrument): #VS21
+def _read_model_MIST(path, fname, instrument, max_phase=2): #VS21
     '''
     (Private) Read the MIST models
 
@@ -371,9 +371,9 @@ def _read_model_MIST(path, fname, instrument): #VS21
         Array with names of parameters
 
     data : array
-        Numpy data array, interpolated to have consistent masses for all ages
+        Numpy data array, interpolated along the mass axis to have consistent masses
+        for all age steps.
     '''
-
 
     # read column headers and number of values
     p_cols = re.compile('\s*#*\s*EEP\s+(log10_isochrone_age_yr\s+initial_mass\s+star_mass\s+.+)')
@@ -392,16 +392,17 @@ def _read_model_MIST(path, fname, instrument): #VS21
     file.close()    
 
     #create data frame and selects only numeric rows
-    data=pd.read_fwf(path / fname,header=None,comment='#',infer_nrows=10000)
+    data=pd.read_fwf(path / fname,header=None,comment='#',infer_nrows=50000)
     w,=np.where((isnumber(data[0],finite=True)) & (isnumber(data[1],finite=True)) & (isnumber(data[2],finite=True)) & ((data[1]!='2') & (data[2]!='3')))
     w_ch,=np.where(w[1:]-w[:-1]>1)
     w_cut=np.insert(w_ch+1,[0,len(w_ch)],[0,len(w)]) #row indices of the isochrones
     data=data.iloc[w,1:] #slicing
 
-    #converts pandas to numpy
+    #convert pandas to numpy
     data2=data.to_numpy(dtype=float)
     w_m,=np.where(np.array(cols)=='initial_mass')
     w_a,=np.where(np.array(cols)=='log10_isochrone_age_yr')    
+    w_p,=np.where(np.array(cols)=='phase')    
     mass_range=[np.min(data2[:,w_m]),np.max(data2[:,w_m])]
     n_m=int(1.1*np.max(w_cut[1:]-w_cut[:-1]))
     
@@ -411,38 +412,25 @@ def _read_model_MIST(path, fname, instrument): #VS21
     masses=np.logspace(np.log10(mass_range[0]),np.log10(mass_range[1]),n_m)    
     dat=np.full((n_m, len(ages), len(values)), np.nan)
 
-#    ii=closest(10**(ages-6),5) #CANCELLARE    
-    
-    #interpolates across the grid to fill dat
+    #interpolate across the grid to fill dat
     for i in range(len(ages)):
-        ma=data2[w_cut[i]:w_cut[i+1],w_m].reshape(w_cut[i+1]-w_cut[i])
+        c=w_cut[i]
+        while data2[c,w_p]<=max_phase:
+            c+=1
+            if c==w_cut[i+1]: break
+        ma=data2[w_cut[i]:c,w_m].ravel()
         for j in range(len(values)):
-            y=data2[w_cut[i]:w_cut[i+1],j+3]
+            y=data2[w_cut[i]:c,j+3]
             f = interp.interp1d(ma, y, bounds_error=False, fill_value=np.nan)
             dat[:,i,j]=f(masses)
-            #if i==ii and j==wG:
-                #print('indices',w_cut[i],w_cut[i+1])
-                #print('age:',10**(ages[ii]-6))
-                #print('input mass')
-                #print(ma)
-                #print('input mag')
-                #print(y)
-                #print('output mass')
-                #print(masses)
-                #for k in range(len(masses)): 
-                #    print(masses[k],dat[k,ii,wBP]-dat[k,ii,wRP],dat[k,ii,wG])
-                 #sys.exit()
         
-    masses=masses*cst.M_sun.value / cst.M_jup.value #converts into M_Jup
-    ages=10**(ages-6) #converts into Myr
+    masses=masses*cst.M_sun.value / cst.M_jup.value #M_sun -> M_Jup
+    ages=10**(ages-6) #log10(age) -> Myr
 
-#    print('Age:',ages[ii])
-#    m_ra,=np.where(masses < (1.4*cst.M_sun.value / cst.M_jup.value))
-#    for j in range(len(m_ra)): print(m_ra[j],masses[m_ra[j]],dat[m_ra[j],ii,wBP]-dat[m_ra[j],ii,wRP],dat[m_ra[j],ii,wG])
                 
     return masses, ages, values, dat
 
-def _read_model_PARSEC(path, fname, instrument): #VS21
+def _read_model_PARSEC(path, fname, instrument, max_phase=3): #VS21
     '''
     (Private) Read the PARSEC models
 
@@ -469,7 +457,8 @@ def _read_model_PARSEC(path, fname, instrument): #VS21
         Array with names of parameters
 
     data : array
-        Numpy data array, interpolated to have consistent masses for all ages
+        Numpy data array, interpolated along the mass axis to have consistent masses
+        for all age steps.
     '''
 
     # read column headers and number of values
@@ -497,7 +486,8 @@ def _read_model_PARSEC(path, fname, instrument): #VS21
 
     #converts pandas to numpy
     w_m,=np.where(np.array(cols)=='Mini')
-    w_a,=np.where(np.array(cols)=='logAge')    
+    w_a,=np.where(np.array(cols)=='logAge')
+    w_p,=np.where(np.array(cols)=='label')    
     mass_range=[np.min(data2[:,w_m]),np.max(data2[:,w_m])]
     n_m=int(1.1*np.max(w_cut[1:]-w_cut[:-1]))
 
@@ -507,11 +497,15 @@ def _read_model_PARSEC(path, fname, instrument): #VS21
     masses=np.logspace(np.log10(mass_range[0]),np.log10(mass_range[1]),n_m)    
     dat=np.full((n_m, len(ages), len(values)), np.nan)
     
-    #interpolates across the grid to fill dat
+    #interpolate across the grid to fill dat
     for i in range(len(ages)):
-        ma=data2[w_cut[i]:w_cut[i+1],w_m].reshape(w_cut[i+1]-w_cut[i])
+        c=w_cut[i]
+        while data2[c,w_p]<=max_phase:
+            c+=1
+            if c==w_cut[i+1]: break
+        ma=data2[w_cut[i]:c,w_m].ravel()
         for j in range(len(values)):
-            y=data2[w_cut[i]:w_cut[i+1],j+2]
+            y=data2[w_cut[i]:c,j+2]
             f = interp.interp1d(ma, y, bounds_error=False, fill_value=np.nan)
             dat[:,i,j]=f(masses)
         
@@ -593,7 +587,6 @@ def _read_model_BHAC15(path, fname, instrument): #VS21
         if (m is not None):
             cage = float(m.group(1))
 
-
     file.close()
 
     # rename columns and add age values
@@ -612,7 +605,6 @@ def _read_model_BHAC15(path, fname, instrument): #VS21
     data.columns = cols    
     data.age = ages
 
-    print(data.columns)
     # unit conversion
     data.age    *= 1000
     data.mass   *= cst.M_sun / cst.M_jup
@@ -625,7 +617,7 @@ def _read_model_BHAC15(path, fname, instrument): #VS21
 
 def _read_model_Amard(path, fname, instrument): #VS21
     '''
-    (Private) Read the BHAC15 models
+    (Private) Read the Amard models
 
     Parameters
     ----------
@@ -650,7 +642,8 @@ def _read_model_Amard(path, fname, instrument): #VS21
         Array with names of parameters
 
     data : array
-        Numpy data array, interpolated to have consistent masses for all ages
+        Numpy data array, interpolated along the mass axis to have consistent masses
+        for all age steps.
     '''
     #each file is an age
 
@@ -738,7 +731,7 @@ def _read_model_atmo2020(path, fname, instrument): #VS21
         Array with names of parameters
 
     data : array
-        Numpy data array, interpolated to have consistent masses for all ages
+        Numpy data array
     '''
     #each file is an age
 
@@ -747,7 +740,7 @@ def _read_model_atmo2020(path, fname, instrument): #VS21
     track_list=os.listdir(path)
 
     # read column headers and number of values
-    p_cols = re.compile('\s*#*\s*Mass\s+(Age\s+.+)')
+    p_cols = re.compile('\s*#*\s*(Mass\s+Age\s+.+)')
     p_vals = re.compile('\s+[0-9]+\s+([0-9]+.+)')    
     
     # get column names
@@ -761,42 +754,23 @@ def _read_model_atmo2020(path, fname, instrument): #VS21
             cols.extend(names.split())
         line = file.readline()         #reads next line
     file.close()    
-
-    values=np.array(cols[1:]) #exclude ages
-    masses=[]
-    tracks=[]
     
-    # read general data for a given mass
-
-    n_a=0
-    age_range=[np.inf,0.]
-    for i in range(len(track_list)):
+    all_data=[]
+    
+    for i in range(len(track_list)):      
         data=pd.read_fwf(path / track_list[i],header=None,comment='#',infer_nrows=10000)
         w,=np.where((isnumber(data[0],finite=True)) & (isnumber(data[1],finite=True)) & (isnumber(data[2],finite=True)) & ((data[1]!='2') & (data[2]!='3')))
-        masses.append(float(data.iloc[w[0],0]))
-        data=(data.iloc[w,1:]).to_numpy(dtype=float) #slicing
-        tracks.append(np.where(data==0, np.nan, data)) #0 is used as missing value in these files but we want nan
-        n_a=np.max([n_a,len(w)])
-        age_range=[np.min([age_range[0],np.min(data[:,0])]),np.max([age_range[1],np.max(data[:,0])])]
-    masses=np.array(masses)
-    n_m=len(masses)
-    n_a=int(1.1*n_a)
-    ages=np.logspace(np.log10(age_range[0]),np.log10(age_range[1]),n_a)    
-    
-
-    dat=np.full((n_m, n_a, len(values)), np.nan)
-
-    for i in range(n_m):
-        data2=tracks[i]
-        ag=data2[:,0].reshape(len(data2))
-        for j in range(len(values)):
-            y=data2[:,j+1]
-            f = interp.interp1d(ag, y, bounds_error=False, fill_value=np.nan)
-            dat[i,:,j]=f(ages)
-                        
-    masses=masses*cst.M_sun.value / cst.M_jup.value #converts into M_Jup
-    ages*=1000 #converts into Myr
-
+        data=data.iloc[w,:]
+        all_data.append(data.replace(0, np.nan)) #0 is used as missing value in these files but we want nan
+                
+    data=pd.concat(all_data)
+    cols[0]='mass'
+    cols[1]='age'
+    data.columns=cols
+    data.mass = data.mass.astype(float) * cst.M_sun / cst.M_jup
+    data.age = data.age.astype(float) * 1000
+    masses, ages, values, dat = _reshape_data(data)
+              
     return masses, ages, values, dat
 
 def _read_model_SPOTS(path, fname, instrument): #VS21
@@ -922,10 +896,10 @@ def _read_model_Dartmouth(path, fname, instrument): #VS21
 
     
     # get column names
-    cols  = ['Mass']
+    cols  = ['age','mass']
     file = open(path / fname, 'r')
     line = file.readline()
-    while len(cols) == 1:
+    while len(cols) == 2:
         m = p_cols.match(line)
         if (m is not None):
             names = m.group(1)
@@ -940,16 +914,11 @@ def _read_model_Dartmouth(path, fname, instrument): #VS21
     for i in range(len(files)):
         if fname[c2:] in files[i]: iso_list.append(files[i])
     
-
-    datas=[] #stores all data
-    ages = []
-    values=np.array(cols[1:]) #exclude mass
-    mass_range=[np.inf,0]
-    n_m=0
+    all_data=[] #stores all data    
     
-    w_m=0
     for i in range(len(iso_list)):
-        file = open(path / iso_list[i], 'r') #recovers age
+        #recovers age
+        file = open(path / iso_list[i], 'r')
         line = file.readline()
         found = 0
         while found==0:
@@ -960,42 +929,107 @@ def _read_model_Dartmouth(path, fname, instrument): #VS21
                 if unit=='Myr': pass
                 elif unit=='Gyr': age*=1000
                 elif unit=='yr': age*=10**-6
-                ages.append(age)
                 found=1
             line = file.readline()
         file.close()    
-        
         data=pd.read_fwf(path / iso_list[i],header=None,comment='#',infer_nrows=10000)
         w,=np.where((isnumber(data[0],finite=True)) & (isnumber(data[1],finite=True)) & (isnumber(data[2],finite=True)))
         data=data.iloc[w,:] #slicing
-
-        #converts pandas to numpy
-        data2=data.to_numpy(dtype=float)
-        mass_range=[np.min([mass_range[0],np.min(data2[:,w_m])]),np.max([mass_range[1],np.max(data2[:,w_m])])]
-        n_m=int(np.max([n_m,len(data)]))
-        datas.append(data2)
-
-    #output values
-    ages=np.array(ages)        
-    n_m=int(1.1*n_m)
-    masses=np.logspace(np.log10(mass_range[0]),np.log10(mass_range[1]),n_m)    
-    dat=np.full((n_m, len(ages), len(values)), np.nan)
-
-    #interpolates across the grid to fill dat
-    for i in range(len(ages)):
-        data2=datas[i]
-        ma=data2[:,w_m].reshape(len(data2))
-        for j in range(len(values)):
-            y=data2[:,j+1]
-            f = interp.interp1d(ma, y, bounds_error=False, fill_value=np.nan)
-            dat[:,i,j]=f(masses)
-
+        data.insert(0, 'age', 0)
+        data.age=np.full(len(w),age)
+        all_data.append(data)
         
-    masses=masses*cst.M_sun.value / cst.M_jup.value #converts into M_Jup
-                
+    data=pd.concat(all_data)
+    data.columns=cols
+    data.mass = data.mass.astype(float) * cst.M_sun / cst.M_jup
+    masses, ages, values, dat = _reshape_data(data)
+        
+    return masses, ages, values, dat    
+
+def _read_model_Ekstroem(path, fname, instrument, v_vcrit=0.0):
+    '''
+    (Private) Read the Dartmouth models
+
+    Parameters
+    ----------
+    path : str
+        Full path to the directory containing the model files
+
+    fname : str
+        Full model file name
+
+    instrument : str
+        Name of the instrument (or observatory) for the file
+
+    v_vcrit : rotational velocity. Available: [0.0,0.4]. Default: 0.0.
+    
+    Returns
+    -------
+    masses : vector
+        Numpy vector with unique masses, in MJup
+
+    ages : vector
+        Numpy vector with unique ages, in Myr
+
+    values : array
+        Array with names of parameters
+
+    data : array
+        Numpy data array, interpolated to have consistent masses for all ages
+    '''
+
+    if v_vcrit!=0: sel='r'
+    else: sel='n'
+        
+    p_cols1 = re.compile('\s*(logt\s+R\s+Mini\s+.+)')
+    p_cols2 = re.compile('\s*(Mini\s+.+)')
+    
+    # get column names
+    cols  = []
+    file = open(path / fname, 'r')    
+    line = file.readline()
+    while len(cols) == 0:
+        m = p_cols1.match(line)
+        if (m is not None):
+            names = m.group(1)
+            cols.extend(names.split())
+            feh=0
+        m = p_cols2.match(line)
+        if (m is not None):
+            names = m.group(1)
+            cols.extend(names.split())
+            feh=1
+        line = file.readline()         #reads next line
+    file.close()
+
+    if feh==0: mass_col = 2
+    else: mass_col = 0
+    
+    # create data frame
+    data=pd.read_fwf(path / fname,header=0,comment='#',infer_nrows=50000)
+    w,=np.where((np.array(data.iloc[1:,mass_col])-np.array(data.iloc[:-1,mass_col])>0) & (data.iloc[:-1,1]==sel)) #to avoid repeated mass entries
+    data=data.iloc[w,:]
+    
+    if data.columns[0]=='logt':
+        data.logt = 10**(data.logt.astype(float)-6)
+        cols[0]='age'
+        data.insert(len(data.columns), 'Bmag', 0)
+        data.Bmag = data['B-V'].astype(float)+data['Vmag'].astype(float)
+        data.insert(len(data.columns), 'Umag', 0)
+        data.Umag = data['U-B'].astype(float)+data['Bmag'].astype(float)
+        cols.extend(['Bmag','Umag'])
+    cols[2]='mass'
+        
+    data.columns=cols
+    data.mass = data.mass.astype(float) * cst.M_sun / cst.M_jup
+       
+    # reshape in final format
+    masses, ages, values, dat = _reshape_data(data,start_col=5)
+        
     return masses, ages, values, dat
 
-def _reshape_data(dataframe):
+
+def _reshape_data(dataframe,start_col=2):
     '''
     Reshape the data frame in a regular grid that can be used as input in scipy functions.
 
@@ -1024,7 +1058,8 @@ def _reshape_data(dataframe):
     ages = dataframe.age.unique()
 
     # values
-    values = dataframe.columns.values[2:]
+    values = dataframe.columns.values[start_col:]
+    col = dataframe.columns[start_col]
 
     # fill array
     data = np.full((masses.size, ages.size, values.size), np.nan)
@@ -1033,7 +1068,7 @@ def _reshape_data(dataframe):
             mask = (dataframe.mass == mass) & (dataframe.age == age)
             
             if mask.any():
-                data[m, a, :] = dataframe.loc[mask, 'Teff':].values.squeeze()
+                data[m, a, :] = dataframe.loc[mask, col:].values.squeeze()
 
     return masses, ages, values, data
 
@@ -1252,7 +1287,7 @@ def _interpolate_model(masses, ages, values, data, age, filt, param, Mabs, fill)
     return values
 
 
-def _read_model_data(paths, models, instrument, model):
+def _read_model_data(paths, models, instrument, model, **kwargs):
     '''
     Return the data from a model and instrument
 
@@ -1301,7 +1336,7 @@ def _read_model_data(paths, models, instrument, model):
                 raise ValueError('File {0} for model {1} and instrument {2} does not exists. Are you sure it is in your search path?'.format(path, model, instrument))
             
             # get data in format (masses, ages, values, data)
-            data = mod['function'](path, fname, instrument)
+            data = mod['function'](path, fname, instrument, **kwargs)
 
     # not found
     if data is None:
@@ -1637,8 +1672,24 @@ models = {
 
         {'instrument': 'johnson',   'name': 'dartmouth_p0.00_p0.0_mag',  'file': 'dmestar_00001.0myr_z+0.00_a+0.00_gas07_mrc_magBeq.JC2MASSGaia',   'function': _read_model_Dartmouth},
         {'instrument': 'gaia',      'name': 'dartmouth_p0.00_p0.0_mag',  'file': 'dmestar_00001.0myr_z+0.00_a+0.00_gas07_mrc_magBeq.JC2MASSGaia',   'function': _read_model_Dartmouth},
-        {'instrument': '2mass',     'name': 'dartmouth_p0.00_p0.0_mag',  'file': 'dmestar_00001.0myr_z+0.00_a+0.00_gas07_mrc_magBeq.JC2MASSGaia',   'function': _read_model_Dartmouth}
+        {'instrument': '2mass',     'name': 'dartmouth_p0.00_p0.0_mag',  'file': 'dmestar_00001.0myr_z+0.00_a+0.00_gas07_mrc_magBeq.JC2MASSGaia',   'function': _read_model_Dartmouth},
 
+        {'instrument': 'mko',       'name': 'atmo2020_ceq',              'file': '0.001_ATMO_CEQ_vega.txt',                       'function': _read_model_atmo2020},
+        {'instrument': 'mko',       'name': 'atmo2020_neq_strong',       'file': '0.001_ATMO_NEQ_strong_vega.txt',                'function': _read_model_atmo2020},
+        {'instrument': 'mko',       'name': 'atmo2020_neq_weak',         'file': '0.001_ATMO_NEQ_weak_vega.txt',                  'function': _read_model_atmo2020},
+        {'instrument': 'irac',      'name': 'atmo2020_ceq',              'file': '0.001_ATMO_CEQ_vega.txt',                       'function': _read_model_atmo2020},
+        {'instrument': 'irac',      'name': 'atmo2020_neq_strong',       'file': '0.001_ATMO_NEQ_strong_vega.txt',                'function': _read_model_atmo2020},
+        {'instrument': 'irac',      'name': 'atmo2020_neq_weak',         'file': '0.001_ATMO_NEQ_weak_vega.txt',                  'function': _read_model_atmo2020},
+        {'instrument': 'wise',      'name': 'atmo2020_ceq',              'file': '0.001_ATMO_CEQ_vega.txt',                       'function': _read_model_atmo2020},
+        {'instrument': 'wise',      'name': 'atmo2020_neq_strong',       'file': '0.001_ATMO_NEQ_strong_vega.txt',                'function': _read_model_atmo2020},
+        {'instrument': 'wise',      'name': 'atmo2020_neq_weak',         'file': '0.001_ATMO_NEQ_weak_vega.txt',                  'function': _read_model_atmo2020},
+
+        {'instrument': 'johnson',   'name': 'ekstroem_p0.00_rot',        'file': 'iso_p0.00.dat',                                 'function': _read_model_Ekstroem},
+        {'instrument': 'johnson',   'name': 'ekstroem_p0.00_norot',      'file': 'iso_p0.00.dat',                                 'function': _read_model_Ekstroem},
+        {'instrument': 'hr',        'name': 'ekstroem_p0.00_rot',        'file': 'iso_p0.00.dat',                                 'function': _read_model_Ekstroem},
+        {'instrument': 'hr',        'name': 'ekstroem_p0.00_norot',      'file': 'iso_p0.00.dat',                                 'function': _read_model_Ekstroem},
+        {'instrument': 'hr',        'name': 'ekstroem_m1.50_rot',        'file': 'iso_m1.50.dat',                                 'function': _read_model_Ekstroem},
+        {'instrument': 'hr',        'name': 'ekstroem_m1.50_norot',      'file': 'iso_m1.50.dat',                                 'function': _read_model_Ekstroem}
 
     ],
     'data': {}
@@ -1806,7 +1857,7 @@ def list_models():
         print()
 
 
-def model_data(instrument, model):
+def model_data(instrument, model, **kwargs):
     '''
     Return the model data for a given instrument
 
@@ -1832,7 +1883,7 @@ def model_data(instrument, model):
     if key not in models['data'].keys():
     #    print('Loading model {0} for {1}'.format(model, instrument))
         
-        _read_model_data(search_path, models, instrument, model)
+        _read_model_data(search_path, models, instrument, model, **kwargs)
 
     return models['data'][key]
 
