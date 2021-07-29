@@ -13,6 +13,8 @@ from astroquery.xmatch import XMatch
 import warnings
 from astropy.utils.exceptions import AstropyWarning
 import logging
+from astropy.constants import M_jup,M_sun
+from scipy.interpolate import interp1d
 working_path=os.getcwd()
 sys.path.append(working_path)
 from evolution import *
@@ -20,7 +22,6 @@ from evolution import *
 
 #################################################################
 # UTILITY FUNCTIONS
-
 def n_elements(x):
     size = 1
     for dim in np.shape(x): size *= dim
@@ -285,11 +286,19 @@ def cross_match(cat1,cat2,max_difference=0.01,other_column=None,rule=None,exact=
     ind2=ind2[0:c]
     return ind1,ind2
 
+def split_if_nan(a):
+    ind=[]
+    res=[]
+    for s in np.ma.clump_unmasked(np.ma.masked_invalid(a)):
+        ind.append(s)
+        res.append(a[s])    
+    return res,ind
+
 
 #################################################################
 # ASTRONOMICAL FUNCTIONS
 
-def Wu_line_integrate(f,x0,x1,y0,y1,z0,z1,layer=None):
+def Wu_line_integrate(f,x0,x1,y0,y1,z0,z1,layer=None,star_id=None,to_log=False):
     n=int(10*np.ceil(abs(max([x1-x0,y1-y0,z1-z0],key=abs))))    
     dim=f.shape    
     ndim=len(dim)
@@ -305,6 +314,8 @@ def Wu_line_integrate(f,x0,x1,y0,y1,z0,z1,layer=None):
             w_g=np.insert(w_g+1,0,0)
             w_f=np.insert(w_g[1:]-w_g[:-1],len(w_g)-1,len(x)-w_g[-1])            
             w,=np.where((x[w_g]<dim[0]) & (y[w_g]<dim[1]))
+            if (len(w)<len(w_g)) & (to_log==True):
+                logger.info('Star '+str(star_id)+' outside the extinction map. Its extinction is an underestimate.')                
             w2=w_g[w]
             for i in range(len(w2)): I+=f[x[w2[i]],y[w2[i]]]*w_f[w[i]]
         elif ndim==3:
@@ -314,6 +325,8 @@ def Wu_line_integrate(f,x0,x1,y0,y1,z0,z1,layer=None):
             w_g=np.insert(w_g+1,0,0)
             w_f=np.insert(w_g[1:]-w_g[:-1],len(w_g)-1,len(x)-w_g[-1])            
             w,=np.where((x[w_g]<dim[0]) & (y[w_g]<dim[1]) & (z[w_g]<dim[2]))
+            if (len(w)<len(w_g)) & (to_log==True):
+                logger.info('Star '+str(star_id)+' outside the extinction map. Its extinction is an underestimate.')                
             w2=w_g[w]
             for i in range(len(w2)): I+=f[x[w2[i]],y[w2[i]],z[w2[i]]]*w_f[w[i]]
     else:
@@ -323,6 +336,8 @@ def Wu_line_integrate(f,x0,x1,y0,y1,z0,z1,layer=None):
             w_g=np.insert(w_g+1,0,0)
             w_f=np.insert(w_g[1:]-w_g[:-1],len(w_g)-1,len(x)-w_g[-1])            
             w,=np.where((x[w_g]<dim[1]) & (y[w_g]<dim[2]))
+            if (len(w)<len(w_g)) & (to_log==True):
+                logger.info('Star '+str(star_id)+' outside the extinction map. Its extinction is an underestimate.')                
             w2=w_g[w]
             for i in range(len(w2)): I+=f[layer,x[w2[i]],y[w2[i]]]*w_f[w[i]]
         elif ndim==4:
@@ -332,6 +347,8 @@ def Wu_line_integrate(f,x0,x1,y0,y1,z0,z1,layer=None):
             w_g=np.insert(w_g+1,0,0)
             w_f=np.insert(w_g[1:]-w_g[:-1],len(w_g)-1,len(x)-w_g[-1])            
             w,=np.where((x[w_g]<dim[1]) & (y[w_g]<dim[2]) & (z[w_g]<dim[3]))
+            if (len(w)<len(w_g)) & (to_log==True):
+                logger.info('Star '+str(star_id)+' outside the extinction map. Its extinction is an underestimate.')                
             w2=w_g[w]
             for i in range(len(w2)): I+=f[layer,x[w2[i]],y[w2[i]],z[w2[i]]]*w_f[w[i]]
                 
@@ -421,12 +438,12 @@ def interstellar_ext(ra=None,dec=None,l=None,b=None,par=None,d=None,test_time=Fa
         if ext_map=='stilism':
             for i in range(n_elements(x0)):
                 if np.isnan(px2[i])==0:
-                    ebv[i]=dist*Wu_line_integrate(data,sun[0],px2[i],sun[0],py2[i],sun[1],pz2[i])/3.16
+                    ebv[i]=dist*Wu_line_integrate(data,sun[0],px2[i],sun[0],py2[i],sun[1],pz2[i],star_id=i,to_log=True)/3.16
         elif ext_map=='leike':
             if error==False: 
                 for i in range(n_elements(x0)):
                     if np.isnan(px2[i])==0:
-                        ebv[i]=dist*(2.5*Wu_line_integrate(data,sun[0],px2[i],sun[0],py2[i],sun[1],pz2[i])*np.log10(np.exp(1)))/3.16/0.789
+                        ebv[i]=dist*(2.5*Wu_line_integrate(data,sun[0],px2[i],sun[0],py2[i],sun[1],pz2[i],star_id=i,to_log=True)*np.log10(np.exp(1)))/3.16/0.789
             else:
                 dim=data.shape
                 ebv0=np.full([len(x0),dim[0]],np.nan)
@@ -434,17 +451,17 @@ def interstellar_ext(ra=None,dec=None,l=None,b=None,par=None,d=None,test_time=Fa
                 for i in range(n_elements(x0)):
                     if np.isnan(px2[i])==0:
                         for k in range(dim[0]):
-                            ebv0[i,k]=dist*(2.5*Wu_line_integrate(data,sun[0],px2[i],sun[0],py2[i],sun[1],pz2[i],layer=k)*np.log10(np.exp(1)))/3.16/0.789
+                            ebv0[i,k]=dist*(2.5*Wu_line_integrate(data,sun[0],px2[i],sun[0],py2[i],sun[1],pz2[i],layer=k,star_id=i,to_log=True)*np.log10(np.exp(1)))/3.16/0.789
                     ebv[i]=np.mean(ebv0[i,:])
                     ebv_s[i]=np.std(ebv0[i,:],ddof=1) #sample std dev                
     except TypeError:
         if px<len(x)-1: px2=(x0-x[px])/dist+px
         if py<len(y)-1: py2=(y0-y[py])/dist+py
         if pz<len(z)-1: pz2=(z0-z[pz])/dist+pz
-        if ext_map=='stilism': ebv=dist*Wu_line_integrate(data,sun[0],px2,sun[0],py2,sun[1],pz2)/3.16
+        if ext_map=='stilism': ebv=dist*Wu_line_integrate(data,sun[0],px2,sun[0],py2,sun[1],pz2,star_id=0,to_log=True)/3.16
         elif ext_map=='leike': 
             if error==False:
-                ebv=dist*(2.5*Wu_line_integrate(data,sun[0],px2,sun[0],py2,sun[1],pz2)*np.log10(np.exp(1)))/3.16/0.789
+                ebv=dist*(2.5*Wu_line_integrate(data,sun[0],px2,sun[0],py2,sun[1],pz2,star_id=0,to_log=True)*np.log10(np.exp(1)))/3.16/0.789
             else:
                 dim=data.shape
                 ebv0=np.zeros(dim[0])
@@ -860,7 +877,7 @@ def load_isochrones(model,surveys=['gaia','2mass','wise'],mass_range=[0.01,1.4],
 #################################################################
 # TO CREATE LOG FILES
 
-def setup_custom_logger(name,file,mode='w'):
+def setup_custom_logger(name,file,mode='a'):
     formatter = logging.Formatter(fmt='%(asctime)s %(levelname)-8s %(message)s',
                                   datefmt='%Y-%m-%d %H:%M:%S')
     handler = logging.FileHandler(file, mode=mode)
@@ -880,8 +897,14 @@ class MADYS:
     def __init__(self, file, **kwargs):
         self.file = file
         self.path = os.path.dirname(file)     #working path        
-        self.log_file = Path(self.path) / 'log.txt'
-        logger = setup_custom_logger('madys',self.log_file)
+        sample_name=os.path.split(self.file)[1] #file name
+        i=0
+        while sample_name[i]!='.': i=i+1
+        ext=sample_name[i:] #estension
+        sample_name=sample_name[:i]        
+        self.log_file = Path(self.path) / (sample_name+'_log.txt')
+        if 'logger' not in locals():
+            logger = setup_custom_logger('madys',self.log_file)
         self.surveys = ['2MASS','WISE','ALLWISE']
         coord_type = 'equatorial'
         verbose = True
