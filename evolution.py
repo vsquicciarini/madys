@@ -1287,7 +1287,7 @@ def _interpolate_model(masses, ages, values, data, age, filt, param, Mabs, fill)
     return values
 
 
-def _read_model_data(paths, models, instrument, model, **kwargs):
+def _read_model_data(paths, models, instrument, model):
     '''
     Return the data from a model and instrument
 
@@ -1336,7 +1336,7 @@ def _read_model_data(paths, models, instrument, model, **kwargs):
                 raise ValueError('File {0} for model {1} and instrument {2} does not exists. Are you sure it is in your search path?'.format(path, model, instrument))
             
             # get data in format (masses, ages, values, data)
-            data = mod['function'](path, fname, instrument, **kwargs)
+            data = mod['function'](path, fname, instrument)
 
     # not found
     if data is None:
@@ -1552,6 +1552,38 @@ models = {
         {'instrument': 'bessell',   'name': 'parsec_p0.00',           'file': 'Bessell_feh_p0.00.txt',                                         'function': _read_model_PARSEC},
         {'instrument': 'panstarrs', 'name': 'parsec_p0.00',           'file': 'PANSTARRS_feh_p0.00.txt',                                       'function': _read_model_PARSEC},
         {'instrument': 'skymapper', 'name': 'parsec_p0.00',           'file': 'SkyMapper_feh_p0.00.txt',                                       'function': _read_model_PARSEC},
+
+        {'instrument': '2mass',     'name': 'parsec_p0.25',           'file': '2MASS_WISE_feh_p0.25.txt',                                      'function': _read_model_PARSEC},
+        {'instrument': 'wise',      'name': 'parsec_p0.25',           'file': '2MASS_WISE_feh_p0.25.txt',                                      'function': _read_model_PARSEC},
+        {'instrument': 'gaia',      'name': 'parsec_p0.25',           'file': 'GAIA_EDR3_feh_p0.25.txt',                                       'function': _read_model_PARSEC},
+
+        {'instrument': '2mass',     'name': 'parsec_p0.50',           'file': '2MASS_WISE_feh_p0.50.txt',                                      'function': _read_model_PARSEC},
+        {'instrument': 'wise',      'name': 'parsec_p0.50',           'file': '2MASS_WISE_feh_p0.50.txt',                                      'function': _read_model_PARSEC},
+        {'instrument': 'gaia',      'name': 'parsec_p0.50',           'file': 'GAIA_EDR3_feh_p0.50.txt',                                       'function': _read_model_PARSEC},
+
+        {'instrument': '2mass',     'name': 'parsec_p0.75',           'file': '2MASS_WISE_feh_p0.75.txt',                                      'function': _read_model_PARSEC},
+        {'instrument': 'wise',      'name': 'parsec_p0.75',           'file': '2MASS_WISE_feh_p0.75.txt',                                      'function': _read_model_PARSEC},
+        {'instrument': 'gaia',      'name': 'parsec_p0.75',           'file': 'GAIA_EDR3_feh_p0.75.txt',                                       'function': _read_model_PARSEC},
+
+        {'instrument': '2mass',     'name': 'parsec_p1.00',           'file': '2MASS_WISE_feh_p1.00.txt',                                      'function': _read_model_PARSEC},
+        {'instrument': 'wise',      'name': 'parsec_p1.00',           'file': '2MASS_WISE_feh_p1.00.txt',                                      'function': _read_model_PARSEC},
+        {'instrument': 'gaia',      'name': 'parsec_p1.00',           'file': 'GAIA_EDR3_feh_p1.00.txt',                                       'function': _read_model_PARSEC},
+
+        {'instrument': '2mass',     'name': 'parsec_m0.25',           'file': '2MASS_WISE_feh_m0.25.txt',                                      'function': _read_model_PARSEC},
+        {'instrument': 'wise',      'name': 'parsec_m0.25',           'file': '2MASS_WISE_feh_m0.25.txt',                                      'function': _read_model_PARSEC},
+        {'instrument': 'gaia',      'name': 'parsec_m0.25',           'file': 'GAIA_EDR3_feh_m0.25.txt',                                       'function': _read_model_PARSEC},
+
+        {'instrument': '2mass',     'name': 'parsec_m0.50',           'file': '2MASS_WISE_feh_m0.50.txt',                                      'function': _read_model_PARSEC},
+        {'instrument': 'wise',      'name': 'parsec_m0.50',           'file': '2MASS_WISE_feh_m0.50.txt',                                      'function': _read_model_PARSEC},
+        {'instrument': 'gaia',      'name': 'parsec_m0.50',           'file': 'GAIA_EDR3_feh_m0.50.txt',                                       'function': _read_model_PARSEC},
+
+        {'instrument': '2mass',     'name': 'parsec_m0.75',           'file': '2MASS_WISE_feh_m0.75.txt',                                      'function': _read_model_PARSEC},
+        {'instrument': 'wise',      'name': 'parsec_m0.75',           'file': '2MASS_WISE_feh_m0.75.txt',                                      'function': _read_model_PARSEC},
+        {'instrument': 'gaia',      'name': 'parsec_m0.75',           'file': 'GAIA_EDR3_feh_m0.75.txt',                                       'function': _read_model_PARSEC},
+
+        {'instrument': '2mass',     'name': 'parsec_m1.00',           'file': '2MASS_WISE_feh_m1.00.txt',                                      'function': _read_model_PARSEC},
+        {'instrument': 'wise',      'name': 'parsec_m1.00',           'file': '2MASS_WISE_feh_m1.00.txt',                                      'function': _read_model_PARSEC},
+        {'instrument': 'gaia',      'name': 'parsec_m1.00',           'file': 'GAIA_EDR3_feh_m1.00.txt',                                       'function': _read_model_PARSEC},
 
         {'instrument': '2mass',     'name': 'bhac15',                 'file': 'BHAC15_iso.2mass.txt',                                          'function': _read_model_BHAC15},
         {'instrument': 'gaia',      'name': 'bhac15',                 'file': 'BHAC15_iso.GAIA.txt',                                           'function': _read_model_BHAC15},
@@ -1857,7 +1889,7 @@ def list_models():
         print()
 
 
-def model_data(instrument, model, **kwargs):
+def model_data(instrument, model):
     '''
     Return the model data for a given instrument
 
@@ -1883,7 +1915,7 @@ def model_data(instrument, model, **kwargs):
     if key not in models['data'].keys():
     #    print('Loading model {0} for {1}'.format(model, instrument))
         
-        _read_model_data(search_path, models, instrument, model, **kwargs)
+        _read_model_data(search_path, models, instrument, model)
 
     return models['data'][key]
 

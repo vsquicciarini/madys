@@ -1,362 +1,311 @@
-import os
-import sys
 import numpy as np
+from pathlib import Path
+import sys
+import os
+from evolution import *
+from scipy.interpolate import interp1d
+from astropy.constants import M_jup,M_sun
 import time
 import pickle
-import h5py
-from astropy.coordinates import Angle, SkyCoord, Galactocentric, galactocentric_frame_defaults
+from astropy.coordinates import Angle, SkyCoord, ICRS, Galactic, FK4, FK5, Latitude, Longitude,Galactocentric, galactocentric_frame_defaults
 from astropy import units as u
-from pathlib import Path
-from tabulate import tabulate
-from astropy.table import Table
-from astroquery.xmatch import XMatch
-import warnings
-from astropy.utils.exceptions import AstropyWarning
-import logging
-from astropy.constants import M_jup,M_sun
-from scipy.interpolate import interp1d
 from astroquery.simbad import Simbad
 from astroquery.vizier import Vizier
-working_path=os.getcwd()
-sys.path.append(working_path)
-from evolution import *
+from astroquery.xmatch import XMatch
+import csv
+from astropy.table import Table, vstack
+from astropy.io import ascii
+from tabulate import tabulate
+import math
+import shutil
+import h5py
+from astropy.io import fits
+from astroquery.gaia import Gaia
+Vizier.TIMEOUT = 100000000 # rise the timeout for Vizier
+import numpy as np
+from astropy.table import Table, Column, vstack, hstack, MaskedColumn
+from astropy.io import ascii
+from tap import (GaiaArchive, TAPVizieR, resolve, QueryStr, timeit)
+from astroquery.gaia import Gaia
+gaia = GaiaArchive()
+import copy
+import warnings
+from astropy.utils.exceptions import AstropyWarning
 
-
-#################################################################
-# THE CLASS
-
-class MADYS:    
+class MADYS(object):
     def __init__(self, file, **kwargs):
-        self.file = file
-        self.path = os.path.dirname(file)     #working path        
+        if isinstance(file,Table): self.file = kwargs['output_file']
+        else: self.file = file
+        self.path = os.path.dirname(self.file)     #working path        
         sample_name=os.path.split(self.file)[1] #file name
         i=0
         while sample_name[i]!='.': i=i+1
         self.__ext=sample_name[i:] #estension
         self.__sample_name=sample_name[:i]        
-        self.log_file = Path(self.path) / (self.__sample_name+'_log.txt')
-        if 'logger' not in locals():
-            self.__logger = MADYS.setup_custom_logger('madys',self.log_file)
-        surveys = ['2mass','wise','allwise']
+            
+        if isinstance(file,Table):
+            
+            col0=file.colnames
 
-        coord_type = 'equatorial'
-        verbose = True
-        if len(kwargs)>0:
-            if 'surveys' in kwargs: surveys = kwargs['surveys']
-            if 'coord_type' in kwargs: coord_type = kwargs['coord_type']
-            if 'mass_range' in kwargs: self.mass_range = kwargs['mass_range']
-            if 'verbose' in kwargs: verbose = kwargs['verbose']
-        surveys=list(map(str.lower,surveys))    
-        if 'gaia_edr3' not in surveys: surveys.append('gaia_edr3')
-        if 'gaia_dr2' not in surveys: surveys.append('gaia_dr2')
-        self.surveys=surveys
-        
-        self.__logger.info('Program started')
-        self.__logger.info('Input file:')
-        self.__logger.info('Coordinate type:'+str(coord_type))
-        self.__logger.info('Looking for photometry in the surveys:')
+            kin=np.array(['parallax','parallax_err','ra','dec'])
+            col=np.setdiff1d(np.unique(np.char.replace(col0,'_err','')),kin)
+            col_err=np.array([i+'_err' for i in col1])
+            self.filters=np.array(col)
 
-        self.phot,self.phot_err,self.kin,self.flags,self.headers=self.search_phot(verbose=verbose,coordinates=coord_type)
-        self.__logger.info('Query ended. Results saved to the file...')
-        #logger.error('Error')
-        par=self.kin[:,4]
-        par_err=self.kin[:,5]
-        coo=self.kin[:,[0,2]]
-        self.ebv=MADYS.interstellar_ext(ra=coo[:,0],dec=coo[:,1],par=par,logger=self.__logger)
-        self.abs_phot,self.abs_phot_err=MADYS.app_to_abs_mag(self.phot,par,app_mag_error=self.phot_err,parallax_error=par_err)
-        logging.shutdown()
-        
-    def search_phot(self,coordinates='equatorial',verbose=True,overwrite=False,merge=False):
-
-        surveys=self.surveys
-        
-        def survey_properties(survey):
-            if survey=='gaia_edr3':
-                code='vizier:I/350/gaiaedr3'
-                col1=['source_id','ra','ra_error','dec','dec_error','parallax','parallax_error','pmra','pmra_error','pmdec','pmdec_error','ruwe','phot_g_mean_mag','phot_g_mean_mag_error','phot_bp_mean_mag','phot_bp_mean_mag_error','phot_rp_mean_mag','phot_rp_mean_mag_error','dr2_radial_velocity','dr2_radial_velocity_error','phot_bp_rp_excess_factor_corrected'] #last from Riello et al. 2020
-                hea=['source_id','ra','ra_error','dec','dec_error','parallax','parallax_error','pmra','pmra_error','pmdec','pmdec_error','ruwe','G','G_err','Gbp','Gbp_err','Grp','Grp_err','radial_velocity', 'radial_velocity_error','edr3_bp_rp_excess_factor_corr']
-                fmt=(".5f",".11f",".4f",".11f",".4f",".4f",".4f",".4f",".4f",".4f",".4f",".3f",".4f",".4f",".4f",".4f",".4f",".4f",".4f",".4f",".4f")
-                f_list=['G','Gbp','Grp']
-                q_flags=['ruwe','edr3_bp_rp_excess_factor_corr']
-                fill_value=np.nan
-            elif survey=='2mass':
-                code='vizier:II/246/out'
-                col1=['2MASS','RA','DEC','Jmag','e_Jmag','Hmag','e_Hmag','Kmag','e_Kmag','Qfl']
-                hea=['ID','ra','dec','J','J_err','H','H_err','K','K_err','qfl']
-                fmt=(".5f",".8f",".8f",".3f",".3f",".3f",".3f",".3f",".3f")
-                f_list=['J','H','K']
-                q_flags=['qfl']
-                fill_value='ZZZ'
-            elif survey=='allwise':
-                code='vizier:II/328/allwise'
-                col1=['AllWISE','RAJ2000','DEJ2000','W1mag','e_W1mag','W2mag','e_W2mag','W3mag','e_W3mag','W4mag','e_W4mag','ccf','d2M']
-                hea=['ID','ra','dec','W1','W1_err','W2','W2_err','W3','W3_err','W4','W4_err','ccf','d2M']
-                fmt=(".5f",".8f",".8f",".3f",".3f",".3f",".3f",".3f",".3f",".3f",".3f",".3f",".4f")
-                f_list=['W1','W2','W3','W4']
-                q_flags=['ccf']
-                fill_value='ZZZZ'
-            elif survey=='gaia_dr2':
-                code='vizier:I/345/gaia2'
-                col1=['source_id','ra','ra_error','dec','dec_error','parallax','parallax_error','pmra','pmra_error','pmdec','pmdec_error','phot_g_mean_flux','phot_g_mean_flux_error','phot_g_mean_mag','phot_bp_mean_flux','phot_bp_mean_flux_error','phot_bp_mean_mag','phot_rp_mean_flux','phot_rp_mean_flux_error','phot_rp_mean_mag','radial_velocity','radial_velocity_error','phot_bp_rp_excess_factor','phot_bp_rp_excess_factor_corrected']
-                hea=['source_id','ra','ra_error','dec','dec_error','parallax','parallax_error','pmra','pmra_error','pmdec','pmdec_error','G2_flux','G2_flux_err','G2','Gbp2_flux','Gbp2_flux_err','Gbp2','Grp2_flux','Grp2_flux_err','Grp2','radial_velocity','radial_velocity_error','dr2_bp_rp_excess_factor','dr2_bp_rp_excess_factor_corr']
-                fmt=(".5f",".11f",".4f",".11f",".4f",".4f",".4f",".4f",".4f",".4f",".4f",".4f",".4f",".4f",".4f",".4f",".4f",".4f",".4f",".4f",".4f",".4f")
-                f_list=['G2','Gbp2','Grp2']            
-                q_flags=['dr2_bp_rp_excess_factor','dr2_bp_rp_excess_factor_corr']
-                fill_value=np.nan
-            elif survey=='wise':
-                code='vizier:II/311/wise'
-                col1=['JNAME','ra','dec','W1mag','e_W1mag','W2mag','e_W2mag','W3mag','e_W3mag','W4mag','e_W4mag','cc_flags']
-                hea=['ID','ra','dec','W1_w','W1_w_err','W2_w','W2_w_err','W3_w','W3_w_err','W4_w','W4_w_err','ccf_w']
-                fmt=(".5f",".8f",".8f",".3f",".3f",".3f",".3f",".3f",".3f",".3f",".3f",".3f")
-                f_list=['W1_w','W2_w','W3_w','W4_w']
-                q_flags=['ccf_w']
-                fill_value='ZZZZ'
-
-            return code,col1,hea,fmt,f_list,q_flags,fill_value
-
-        def survey_radec(survey):
-            if survey=='gaia_edr3':
-                ra_name='ra_epoch2000'
-                dec_name='dec_epoch2000'
-            elif survey=='gaia_dr2':
-                ra_name='ra_epoch2000'
-                dec_name='dec_epoch2000'
-            elif survey=='2mass':
-                ra_name='RAJ2000'
-                dec_name='DEJ2000'
-            if survey=='allwise':
-                ra_name='RAJ2000'
-                dec_name='DEJ2000'
-            if survey=='wise':
-                ra_name='ra'
-                dec_name='dec'        
-            return ra_name,dec_name
-
-        if self.__ext=='.csv': delim=','
-        else: delim=None
-
-        if isinstance(surveys,str): surveys=[surveys]
-        if merge=='wise':
-            if 'wise' not in surveys: surveys.append('wise')
-            if 'allwise' not in surveys: surveys.append('allwise')        
-        ns=len(surveys)
-
-        file=''+self.__sample_name
-        for i in range(len(surveys)): file+='_'+surveys[i]
-        PIK=os.path.join(self.path,(file+'.pkl'))
-
-        nf=0 #total no. of filters
-        nq=0 #total no. of quality flags
-        for i in range(len(surveys)): 
-            nf+=len(survey_properties(surveys[i])[4])
-            nq+=len(survey_properties(surveys[i])[5])
-
-        if (MADYS.file_search(PIK)) & (overwrite==0) : #see if the search result is already present
-            with open(PIK,'rb') as f:
-                phot=pickle.load(f)
-                phot_err=pickle.load(f)
-                kin=pickle.load(f)
-                flags2=pickle.load(f)
-                headers=pickle.load(f)
+            n=len(col)
+            self.abs_phot=np.full([len(file),n],np.nan)
+            self.abs_phot_err=np.full([len(file),n],np.nan)
+            for i in range(n):
+                self.abs_phot[:,i]=file[col[i]]               
+                self.abs_phot_err[:,i]=file[col_err[i]]
+            self.ebv=np.zeros(len(file))
+            if 'ebv' in kwargs:
+                self.ebv=kwargs['ebv']
+            elif ('ra' in col0) & ('dec' in col0) & ('parallax' in col0):
+                self.ebv=MADYS.interstellar_ext(ra=file['ra'],dec=file['dec'],par=par)
+            if 'parallax' in col0:
+                par=file['parallax']
+                par_err=file['parallax_err']
+                self.abs_phot,self.abs_phot_err=MADYS.app_to_abs_mag(self.abs_phot,par,app_mag_error=self.abs_phot_err,parallax_error=par_err,ebv=self.ebv,filters=col)
         else:
-            #is the input file a coordinate file or a list of star names?
-            if coordinates=='equatorial': #list of equatorial coordinates
-                coo_array = np.genfromtxt(self.file,delimiter=delim)
-                n=len(coo_array)
-            elif coordinates=='galactic': #list of galactic coordinates
-                old_coo = np.genfromtxt(self.file,delimiter=delim)
-                gc = SkyCoord(l=old_coo[:,0]*u.degree, b=old_coo[:,1]*u.degree, frame='galactic')
-                ec=gc.icrs
-                coo_array=np.transpose([ec.ra.deg,ec.dec.deg])
-                n=len(coo_array)
-            else: #list of star names
-                if self.__ext!='.csv':            
-                    with open(self.file) as f:
-                        target_list = np.genfromtxt(f,dtype="str",delimiter='*@.,')
-                else:
-                    target_list = (pd.read_csv(self.file, sep=',', header=0, comment='#', usecols=['Name'])).to_numpy()
-                    target_list = target_list.ravel()
-                n=len(target_list)
-                gex=0
-                coo_array=np.zeros([n,2])
-                for i in range(n):
-                    x=Simbad.query_object(target_list[i])
-                    if type(x)==type(None):
-                        x=Vizier.query_object(target_list[i],catalog='I/350/gaiaedr3',radius=1*u.arcsec) #tries alternative resolver
-                        if len(x)>0:
-                            if len(x[0]['RAJ2000'])>1:
-                                if 'Gaia' in target_list[i]:
-                                    c=0
-                                    while str(x[0]['Source'][c]) not in target_list[i]:
-                                        c=c+1
-                                        if c==len(x[0]['RAJ2000']): break
-                                    if c==len(x[0]['RAJ2000']): c=np.argmin(x[0]['Gmag'])
-                                    coo_array[i,0]=x[0]['RAJ2000'][c]
-                                    coo_array[i,1]=x[0]['DEJ2000'][c]
-                            else:
-                                coo_array[i,0]=x[0]['RAJ2000']
-                                coo_array[i,1]=x[0]['DEJ2000']
-                        else:
-                            coo_array[i,0]=np.nan
-                            coo_array[i,1]=np.nan                
-                            print('Star',target_list[i],' not found. Perhaps misspelling? Setting row to NaN.')
-                            gex=1
-                    else:
-                        coo_array[i,0]=Angle(MADYS.ang_deg(x['RA'].data.data[0])).degree
-                        coo_array[i,1]=Angle(MADYS.ang_deg(x['DEC'].data.data[0],form='dms')).degree
+    #        self.log_file = Path(self.path) / (self.__sample_name+'_log.txt')
+    #        if 'logger' not in locals():
+    #            self.__logger = MADYS.setup_custom_logger('madys',self.log_file)
+            surveys=['gaia','2mass']
+            self.filters=np.array(['G','Gbp','Grp','G2','Gbp2','Grp2','J','H','K'])
+            self.ext_map='leike'
+            gaia_id=True
+            get_phot=True
+            save_phot=True
+            verbose=True
+            if len(kwargs)>0:
+                if 'surveys' in kwargs: surveys = kwargs['surveys']
+                if 'age_range' in kwargs: self.age_range = kwargs['age_range']
+                if 'mass_range' in kwargs: self.mass_range = kwargs['mass_range']
+                if 'verbose' in kwargs: verbose = kwargs['verbose']
+                if 'ext_map' in kwargs: self.ext_map = kwargs['ext_map']
+                if 'gaia_id' in kwargs: gaia_id = kwargs['gaia_id']
+                if 'get_phot' in kwargs: get_phot = kwargs['get_phot']
+                if 'save_phot' in kwargs: save_phot = kwargs['save_phot']
 
-                if gex:
-                    print('Some stars were not found. Would you like to end the program and check the spelling?')
-                    print('If not, these stars will be treated as missing data')
-                    key=str.lower(input('End program? [Y/N]'))
-                    while 1:
-                        if key=='yes' or key=='y':
-                            print('Program ended.')
-                            return
-                        elif key=='no' or key=='n':
-                            break
-                        key=str.lower(input('Invalid choice. Type Y or N.'))                
+            self.surveys=list(map(str.lower,surveys))    
 
-            kin_list=np.array(['ra','ra_error','dec','dec_error','parallax','parallax_error','pmra','pmra_error','pmdec','pmdec_error','radial_velocity','radial_velocity_error'])
+            IDtab = ascii.read(self.file, format='csv')#, names=['ID']) #.field('ID')
+            if len(IDtab[0])>1:
+                self.ID = IDtab.field('ID')
+            else: self.ID=IDtab
 
-            headers=[]
-            phot=np.full([n,nf],np.nan)
-            phot_err=np.full([n,nf],np.nan)
-            kin=np.full([n,12],np.nan)
-            flags=np.full([n,nq],'',dtype='<U10')
-            flags2={}        
+            if gaia_id: self.GaiaID = self.ID
+            else: self.get_gaia()
+            if get_phot: self.get_phot(save_phot)
+            else:
+                filename=os.path.join(self.path,(self.__sample_name+'_phot_table.csv'))
+                self.phot_table=ascii.read(filename, format='csv')
+            self.good_phot=self.check_phot(**kwargs)
 
-            #turns coo_array into a Table for XMatch
-            coo_table = Table(coo_array, names=('RA', 'DEC'))
+    #        self.__logger.info('Program started')
+    #        self.__logger.info('Input file:')
+    #        self.__logger.info('Coordinate type:'+str(coord_type))
+    #        self.__logger.info('Looking for photometry in the surveys:')
 
-            #finds data on VizieR through a query on XMatch
-            p=0
-            p1=0
-            filt=[]
-            flag_h=[]
-            for i in range(len(surveys)):
-                cat_code,col2,hea,fmt,f_list,q_flags,fill_value=survey_properties(surveys[i])
-                n_f=len(f_list)
-                n_q=len(q_flags)
-                with warnings.catch_warnings():
-                    warnings.simplefilter('ignore', AstropyWarning)
-                    data_s = XMatch.query(cat1=coo_table,cat2=cat_code,max_distance=1.3 * u.arcsec, colRA1='RA',colDec1='DEC')
-                if surveys[i]=='gaia_dr2': #aggiunge colonna per BP-RP excess factor
-                    C0=(data_s['phot_bp_mean_flux']+data_s['phot_rp_mean_flux'])/data_s['phot_g_mean_flux']
-                    data_s['phot_bp_rp_excess_factor']=C0
-                    data_G=np.array(np.ma.filled(data_s['phot_g_mean_mag'],fill_value=np.nan))
-                    data_dG=np.array(np.ma.filled(data_s['phot_bp_mean_mag']-data_s['phot_rp_mean_mag'],fill_value=np.nan))
-                    a0=lambda x: -1.121221*np.heaviside(-(x-0.5),0)-1.1244509*np.heaviside(-(x-3.5),0)-(-1.1244509*np.heaviside(-(x-0.5),0))-0.9288966*np.heaviside(x-3.5,1)
-                    a1=lambda x: 0.0505276*np.heaviside(-(x-0.5),0)+0.0288725*np.heaviside(-(x-3.5),0)-(0.0288725*np.heaviside(-(x-0.5),0))-0.168552*np.heaviside(x-3.5,1)
-                    a2=lambda x: -0.120531*np.heaviside(-(x-0.5),0)-0.0682774*np.heaviside(-(x-3.5),0)-(-0.0682774*np.heaviside(-(x-0.5),0))
-                    a3=lambda x: 0.00795258*np.heaviside(-(x-3.5),0)-(0.00795258*np.heaviside(-(x-0.5),0))
-                    a4=lambda x: -0.00555279*np.heaviside(-(x-0.5),0)-0.00555279*np.heaviside(-(x-3.5),0)-(-0.00555279*np.heaviside(-(x-0.5),0))-0.00555279*np.heaviside(x-3.5,1)
-                    C1 = C0 + a0(data_dG)+a1(data_dG)*data_dG+a2(data_dG)*data_dG**2+a3(data_dG)*data_dG**3+a4(data_dG)*data_G #final corrected factor
-                    data_s['phot_bp_rp_excess_factor_corrected']=C1
-                n_cat2=len(data_s)
-                cat2=np.zeros([n_cat2,2])
-                cat2[:,0]=data_s[survey_radec(surveys[i])[0]]
-                cat2[:,1]=data_s[survey_radec(surveys[i])[1]]
-                if verbose==True:                    
-                    with warnings.catch_warnings():
-                        warnings.simplefilter("ignore")    
-                        f=open(os.path.join(self.path,str(self.__sample_name+'_'+surveys[i]+'_data.txt')), "w+")
-                        f.write(tabulate(data_s[col2], 
-                                         headers=hea, tablefmt='plain', stralign='right', numalign='right', floatfmt=fmt))
-                        data_s=data_s[col2]
-                        data_s.rename_columns(col2,hea)        
-                        f.close()                
-                try:
-                    para=data_s['parallax']
-                except KeyError: para=np.full(n_cat2,1000)
-                mag=data_s[f_list[0]]
-                indG1,indG2=MADYS.cross_match(coo_array,cat2,max_difference=0.001,other_column=mag,rule='min',parallax=para)
-                for j in range(n_f):
-                    mag_i=data_s[f_list[j]]
-                    phot[indG1,j+p]=np.ma.filled(mag_i[indG2],fill_value=np.nan) #missing values replaced by NaN
-                    try:
-                        mag_err=data_s[f_list[j]+'_err']
-                    except KeyError:
-                        mag_eofl=data_s[f_list[j]+'_flux_err']/data_s[f_list[j]+'_flux']
-                        mag_err=0.5*(2.5*np.log10(1+mag_eofl)-2.5*np.log10(1-mag_eofl))                    
-                    phot_err[indG1,j+p]=np.ma.filled(mag_err[indG2],fill_value=np.nan) #missing values replaced by NaN
-                p+=n_f
-                filt.extend(f_list)
-                if surveys[i]=='gaia_edr3':
-                    for j in range(len(kin_list)):
-                        kin_i=data_s[kin_list[j]] 
-                        kin[indG1,j]=np.ma.filled(kin_i[indG2],fill_value=np.nan) #missing values replaced by NaN
+            phot=np.full([len(self.good_phot),9],np.nan)
+            phot_err=np.full([len(self.good_phot),9],np.nan)
+            col=['edr3_gmag_corr','edr3_phot_bp_mean_mag','edr3_phot_rp_mean_mag','dr2_phot_g_mean_mag','dr2_phot_bp_mean_mag','dr2_phot_rp_mean_mag','j_m','h_m','ks_m']
+            col_err=['edr3_phot_g_mean_mag_error','edr3_phot_bp_mean_mag_error','edr3_phot_rp_mean_mag_error','dr2_g_mag_error','dr2_bp_mag_error','dr2_rp_mag_error','j_msigcom','h_msigcom','ks_msigcom','w1mpro_error','w2mpro_error','w3mpro_error','w4mpro_error']
 
-                flags2[surveys[i]]={}
-                for j in range(n_q):
-                    flag=data_s[q_flags[j]]
-                    flags[indG1,j+p1]=np.ma.filled(flag[indG2],fill_value=np.nan) #missing values replaced by NaN
-                    temp_flag=np.array(np.ma.filled(flag[indG2],fill_value=np.nan))
-                    dd=np.full_like(temp_flag,fill_value,shape=n)
-                    dd[indG1]=temp_flag
-                    flags2[surveys[i]][q_flags[j]]=dd
-                p1+=n_q
-                flag_h.extend(q_flags)
-
-            filt2=[s+'_err' for s in filt]
-
-            filt=np.array(filt)
-            filt2=np.array(filt2)
-            flag_h=np.array(flag_h)
-
-            if merge=='wise':
-                w_w=MADYS.where_v(['W1_w','W2_w','W3_w','W4_w'],filt)
-                w_a=MADYS.where_v(['W1','W2','W3','W4'],filt)
-                nw_w=MADYS.complement_v(w_w,len(filt))
-                for j in range(4): 
-                    phot[:,w_a[j]]=np.where(isnumber(phot_err[:,w_a[j]],finite=True), phot[:,w_a[j]], phot[:,w_w[j]])
-                    phot_err[:,w_a[j]]=np.where(isnumber(phot_err[:,w_a[j]],finite=True), phot_err[:,w_a[j]], phot_err[:,w_w[j]])
-                filt=filt[nw_w]
-                filt2=filt2[nw_w]
-                cc=MADYS.where_v(['ccf','ccf_w'],flag_h)
-                flags[:,cc[0]]=np.where(isnumber(phot_err[:,w_a[j]],finite=True), flags[:,cc[0]], flags[:,cc[1]])
-                flags2['wise']['ccf']=flags[:,cc[0]]
-                phot=phot[:,nw_w] #deletes WISE magn
-                phot_err=phot_err[:,nw_w]
-                ncc=MADYS.complement_v(cc[1],len(flag_h))
-                flags=flags[:,ncc]
-                flag_h=flag_h[ncc]
-
-            headers.append(filt)
-            headers.append(kin_list)
-
-            fff=[]
-            fff.extend(filt)
-            fff.extend(filt2)
-
-            if verbose==True:         
-                with warnings.catch_warnings():
-                    warnings.simplefilter("ignore")
-                    
-                    f=open(os.path.join(self.path,(self.__sample_name+'_photometry.txt')), "w+")
-                    f.write(tabulate(np.concatenate((phot,phot_err),axis=1),headers=fff, tablefmt='plain', stralign='right',
-                                     numalign='right', floatfmt=".4f"))
-                    f.close()
-
-                    f=open(os.path.join(self.path,(self.__sample_name+'_kinematics.txt')), "w+")
-                    f.write(tabulate(kin,headers=kin_list, tablefmt='plain', stralign='right', numalign='right', 
-                                     floatfmt=(".11f",".4f",".11f",".4f",".4f",".4f",".3f",".3f",".3f",".3f",".3f",".3f")))
-                    f.close()
-
-                    f=open(os.path.join(self.path,(self.__sample_name+'_properties.txt')), "w+")
-                    f.write(tabulate(flags,headers=flag_h, tablefmt='plain', stralign='right', numalign='right'))
-                    f.close()
-
-            with open(PIK,'wb') as f:
-                pickle.dump(phot,f)
-                pickle.dump(phot_err,f)
-                pickle.dump(kin,f)
-                pickle.dump(flags2,f)
-                pickle.dump(headers,f)
-
-        return phot,phot_err,kin,flags2,headers
+            for i in range(9):
+                phot[:,i]=self.good_phot[col[i]].filled(np.nan)
+                phot_err[:,i]=self.good_phot[col_err[i]].filled(np.nan)
+            self.__app_phot=phot
+            self.__app_phot_err=phot_err
+            par=np.array(self.good_phot['edr3_parallax'].filled(np.nan))
+            ra=np.array(self.good_phot['ra'].filled(np.nan))
+            dec=np.array(self.good_phot['dec'].filled(np.nan))
+            par_err=np.array(self.good_phot['edr3_parallax_error'].filled(np.nan))
+            if 'ebv' in kwargs:
+                self.ebv=kwargs['ebv']
+            else:
+                self.ebv=self.interstellar_ext(ra=ra,dec=dec,par=par)
+    #        self.ebv=self.interstellar_ext(ra=coo[:,0],dec=coo[:,1],par=par,logger=self.__logger)
+            self.abs_phot,self.abs_phot_err=self.app_to_abs_mag(self.__app_phot,par,app_mag_error=self.__app_phot_err,parallax_error=par_err,ebv=self.ebv,filters=self.filters)
+    #        logging.shutdown() 
         
-    def get_age(self, model, **kwargs):
+    
+    def get_gaia(self):
+        ns=len(self.ID)
+        self.GaiaID=['']*ns
+        with warnings.catch_warnings():
+            warnings.simplefilter('ignore')
+            for i in range(ns):
+                res=Simbad.query_objectids(self.ID[i])
+                for rr in res:
+                    if str(rr[0]).startswith('Gaia DR2'): self.GaiaID[i]=str(rr[0])#
+
+    def get_phot(self, save_phot, verbose=True):
+        data=[]
+        start = time.time()
+        for i in range(len(self.GaiaID)):            
+            id=str(self.GaiaID[i]).split('Gaia DR2 ')[1]
+            #print(i, id)
+            qstr="""
+            select all
+            edr3.designation as edr3_id, dr2.designation as dr2_id,
+            tmass.designation as tmass_id, allwise.designation as allwise_id,
+            apass.recno as apassdr9_id, sloan.objid as sloan_id,
+            edr3.ra as ra, edr3.dec as dec,
+            edr3.ref_epoch as edr3_epoch, edr3.parallax as edr3_parallax,
+            edr3.parallax_error as edr3_parallax_error, edr3.parallax_over_error as edr3_parallax_over_error,
+            edr3.pmra as edr3_pmra, edr3.pmra_error as edr3_pmra_error,
+            edr3.pmdec as edr3_pmdec, edr3.pmdec_error as edr3_pmdec_error,
+            edr3.ra_dec_corr as edr3_ra_dec_corr, edr3.ra_parallax_corr as edr3_ra_parallax_corr,
+            edr3.ra_pmra_corr as edr3_ra_pmra_corr, edr3.ra_pmdec_corr as edr3_ra_pmdec_corr,
+            edr3.dec_parallax_corr as edr3_dec_parallax_corr,
+            edr3.dec_pmra_corr as edr3_dec_pmra_corr, edr3.dec_pmdec_corr as edr3_dec_pmdec_corr,
+            edr3.parallax_pmra_corr as edr3_parallax_pmra_corr, edr3.parallax_pmdec_corr as edr3_parallax_pmdec_corr,
+            edr3.pmra_pmdec_corr as edr3_pmra_pmdec_corr, edr3.phot_g_mean_mag as edr3_phot_g_mean_mag,
+            edr3.phot_g_mean_flux as edr3_phot_g_mean_flux, edr3.phot_g_mean_flux_error as edr3_phot_g_mean_flux_error,
+            edr3.phot_bp_mean_flux as edr3_phot_bp_mean_flux, edr3.phot_bp_mean_flux_error as edr3_phot_bp_mean_flux_error,
+            edr3.phot_bp_mean_mag as edr3_phot_bp_mean_mag,
+            edr3.phot_rp_mean_flux as edr3_phot_rp_mean_flux, edr3.phot_rp_mean_flux_error as edr3_phot_rp_mean_flux_error,
+            edr3.phot_rp_mean_mag as edr3_phot_rp_mean_mag,
+            edr3.bp_rp as edr3_bp_rp, edr3.phot_bp_rp_excess_factor as edr3_phot_bp_rp_excess_factor,
+            edr3.ruwe as edr3_ruwe, edr3.astrometric_params_solved as edr3_astrometric_params_solved,
+            dr2.ref_epoch as dr2_epoch, dr2.ra as dr2_ra, dr2.dec as dr2_dec,
+            dr2.parallax as dr2_parallax,
+            dr2.parallax_error as dr2_parallax_error, dr2.parallax_over_error as dr2_parallax_over_error,
+            dr2.pmra as dr2_pmra, dr2.pmra_error as dr2_pmra_error,
+            dr2.pmdec as dr2_pmdec, dr2.pmdec_error as dr2_pmdec_error,
+            dr2.ra_dec_corr as dr2_ra_dec_corr, dr2.ra_parallax_corr as dr2_ra_parallax_corr,
+            dr2.ra_pmra_corr as dr2_ra_pmra_corr, dr2.ra_pmdec_corr as dr2_ra_pmdec_corr,
+            dr2.dec_parallax_corr as dr2_dec_parallax_corr,
+            dr2.dec_pmra_corr as dr2_dec_pmra_corr, dr2.dec_pmdec_corr as dr2_dec_pmdec_corr,
+            dr2.parallax_pmra_corr as dr2_parallax_pmra_corr, dr2.parallax_pmdec_corr as dr2_parallax_pmdec_corr,
+            dr2.pmra_pmdec_corr as dr2_pmra_pmdec_corr, dr2.phot_g_mean_mag as dr2_phot_g_mean_mag,
+            dr2.phot_g_mean_flux as dr2_phot_g_mean_flux, dr2.phot_g_mean_flux_error as dr2_phot_g_mean_flux_error,
+            dr2.phot_bp_mean_flux as dr2_phot_bp_mean_flux, dr2.phot_bp_mean_flux_error as dr2_phot_bp_mean_flux_error,
+            dr2.phot_bp_mean_mag as dr2_phot_bp_mean_mag,
+            dr2.phot_rp_mean_flux as dr2_phot_rp_mean_flux, dr2.phot_rp_mean_flux_error as dr2_phot_rp_mean_flux_error,
+            dr2.phot_rp_mean_mag as dr2_phot_rp_mean_mag,
+            dr2.bp_rp as dr2_bp_rp, dr2.phot_bp_rp_excess_factor as dr2_phot_bp_rp_excess_factor,
+            dr2ruwe.ruwe as dr2_ruwe, dr2.astrometric_params_solved as dr2_astrometric_params_solved,
+            dr2.radial_velocity, dr2.radial_velocity_error,
+            tmass.j_m, tmass.j_msigcom,
+            tmass.h_m, tmass.h_msigcom,
+            tmass.ks_m, tmass.ks_msigcom,
+            tmass.ph_qual,
+            tmass.ra as tmass_ra, tmass.dec as tmass_dec,
+            allwise.w1mpro, allwise.w1mpro_error,
+            allwise.w2mpro,allwise.w2mpro_error,
+            allwise.w3mpro,allwise.w3mpro_error,
+            allwise.w4mpro,allwise.w4mpro_error,
+            allwise.cc_flags, allwise.ext_flag, allwise.var_flag, allwise.ph_qual, allwise.tmass_key,
+            apass.b_v, apass.e_b_v, apass.vmag, apass.e_vmag, apass.bmag, apass.e_bmag, apass.r_mag, apass.e_r_mag, apass.i_mag, apass.e_i_mag,
+            sloan.u, sloan.err_u, sloan.g, sloan.err_g, sloan.r, sloan.err_r, sloan.i, sloan.err_i, sloan.u, sloan.err_u
+            from
+                gaiaedr3.gaia_source as edr3
+            LEFT OUTER JOIN
+                gaiaedr3.dr2_neighbourhood AS dr2xmatch
+                ON edr3.source_id = dr2xmatch.dr3_source_id
+            LEFT OUTER JOIN
+                gaiadr2.gaia_source as dr2
+                ON dr2xmatch.dr2_source_id = dr2.source_id
+            LEFT OUTER JOIN
+                gaiadr2.ruwe as dr2ruwe
+                ON dr2xmatch.dr2_source_id = dr2ruwe.source_id
+            LEFT OUTER JOIN
+                gaiaedr3.allwise_best_neighbour AS allwisexmatch
+                ON edr3.source_id = allwisexmatch.source_id
+            LEFT OUTER JOIN
+                gaiaedr3.tmass_psc_xsc_best_neighbour AS tmassxmatch
+                ON edr3.source_id = tmassxmatch.source_id
+            LEFT OUTER JOIN
+                gaiadr1.tmass_original_valid AS tmass
+                ON tmassxmatch.original_ext_source_id = tmass.designation
+            LEFT OUTER JOIN
+                gaiadr1.allwise_original_valid AS allwise
+                ON allwisexmatch.original_ext_source_id = allwise.designation
+            LEFT OUTER JOIN
+                gaiaedr3.apassdr9_best_neighbour AS apassxmatch
+                ON edr3.source_id = apassxmatch.source_id
+            LEFT OUTER JOIN
+                external.apassdr9 AS apass
+                ON apassxmatch.clean_apassdr9_oid = apass.recno
+            LEFT OUTER JOIN
+                gaiaedr3.sdssdr13_best_neighbour AS sloanxmatch
+                ON edr3.source_id = sloanxmatch.source_id
+            LEFT OUTER JOIN
+                external.sdssdr13_photoprimary as sloan
+                ON sloanxmatch.clean_sdssdr13_oid = sloan.objid
+            WHERE dr2xmatch.dr2_source_id = """ + id
+
+            adql = QueryStr(qstr,verbose=False)
+#            t=timeit(gaia.query)(adql)
+            t=gaia.query(adql)
+            edr3_gmag_corr, edr3_gflux_corr = self.correct_gband(t.field('edr3_bp_rp'), t.field('edr3_astrometric_params_solved'), t.field('edr3_phot_g_mean_mag'), t.field('edr3_phot_g_mean_flux'))
+            edr3_bp_rp_excess_factor_corr = self.edr3_correct_flux_excess_factor(t.field('edr3_bp_rp'), t.field('edr3_phot_bp_rp_excess_factor'))
+            edr3_g_mag_error, edr3_bp_mag_error, edr3_rp_mag_error = self.gaia_mag_errors(t.field('edr3_phot_g_mean_flux'), t.field('edr3_phot_g_mean_flux_error'), t.field('edr3_phot_bp_mean_flux'), t.field('edr3_phot_bp_mean_flux_error'), t.field('edr3_phot_rp_mean_flux'), t.field('edr3_phot_rp_mean_flux_error'))
+            dr2_bp_rp_excess_factor_corr = self.dr2_correct_flux_excess_factor(t.field('dr2_phot_g_mean_mag'), t.field('dr2_bp_rp'), t.field('dr2_phot_bp_rp_excess_factor'))
+            dr2_g_mag_error, dr2_bp_mag_error, dr2_rp_mag_error = self.gaia_mag_errors(t.field('dr2_phot_g_mean_flux'), t.field('dr2_phot_g_mean_flux_error'), t.field('dr2_phot_bp_mean_flux'), t.field('dr2_phot_bp_mean_flux_error'), t.field('dr2_phot_rp_mean_flux'), t.field('dr2_phot_rp_mean_flux_error'))
+            t_ext=Table([edr3_gmag_corr, edr3_gflux_corr, edr3_bp_rp_excess_factor_corr, edr3_g_mag_error, edr3_bp_mag_error, edr3_rp_mag_error, dr2_bp_rp_excess_factor_corr, dr2_g_mag_error, dr2_bp_mag_error, dr2_rp_mag_error],
+                names=['edr3_gmag_corr', 'edr3_gflux_corr','edr3_phot_bp_rp_excess_factor_corr', 'edr3_phot_g_mean_mag_error', 'edr3_phot_bp_mean_mag_error', 'edr3_phot_rp_mean_mag_error', 'dr2_phot_bp_rp_excess_factor_corr', 'dr2_g_mag_error', 'dr2_bp_mag_error', 'dr2_rp_mag_error'],
+                units=["mag", "'electron'.s**-1", "", "mag", "mag", "mag", "", "mag", "mag", "mag"],
+                descriptions=['EDR3 G-band mean mag corrected as per Riello et al. (2020)', 'EDR3 G-band mean flux corrected as per Riello et al. (2020)', 'EDR3 BP/RP excess factor corrected as per Riello et al. (2020)','EDR3 Error on G-band mean mag', 'EDR3 Error on BP-band mean mag', 'EDR3 Error on RP-band mean mag', 'DR2 BP/RP excess factor corrected', 'DR2 Error on G-band mean mag', 'DR2 Error on BP-band mean mag', 'DR2 Error on RP-band mean mag'])
+            data.append(hstack([self.ID[i], t, t_ext]))
+        self.phot_table=vstack(data)
+        if save_phot == True:
+            filename=os.path.join(self.path,(self.__sample_name+'_phot_table.csv'))
+            ascii.write(self.phot_table, filename, format='csv', overwrite=True)
+        if verbose == True:
+            end = time.time()
+            hours, rem = divmod(end-start, 3600)
+            minutes, seconds = divmod(rem, 60)
+            print("Total time needed to retrieve photometry for "+ np.str(len(self.GaiaID))+ " targets: - {:0>2}:{:0>2}:{:05.2f}".format(int(hours),int(minutes),seconds))
+
+    def check_phot(self,**kwargs):
+        if 'max_tmass_q' in kwargs:
+            max_tmass_q=kwargs['max_tmass_q']
+        else: max_tmass_q='A'
+        if 'max_wise_q' in kwargs:
+            max_wise_q=kwargs['max_wise_q']
+        else: max_wise_q='A'
+
+        t=copy.deepcopy(self.phot_table)
+        t=Table(t, masked=True, copy=False)
+        
+        dr2_q = self.dr2_quality(t.field('dr2_phot_bp_rp_excess_factor_corr'),t.field('dr2_phot_g_mean_mag'))
+        t['dr2_phot_bp_mean_mag'].mask[~dr2_q]=True
+        t['dr2_phot_rp_mean_mag'].mask[~dr2_q]=True
+        t['dr2_phot_bp_mean_mag'].fill_value = np.nan
+        t['dr2_phot_rp_mean_mag'].fill_value = np.nan
+        
+        edr3_q = self.edr3_quality(t.field('edr3_phot_bp_rp_excess_factor_corr'),t.field('edr3_phot_g_mean_mag'))
+        t['edr3_phot_bp_mean_mag'].mask[~edr3_q]=True
+        t['edr3_phot_rp_mean_mag'].mask[~edr3_q]=True
+        t['edr3_phot_bp_mean_mag'].fill_value = np.nan
+        t['edr3_phot_rp_mean_mag'].fill_value = np.nan
+
+        tm_q = self.tmass_quality(t.field('ph_qual'),max_q=max_tmass_q)
+        t['j_m'].mask[~tm_q[0]]=True
+        t['h_m'].mask[~tm_q[1]]=True
+        t['ks_m'].mask[~tm_q[2]]=True
+        t['j_m'].fill_value = np.nan
+        t['h_m'].fill_value = np.nan
+        t['ks_m'].fill_value = np.nan
+
+        wise_q = self.allwise_quality(t.field('cc_flags'),t.field('ph_qual_2'),max_q=max_wise_q)
+        t['w1mpro'].mask[~wise_q[0]]=True
+        t['w2mpro'].mask[~wise_q[1]]=True
+        t['w3mpro'].mask[~wise_q[2]]=True
+        t['w4mpro'].mask[~wise_q[3]]=True
+        t['w1mpro'].fill_value = np.nan
+        t['w2mpro'].fill_value = np.nan
+        t['w3mpro'].fill_value = np.nan
+        t['w4mpro'].fill_value = np.nan
+        
+        return t
+        #print(t.field('j_m').filled().data)
+
+    def get_agemass(self, model, **kwargs):
         model=(str.lower(model)).replace('-','_')        
         self.mass_range = [0.01,1.4]
         self.age_range = [1,1000]
@@ -368,6 +317,8 @@ class MADYS:
         self.B = 0
         self.ph_cut = 0.2       
         verbose = True
+        m_unit='m_sun'
+        relax=False
         if len(kwargs)>0:
             if 'mass_range' in kwargs: self.mass_range = kwargs['mass_range']
             if 'age_range' in kwargs: self.age_range = kwargs['age_range']
@@ -379,70 +330,28 @@ class MADYS:
             if 'fspot' in kwargs: self.f_spot = kwargs['fspot']
             if 'B' in kwargs: self.B = kwargs['B']
             if 'ph_cut' in kwargs: self.ph_cut = kwargs['ph_cut']
-        self.__logger.info('Starting age determination')
-        iso_mass,iso_age,iso_filt,iso_data=MADYS.load_isochrones(model,surveys=self.surveys,mass_range=self.mass_range,age_range=self.age_range,feh=self.feh,
-                                 afe=self.afe,v_vcrit=self.v_vcrit,fspot=self.fspot,B=self.B)
-        self.__logger.info('Isochrones for model '+model+' correctly loaded.')               
+            if 'm_unit' in kwargs: m_unit=kwargs['m_unit']        
+        
+#        self.__logger.info('Starting age determination')
+        iso_mass,iso_age,iso_filt,iso_data=MADYS.load_isochrones(model,self.filters,feh=self.feh,
+                                 afe=self.afe,v_vcrit=self.v_vcrit,fspot=self.fspot,B=self.B,**kwargs)
+#        self.__logger.info('Isochrones for model '+model+' correctly loaded.')               
    
-        phot_filters=self.headers[0]
         phot=self.abs_phot
-        phot_err=self.abs_phot_err
-
-        #selects Gaia DR2 photometry if the isochrones have DR2 filters, EDR3 otherwise
-        if 'G2' in iso_filt: f_right=['J','H','K','G2','Gbp2','Grp2'] #right order
-        else: f_right=['J','H','K','G','Gbp','Grp']
+        phot_err=self.abs_phot_err        
 
         l0=phot.shape
         xlen=l0[0] #no. of stars: 85
-        ylen=len(f_right) #no. of filters: 6
+        ylen=len(iso_filt) #no. of filters: 6
 
-        filt=MADYS.where_v(f_right,iso_filt)
-        filt2=MADYS.where_v(f_right,phot_filters)
-
-        iso_data=iso_data[:,:,filt] #ordered columns. Cuts unnecessary columns    
+        filt2=MADYS.where_v(iso_filt,self.filters)
         phot=phot[:,filt2] #ordered columns. Cuts unnecessary columns
         phot_err=phot_err[:,filt2] #ordered columns. Cuts unnecessary columns
-
-        if 'G2' in iso_filt:
-            qfl=self.flags['gaia_dr2']['dr2_bp_rp_excess_factor_corr']
-            s1=0.004+8e-12*phot[:,3]**7.55
-            with np.errstate(invalid='ignore'):           
-                q1,=np.where(abs(qfl)>3*s1)
-        else:
-            qfl=self.flags['gaia_edr3']['edr3_bp_rp_excess_factor_corr']
-            s1=0.0059898+8.817481e-12*phot[:,3]**7.618399
-            with np.errstate(invalid='ignore'):           
-                q1,=np.where(abs(qfl)>3*s1) #excluded
-        if len(q1)>0:       
-            phot[q1,4]=np.nan
-            phot_err[q1,4]=np.nan
-            phot[q1,5]=np.nan
-            phot_err[q1,5]=np.nan
-
-        qfl=self.flags['2mass']['qfl']
-        qJ=[]
-        qH=[]
-        qK=[]
-        for i in range(len(qfl)):
-            if qfl[i][0]!='A': qJ.append(i)
-            if qfl[i][1]!='A': qH.append(i)
-            if qfl[i][2]!='A': qK.append(i)
-        if len(qJ)>0:
-            qJ=np.array(qJ)
-            phot[qJ,0]=np.nan
-            phot_err[qJ,0]=np.nan
-        if len(qH)>0:
-            qH=np.array(qH)
-            phot[qH,1]=np.nan
-            phot_err[qH,1]=np.nan
-        if len(qK)>0:
-            qK=np.array(qK)
-            phot[qK,2]=np.nan
-            phot_err[qK,2]=np.nan
-
-        red=np.zeros([xlen,ylen]) #reddening
-        for i in range(ylen): red[:,i]=MADYS.extinction(self.ebv,f_right[i])
-        phot=phot-red
+        
+#        print('phot. filters:',self.filters)
+#        print('isochrone filters:',iso_filt)
+#        print('order (phot):',filt2)
+#        print('phot. (ordered):',self.filters[filt2])
 
         a_final=np.full(xlen,np.nan)
         m_final=np.full(xlen,np.nan)
@@ -450,23 +359,22 @@ class MADYS:
         m_err=np.full(xlen,np.nan)
         l=iso_data.shape
         sigma=np.full(([l[0],l[1],ylen]),np.nan)
-
-        for i in range(xlen):
-            w,=np.where(MADYS.is_phot_good(phot[i,:],phot_err[i,:],max_phot_err=self.ph_cut))
-            if len(w)==0: continue
-            b=np.zeros(len(w),dtype=bool)
-            for h in range(len(w)):
-                ph=phot[i,w[h]]
-                sigma[:,:,w[h]]=((iso_data[:,:,w[h]]-ph)/phot_err[i,w[h]])**2
-                ii=divmod(np.nanargmin(sigma[:,:,w[h]]), sigma.shape[1])+(w[h],)
-                if abs(iso_data[ii]-ph)<0.2: b[h]=True            
-            w2=w[b]
-            if len(w2)<3: continue
-            cr=np.sum(sigma[:,:,w2],axis=2)
-            est,ind=MADYS.min_v(cr)
-            crit1=np.sort([sigma[ind+(w2[j],)] for j in range(len(w2))])
-            crit2=np.sort([abs(iso_data[ind+(w2[j],)]-phot[i,w2[j]]) for j in range(len(w2))])
-            if (crit1[2]<9) | (crit2[2]<0.1):
+        
+        if l[1]==1: relax=True #if just one age is provided, no need for strict conditions on photometry
+        
+        if relax:
+            for i in range(xlen):
+                w,=np.where(MADYS.is_phot_good(phot[i,:],phot_err[i,:],max_phot_err=self.ph_cut))
+                if len(w)==0: continue
+                b=np.zeros(len(w),dtype=bool)
+                for h in range(len(w)):
+                    ph=phot[i,w[h]]
+                    sigma[:,:,w[h]]=((iso_data[:,:,w[h]]-ph)/phot_err[i,w[h]])**2
+                    ii=divmod(np.nanargmin(sigma[:,:,w[h]]), sigma.shape[1])+(w[h],) #builds indices (i1,i2,i3) of closest theor. point
+                    if abs(iso_data[ii]-ph)<0.2: b[h]=True #if the best theor. match is more than 0.2 mag away, discards it           
+                w2=w[b]
+                cr=np.sum(sigma[:,:,w2],axis=2)
+                est,ind=MADYS.min_v(cr)
                 m_final[i]=iso_mass[ind[0]]
                 a_final[i]=iso_age[ind[1]]
                 m_f1=np.zeros(20)
@@ -480,7 +388,42 @@ class MADYS:
                     m_f1[j]=iso_mass[ind1[0]]
                     a_f1[j]=iso_age[ind1[1]]
                 m_err[i]=np.std(m_f1,ddof=1)
-                a_err[i]=np.std(a_f1,ddof=1)
+                a_err[i]=np.std(a_f1,ddof=1)            
+        else:
+            for i in range(xlen):
+                w,=np.where(MADYS.is_phot_good(phot[i,:],phot_err[i,:],max_phot_err=self.ph_cut))
+                if len(w)==0: continue
+                b=np.zeros(len(w),dtype=bool)
+                for h in range(len(w)):
+                    ph=phot[i,w[h]]
+                    sigma[:,:,w[h]]=((iso_data[:,:,w[h]]-ph)/phot_err[i,w[h]])**2
+                    ii=divmod(np.nanargmin(sigma[:,:,w[h]]), sigma.shape[1])+(w[h],) #builds indices (i1,i2,i3) of closest theor. point
+                    if abs(iso_data[ii]-ph)<0.2: b[h]=True #if the best theor. match is more than 0.2 mag away, discards it           
+                w2=w[b]
+                if len(w2)<3: continue #at least 3 filters needed for the fit
+                cr=np.sum(sigma[:,:,w2],axis=2)
+                est,ind=MADYS.min_v(cr)
+                crit1=np.sort([sigma[ind+(w2[j],)] for j in range(len(w2))])
+                crit2=np.sort([abs(iso_data[ind+(w2[j],)]-phot[i,w2[j]]) for j in range(len(w2))])
+                if (crit1[2]<9) | (crit2[2]<0.1): #the 3rd best sigma < 3 and the 3rd best solution closer than 0.1 mag  
+                    m_final[i]=iso_mass[ind[0]]
+                    a_final[i]=iso_age[ind[1]]
+                    m_f1=np.zeros(20)
+                    a_f1=np.zeros(20)
+                    for j in range(20):
+                        phot1=phot+phot_err*np.random.normal(size=(xlen,ylen))
+                        for h in range(len(w2)):
+                            sigma[:,:,w2[h]]=((iso_data[:,:,w2[h]]-phot1[i,w2[h]])/phot_err[i,w2[h]])**2
+                        cr1=np.sum(sigma[:,:,w2],axis=2)
+                        est1,ind1=MADYS.min_v(cr1)
+                        m_f1[j]=iso_mass[ind1[0]]
+                        a_f1[j]=iso_age[ind1[1]]
+                    m_err[i]=np.std(m_f1,ddof=1)
+                    a_err[i]=np.std(a_f1,ddof=1)
+                
+        if m_unit=='m_jup':
+            m_final*=M_sun.value/M_jup.value
+            m_err*=M_sun.value/M_jup.value
 
         if verbose==True:
             filename=self.file
@@ -489,8 +432,8 @@ class MADYS:
                              headers=['MASS','MASS_ERROR','AGE','AGE_ERROR'], tablefmt='plain', stralign='right', numalign='right', floatfmt=".2f"))
             f.close()
 
-        self.__logger.info('Age determination ended. Results saved in ... ')
-        logging.shutdown()
+#        self.__logger.info('Age determination ended. Results saved in ... ')
+#        logging.shutdown()
         return a_final,m_final,a_err,m_err
                 
     @staticmethod
@@ -507,23 +450,27 @@ class MADYS:
             dic1={'G':[cmax,cmin], 'Gbp':[cmax,cmin], 'Grp':[cmax,cmin],
                 'J':[cmax,cmin], 'H':[cmax,cmin], 'K':[cmax,cmin],
                 'W1':[cmax,cmin], 'W2':[cmax,cmin], 'W3':[cmax,cmin],
-                'W4':[cmax,cmin], 'G-J':[cmin,cmax],
+                'W4':[cmax,cmin], 'K1mag':[cmax,cmin], 'K2mag':[cmax,cmin],
+                'G-J':[cmin,cmax],
                 'G-H':[cmin,cmax], 'G-K':[cmin,cmax],
                 'G-W1':[cmin,cmax], 'G-W2':[cmin,cmax],
                 'G-W3':[cmin,cmax], 'G-W4':[cmin,cmax],
                 'J-H':[cmin,cmax], 'J-K':[cmin,cmax],
-                'H-K':[cmin,cmax], 'Gbp-Grp':[cmin,cmax]
+                'H-K':[cmin,cmax], 'Gbp-Grp':[cmin,cmax],
+                'K1mag-K2mag':[cmin,cmax]
                 }
         else:
             dic1={'G':[max(15,cmax),min(1,cmin)], 'Gbp':[max(15,cmax),min(1,cmin)], 'Grp':[max(15,cmax),min(1,cmin)],
                 'J':[max(10,cmax),min(0,cmin)], 'H':[max(10,cmax),min(0,cmin)], 'K':[max(10,cmax),min(0,cmin)],
                 'W1':[max(10,cmax),min(0,cmin)], 'W2':[max(10,cmax),min(0,cmin)], 'W3':[max(10,cmax),min(0,cmin)],
-                'W4':[max(10,cmax),min(0,cmin)], 'G-J':[min(0,cmin),max(5,cmax)],
+                'W4':[max(10,cmax),min(0,cmin)], 'K1mag':[max(19,cmax),min(6,cmin)], 'K2mag':[max(19,cmax),min(6,cmin)],
+                'G-J':[min(0,cmin),max(5,cmax)],
                 'G-H':[min(0,cmin),max(5,cmax)], 'G-K':[min(0,cmin),max(5,cmax)],
                 'G-W1':[min(0,cmin),max(6,cmax)], 'G-W2':[min(0,cmin),max(6,cmax)],
                 'G-W3':[min(0,cmin),max(10,cmax)], 'G-W4':[min(0,cmin),max(12,cmax)],
                 'J-H':[min(0,cmin),max(1,cmax)], 'J-K':[min(0,cmin),max(1.5,cmax)],
-                'H-K':[min(0,cmin),max(0.5,cmax)], 'Gbp-Grp':[min(0,cmin),max(5,cmax)]
+                'H-K':[min(0,cmin),max(0.5,cmax)], 'Gbp-Grp':[min(0,cmin),max(5,cmax)],
+                'K1mag-K2mag':[min(-3,cmin),max(2,cmax)]
                 }
 
         try:
@@ -531,7 +478,7 @@ class MADYS:
         except KeyError:
             if '-' in col_name:
                 xx=[cmin,cmax]
-            else: xx=[cmax,cmin]    
+            else: xx=[cmax,cmin]
 
         return xx 
     
@@ -554,28 +501,28 @@ class MADYS:
         
         if '-' in col:
             col_n=filter_model(model,col).split('-')
-            c1,=np.where(self.headers[0]==col_n[0])
-            c2,=np.where(self.headers[0]==col_n[1])
+            c1,=np.where(self.filters==col_n[0])
+            c2,=np.where(self.filters==col_n[1])
             col1,col1_err=self.abs_phot[:,c1],self.abs_phot_err[:,c1]
             col2,col2_err=self.abs_phot[:,c2],self.abs_phot_err[:,c2]
             col_data=col1-col2
-            col_err=col1_err+col2_err
+            col_err=np.sqrt(col1_err**2+col2_err**2)
         else:
-            c1,=np.where(self.headers[0]==filter_model(model,col))
+            c1,=np.where(self.filters==filter_model(model,col))
             col_data,col_err=self.abs_phot[:,c1],self.abs_phot_err[:,c1]
         if '-' in mag:
             mag_n=filter_model(model,mag).split('-')
-            m1,=np.where(self.headers[0]==mag_n[0])
-            m2,=np.where(self.headers[0]==mag_n[1])
+            m1,=np.where(self.filters==mag_n[0])
+            m2,=np.where(self.filters==mag_n[1])
             mag1,mag1_err=self.abs_phot[:,m1],self.abs_phot_err[:,m1]
             mag2,mag2_err=self.abs_phot[:,m2],self.abs_phot_err[:,m2]
             mag_data=mag1-mag2
-            mag_err=mag1_err+mag2_err
+            mag_err=np.sqrt(mag1_err**2+mag2_err**2)
         else:
-            m1,=np.where(self.headers[0]==filter_model(model,mag))
+            m1,=np.where(self.filters==filter_model(model,mag))
             mag_data,mag_err=self.abs_phot[:,m1],self.abs_phot_err[:,m1]
             
-        iso=MADYS.load_isochrones(model)
+        iso=MADYS.load_isochrones(model,self.filters,**kwargs)
 
         col_data=col_data.ravel()
         mag_data=mag_data.ravel()
@@ -658,21 +605,18 @@ class MADYS:
 
 
         n=len(isochrones) #no. of grid masses
-        tot_iso=len(isochrones[0]) #no. of grid ages
+        tot_iso=len(isochrones[0]) #no. of grid agesge
         npo=MADYS.n_elements(x) #no. of stars
         nis=len(plot_ages) #no. of isochrones to be plotted
 
         fig, ax = plt.subplots(figsize=(16,12))
 
-        if type(ebv)!=type(None): #subtracts extinction, if E(B-V) is provided
+        if type(ebv)!=type(None): #extinction already subtracted. Draws arrow if E(B-V) is provided
             x_ext=MADYS.extinction(ebv,x_axis)
             y_ext=MADYS.extinction(ebv,y_axis)
-            x1=x-x_ext
-            y1=y-y_ext
             plt.arrow(x_range[0]+0.2*(x_range[1]-x_range[0]),y_range[0]+0.1*(y_range[1]-y_range[0]),-np.median(x_ext),-np.median(y_ext),head_width=0.05, head_length=0.1, fc='k', ec='k', label='reddening')
-        else:
-            x1=x
-            y1=y
+        x1=x
+        y1=y
 
         if type(plot_ages)!=bool:
             for i in range(len(plot_ages)):
@@ -732,7 +676,137 @@ class MADYS:
             plt.savefig(tofile)
             plt.close(fig)    
 
-        return None
+        return None     
+
+        
+    @staticmethod
+    def dr2_correct_flux_excess_factor(phot_g_mean_mag, bp_rp, phot_bp_rp_excess_factor):
+        if np.isscalar(bp_rp) or np.isscalar(phot_bp_rp_excess_factor) or np.isscalar(phot_g_mean_mag):
+            bp_rp = np.float64(bp_rp)
+            phot_bp_rp_excess_factor = np.float64(phot_bp_rp_excess_factor)
+            phot_g_mean_mag = np.float64(phot_g_mean_mag)
+        if bp_rp.shape != phot_bp_rp_excess_factor.shape or bp_rp.shape != phot_g_mean_mag.shape or phot_g_mean_mag.shape != phot_bp_rp_excess_factor.shape:
+            raise ValueError('Function parameters must be of the same shape!')
+        a0=lambda x: -1.121221*np.heaviside(-(x-0.5),0)-1.1244509*np.heaviside(-(x-3.5),0)-(-1.1244509*np.heaviside(-(x-0.5),0))-0.9288966*np.heaviside(x-3.5,1)
+        a1=lambda x: 0.0505276*np.heaviside(-(x-0.5),0)+0.0288725*np.heaviside(-(x-3.5),0)-(0.0288725*np.heaviside(-(x-0.5),0))-0.168552*np.heaviside(x-3.5,1)
+        a2=lambda x: -0.120531*np.heaviside(-(x-0.5),0)-0.0682774*np.heaviside(-(x-3.5),0)-(-0.0682774*np.heaviside(-(x-0.5),0))
+        a3=lambda x: 0.00795258*np.heaviside(-(x-3.5),0)-(0.00795258*np.heaviside(-(x-0.5),0))
+        a4=lambda x: -0.00555279*np.heaviside(-(x-0.5),0)-0.00555279*np.heaviside(-(x-3.5),0)-(-0.00555279*np.heaviside(-(x-0.5),0))-0.00555279*np.heaviside(x-3.5,1)
+        C1 = phot_bp_rp_excess_factor + a0(bp_rp)+a1(bp_rp)*bp_rp+a2(bp_rp)*bp_rp**2+a3(bp_rp)*bp_rp**3+a4(bp_rp)*phot_g_mean_mag #final corrected factor
+        return C1
+
+    @staticmethod
+    def edr3_correct_flux_excess_factor(bp_rp, phot_bp_rp_excess_factor):
+        if np.isscalar(bp_rp) or np.isscalar(phot_bp_rp_excess_factor):
+            bp_rp = np.float64(bp_rp)
+            phot_bp_rp_excess_factor = np.float64(phot_bp_rp_excess_factor)
+
+        if bp_rp.shape != phot_bp_rp_excess_factor.shape:
+            raise ValueError('Function parameters must be of the same shape!')
+
+        do_not_correct = np.isnan(bp_rp)
+        bluerange = np.logical_not(do_not_correct) & (bp_rp < 0.5)
+        greenrange = np.logical_not(do_not_correct) & (bp_rp >= 0.5) & (bp_rp < 4.0)
+        redrange = np.logical_not(do_not_correct) & (bp_rp > 4.0)
+
+        correction = np.zeros_like(bp_rp)
+        correction[bluerange] = 1.154360 + 0.033772*bp_rp[bluerange] + 0.032277*np.power(bp_rp[bluerange], 2)
+        correction[greenrange] = 1.162004 + 0.011464*bp_rp[greenrange] + 0.049255*np.power(bp_rp[greenrange], 2) \
+                - 0.005879*np.power(bp_rp[greenrange], 3)
+        correction[redrange] = 1.057572 + 0.140537*bp_rp[redrange]
+
+        return phot_bp_rp_excess_factor - correction
+
+    @staticmethod
+    def gaia_mag_errors(phot_g_mean_flux, phot_g_mean_flux_error, phot_bp_mean_flux, phot_bp_mean_flux_error, phot_rp_mean_flux, phot_rp_mean_flux_error):
+        sigmaG_0 = 0.0027553202
+        sigmaGBP_0 = 0.0027901700
+        sigmaGRP_0 = 0.0037793818
+
+        phot_g_mean_mag_error = np.sqrt((-2.5/np.log(10)*phot_g_mean_flux_error/phot_g_mean_flux)**2 + sigmaG_0**2)
+        phot_bp_mean_mag_error = np.sqrt((-2.5/np.log(10)*phot_bp_mean_flux_error/phot_bp_mean_flux)**2 + sigmaGBP_0**2)
+        phot_rp_mean_mag_error = np.sqrt((-2.5/np.log(10)*phot_rp_mean_flux_error/phot_rp_mean_flux)**2 + sigmaGRP_0**2)
+
+        return phot_g_mean_mag_error, phot_bp_mean_mag_error, phot_rp_mean_mag_error
+
+    @staticmethod
+    def correct_gband(bp_rp, astrometric_params_solved, phot_g_mean_mag, phot_g_mean_flux):
+        if np.isscalar(bp_rp) or np.isscalar(astrometric_params_solved) or np.isscalar(phot_g_mean_mag) \
+                    or np.isscalar(phot_g_mean_flux):
+            bp_rp = np.float64(bp_rp)
+            astrometric_params_solved = np.int64(astrometric_params_solved)
+            phot_g_mean_mag = np.float64(phot_g_mean_mag)
+            phot_g_mean_flux = np.float64(phot_g_mean_flux)
+
+        if not (bp_rp.shape == astrometric_params_solved.shape == phot_g_mean_mag.shape == phot_g_mean_flux.shape):
+            raise ValueError('Function parameters must be of the same shape!')
+
+        do_not_correct = np.isnan(bp_rp) | (phot_g_mean_mag<13) | (astrometric_params_solved == 31)
+        bright_correct = np.logical_not(do_not_correct) & (phot_g_mean_mag>=13) & (phot_g_mean_mag<=16)
+        faint_correct = np.logical_not(do_not_correct) & (phot_g_mean_mag>16)
+        bp_rp_c = np.clip(bp_rp, 0.25, 3.0)
+
+        correction_factor = np.ones_like(phot_g_mean_mag)
+        correction_factor[faint_correct] = 1.00525 - 0.02323*bp_rp_c[faint_correct] + \
+            0.01740*np.power(bp_rp_c[faint_correct],2) - 0.00253*np.power(bp_rp_c[faint_correct],3)
+        correction_factor[bright_correct] = 1.00876 - 0.02540*bp_rp_c[bright_correct] + \
+            0.01747*np.power(bp_rp_c[bright_correct],2) - 0.00277*np.power(bp_rp_c[bright_correct],3)
+
+
+        gmag_corrected = phot_g_mean_mag - 2.5*np.log10(correction_factor)
+        gflux_corrected = phot_g_mean_flux * correction_factor
+
+        return gmag_corrected, gflux_corrected
+
+    @staticmethod
+    def dr2_quality(dr2_bp_rp_excess_factor,dr2_phot_g_mean_mag):
+        s1=lambda x: 0.004+8e-12*x**7.55
+        with np.errstate(invalid='ignore'):
+            q1=np.where(abs(dr2_bp_rp_excess_factor)>3*s1(dr2_phot_g_mean_mag),0,1)
+        q1[dr2_bp_rp_excess_factor.mask]=0
+        return q1
+
+    @staticmethod
+    def edr3_quality(edr3_bp_rp_excess_factor,edr3_phot_g_mean_mag):
+        s1=lambda x: 0.0059898+8.817481e-12*x**7.618399
+        with np.errstate(invalid='ignore'):
+            q1=np.where(abs(edr3_bp_rp_excess_factor)>3*s1(edr3_phot_g_mean_mag),0,1)
+        q1[edr3_bp_rp_excess_factor.mask]=0
+        return q1
+
+    @staticmethod    
+    def tmass_quality(ph_qual,max_q='A'):
+        q=np.array(['A','B','C','D','E','F','U','X'])
+        w,=np.where(q==max_q)[0]
+        n=len(ph_qual)
+        qJ=np.zeros(n,dtype=bool)
+        qH=np.zeros(n,dtype=bool)
+        qK=np.zeros(n,dtype=bool)
+        for i in range(n):
+            if ph_qual.mask[i]==True: continue
+            if bool(ph_qual[i])==False: continue
+            if ph_qual[i][0] in q[0:w+1]: qJ[i]=True
+            if ph_qual[i][1] in q[0:w+1]: qH[i]=True
+            if ph_qual[i][2] in q[0:w+1]: qK[i]=True
+        return qJ,qH,qK
+    
+    @staticmethod    
+    def allwise_quality(cc_flags,ph_qual2,max_q='A'):
+        q=np.array(['A','B','C','U','Z','X'])    
+        w,=np.where(q==max_q)[0]
+        n=len(ph_qual2)
+        qW1=np.zeros(n,dtype=bool)
+        qW2=np.zeros(n,dtype=bool)
+        qW3=np.zeros(n,dtype=bool)
+        qW4=np.zeros(n,dtype=bool)
+        for i in range(n):
+            if (ph_qual2.mask[i]==True) | (cc_flags.mask[i]==True): continue
+            if (bool(ph_qual2[i])==False) | (bool(cc_flags[i])==False): continue
+            if (ph_qual2[i][0] in q[0:w+1]) & (cc_flags[i][0]=='0'): qW1[i]=True
+            if (ph_qual2[i][1] in q[0:w+1]) & (cc_flags[i][1]=='0'): qW2[i]=True
+            if (ph_qual2[i][2] in q[0:w+1]) & (cc_flags[i][2]=='0'): qW3[i]=True
+            if (ph_qual2[i][3] in q[0:w+1]) & (cc_flags[i][3]=='0'): qW4[i]=True
+        return qW1,qW2,qW3,qW4
 
     #################################################################
     # UTILITY FUNCTIONS
@@ -821,7 +895,7 @@ class MADYS:
                     else:
                         jn[i]=jl+np.argmin([value[i]-array[jl],array[jl+1]-value[i]])
             return jn
-
+    
     @staticmethod
     def min_v(a,absolute=False):
         """
@@ -868,143 +942,6 @@ class MADYS:
                 except IOError:
                     return 0
         return 1
-
-    @staticmethod
-    def cross_match(cat1,cat2,max_difference=0.01,other_column=None,rule=None,exact=False,parallax=None,min_parallax=2):
-
-        def n_dim(x,shape=False):
-            if isinstance(x,str): return 0
-            try:
-                b=len(x)
-                try:
-                    x.shape
-                    if shape: dim=x.shape            
-                    else: dim=len(x.shape)
-                except AttributeError:
-                    sh = []
-                    a = len(x)
-                    sh.append(a)
-                    b = x[0]
-                    while a > 0:
-                        try:
-                            if isinstance(b,str): break
-                            a = len(b)
-                            sh.append(a)
-                            b = b[0]                    
-                        except:
-                            break
-                    if shape: dim=sh
-                    else: dim=len(sh)
-            except TypeError: dim=0
-            return dim
-
-        if exact==True:
-            if (n_dim(cat1)!=1) or (n_dim(cat2)!=1):
-                raise ValueError("cat1 and cat2 must be 1D!")
-            c1=np.argsort(cat2)
-            c=MADYS.closest(cat2[c1],cat1)
-            ind1,=np.where(cat2[c1[c]]==cat1)
-            return ind1,c1[c[ind1]]
-
-        n=len(cat1)
-        ind1=np.zeros(n,dtype='int32')
-        ind2=np.zeros(n,dtype='int32')
-        c=0
-        if type(parallax)==type(None): parallax=3.
-        if n_dim(cat1)==1:
-            if type(other_column)==type(None):
-                for i in range(n):
-                    k,=np.where((abs(cat2-cat1[i])<max_difference) & (parallax>min_parallax))
-                    if len(k)==1:
-                        ind1[c]=i
-                        ind2[c]=k
-                        c+=1
-                    elif len(k)>1:
-                        ind1[c]=i
-                        ind2[c]=k[0]
-                        c+=1
-            elif rule=='min':
-                for i in range(n):
-                    k,=np.where((abs(cat2-cat1[i])<max_difference) & (parallax>min_parallax))
-                    if len(k)==1:
-                        ind1[c]=i
-                        ind2[c]=k
-                        c+=1
-                    elif len(k)>1:
-                        ind1[c]=i
-                        k1=np.argmin(other_column[k])
-                        ind2[c]=k[k1]
-                        c+=1
-            elif rule=='max':
-                for i in range(n):
-                    k,=np.where((abs(cat2-cat1[i])<max_difference) & (parallax>min_parallax))
-                    if len(k)==1:
-                        ind1[c]=i
-                        ind2[c]=k
-                        c+=1
-                    elif len(k)>1:
-                        ind1[c]=i
-                        k1=np.argmax(other_column[k])
-                        ind2[c]=k[k1]
-                        c+=1
-            else: raise NameError("Keyword 'rule' not set! Specify if rule='min' or rule='max'")                    
-        else:
-            if type(cat1)==Table: 
-                cat1=np.lib.recfunctions.structured_to_unstructured(np.array(cat1))        
-            if type(cat2)==Table: 
-                cat2=np.lib.recfunctions.structured_to_unstructured(np.array(cat2))
-
-            if len(cat1[0])!=len(cat2[0]): 
-                raise ValueError("The number of columns of cat1 must equal that of cat2.")
-            if type(other_column)==type(None):
-                for i in range(n):
-                    d=0
-                    for j in range(len(cat1[0])): d+=abs(cat2[:,j]-cat1[i,j])
-                    k,=np.where((d<max_difference) & (parallax>min_parallax))
-                    if len(k)==1:
-                        ind1[c]=i
-                        ind2[c]=k
-                        c+=1
-                    elif len(k)>1:
-                        ind1[c]=i
-                        ind2[c]=k[0]
-                        c+=1
-            elif rule=='min':
-                if len(other_column)!=len(cat2): 
-                    raise ValueError("The length of other_column must equal the no. of rows of cat2.")
-                for i in range(n):
-                    d=0
-                    for j in range(len(cat1[0])): d+=abs(cat2[:,j]-cat1[i,j])
-                    k,=np.where((d<max_difference) & (parallax>min_parallax))
-                    if len(k)==1:
-                        ind1[c]=i
-                        ind2[c]=k
-                        c+=1
-                    elif len(k)>1:
-                        ind1[c]=i
-                        k1=np.argmin(other_column[k])
-                        ind2[c]=k[k1]
-                        c+=1
-            elif rule=='max':
-                if len(other_column)!=len(cat2): 
-                    raise ValueError("The length of other_column must equal the no. of rows of cat2.")
-                for i in range(n):
-                    d=0
-                    for j in range(len(cat1[0])): d+=abs(cat2[:,j]-cat1[i,j])
-                    k,=np.where((d<max_difference) & (parallax>min_parallax))
-                    if len(k)==1:
-                        ind1[c]=i
-                        ind2[c]=k
-                        c+=1
-                    elif len(k)>1:
-                        ind1[c]=i
-                        k1=np.argmax(other_column[k])
-                        ind2[c]=k[k1]
-                        c+=1
-            else: raise NameError("Keyword 'rule' not set! Specify if rule='min' or rule='max'")                
-        ind1=ind1[0:c]
-        ind2=ind2[0:c]
-        return ind1,ind2
 
     @staticmethod
     def split_if_nan(a):
@@ -1210,7 +1147,7 @@ class MADYS:
                 return MADYS.extinction(ebv,color),MADYS.extinction(ebv_s,color)
 
     @staticmethod
-    def app_to_abs_mag(app_mag,parallax,app_mag_error=None,parallax_error=None):
+    def app_to_abs_mag(app_mag,parallax,app_mag_error=None,parallax_error=None,ebv=None,filters=None):
         if isinstance(app_mag,list): app_mag=np.array(app_mag)
         if isinstance(parallax,list): parallax=np.array(parallax)
         dm=5*np.log10(100./parallax) #modulo di distanza
@@ -1222,6 +1159,10 @@ class MADYS:
 
         if dim <= 1:
             abs_mag=app_mag-dm
+            if type(ebv)!=type(None):
+                if dim==0: red=MADYS.extinction(ebv,filters[0])
+                else: red=np.array([MADYS.extinction(ebv,filt) for filt in filters])
+                abs_mag-=red
             if (type(app_mag_error)!=type(None)) & (type(parallax_error)!=type(None)): 
                 if isinstance(app_mag_error,list): app_mag_error=np.array(app_mag_error)
                 if isinstance(parallax_error,list): parallax_error=np.array(parallax_error)
@@ -1240,7 +1181,11 @@ class MADYS:
                     total_error[:,i]=np.sqrt(app_mag_error[:,i]**2+(5/np.log(10)/parallax)**2*parallax_error**2)
                 result=(abs_mag,total_error)
             else: result=abs_mag
-
+            if type(ebv)!=type(None):
+                red=np.zeros([l[0],l[1]]) #reddening
+                for i in range(l[1]): 
+                    red[:,i]=MADYS.extinction(ebv,filters[i])
+                abs_mag-=red        
         return result #se l'input è un array 1D, non c'è errore ed è un unico filtro
 
     @staticmethod
@@ -1249,7 +1194,8 @@ class MADYS:
            'J':0.243,'H':0.131,'K':0.078,'G':0.789,'Gbp':1.002,'Grp':0.589,
                'G2':0.789,'Gbp2':1.002,'Grp2':0.589,
            'W1':0.039,'W2':0.026,'W3':0.040,'W4':0.020,
-           'gmag':1.155,'rmag':0.843,'imag':0.628,'zmag':0.487,'ymag':0.395
+           'gmag':1.155,'rmag':0.843,'imag':0.628,'zmag':0.487,'ymag':0.395,
+               'K1mag':0.078,'K2mag':0.078,
           } #absorption coefficients
 
         if '-' in col:
@@ -1258,7 +1204,7 @@ class MADYS:
         else:
             A=A_law[col]
         return 3.16*A*ebv
-
+    
     @staticmethod
     def is_phot_good(phot,phot_err,max_phot_err=0.1):
         if type(phot)==float: dim=0
@@ -1275,335 +1221,360 @@ class MADYS:
         return gs
 
     @staticmethod
-    def load_isochrones(model,surveys=['gaia','2mass','wise'],mass_range=[0.01,1.4],age_range=[1,1000],n_steps=[1000,500],feh=None,afe=None,v_vcrit=None,fspot=None,B=0, **kwargs):
+    def model_name(model,feh=None,afe=None,v_vcrit=None,fspot=None,B=0):
+#        param={'model':model,'feh':0.0,'afe':0.0,'v_vcrit':0.0,'fspot':0.0,'B':0}
+        if model=='bt_settl': model2=model
+        elif model=='mist':
+            feh_range=np.array([-4.,-3.5,-3.,-2.5,-2,-1.75,-1.5,-1.25,-1.0,-0.75,-0.5,-0.25,0.0,0.25,0.5])
+            afe_range=np.array([0.0])
+            vcrit_range=np.array([0.0,0.4])
+            if type(feh)!=type(None):
+                i=np.argmin(abs(feh_range-feh))
+                feh0=feh_range[i]
+#                param['feh']=feh0
+                if feh0<0: s='m'
+                else: s='p'
+                feh1="{:.2f}".format(abs(feh0))            
+                model2=model+'_'+s+feh1
+            else: model2=model+'_p0.00'
+            if type(afe)!=type(None):
+                i=np.argmin(abs(afe_range-afe))
+                afe0=afe_range[i]
+#                param['afe']=afe0
+                if afe0<0: s='m'
+                else: s='p'
+                afe1="{:.1f}".format(abs(afe0))            
+                model2+='_'+s+afe1
+            else: model2+='_p0.0'
+            if type(v_vcrit)!=type(None):
+                i=np.argmin(abs(vcrit_range-v_vcrit))
+                v_vcrit0=vcrit_range[i]
+#                param['v_vcrit']=v_vcrit0
+                if v_vcrit0<0: s='m'
+                else: s='p'
+                v_vcrit1="{:.1f}".format(abs(v_vcrit0))            
+                model2+='_'+s+v_vcrit1
+            else: model2+='_p0.0'
+        elif model=='parsec':
+            feh_range=np.array([-1.0,-0.75,-0.5,-0.25,0.0,0.25,0.5,0.75,1.00])
+            if type(feh)!=type(None):
+                i=np.argmin(abs(feh_range-feh))
+                feh0=feh_range[i]
+#                param['feh']=feh0
+                if feh0<0: s='m'
+                else: s='p'
+                feh1="{:.2f}".format(abs(feh0))            
+                model2=model+'_'+s+feh1
+            else: model2=model+'_p0.00'
+        elif model=='amard':
+            feh_range=np.array([-0.813,-0.336,-0.211,-0.114,0.0,0.165,0.301])
+            vcrit_range=np.array([0.0,0.2,0.4,0.6])
+            if type(feh)!=type(None):
+                i=np.argmin(abs(feh_range-feh))
+                feh0=feh_range[i]
+#                param['feh']=feh0
+                if feh0<0: s='m'
+                else: s='p'
+                feh1="{:.2f}".format(abs(feh0))            
+                model2=model+'_'+s+feh1
+            else: model2=model+'_p0.00'
+            if type(v_vcrit)!=type(None):
+                i=np.argmin(abs(vcrit_range-v_vcrit))
+                v_vcrit0=vcrit_range[i]
+#                param['v_vcrit']=v_vcrit0
+                if v_vcrit0<0: s='m'
+                else: s='p'
+                v_vcrit1="{:.1f}".format(abs(v_vcrit0))            
+                model2+='_'+s+v_vcrit1
+            else: model2+='_p0.0'
+        elif model=='spots':
+            fspot_range=np.array([0.00,0.17,0.34,0.51,0.68,0.85])
+            if type(fspot)!=type(None):
+                i=np.argmin(abs(fspot_range-fspot))
+                fspot0=fspot_range[i]
+#                param['fspot']=fspot0
+                fspot1="{:.2f}".format(abs(fspot0))            
+                model2=model+'_p'+fspot1
+            else: model2=model+'_p0.00'
+        elif model=='dartmouth':
+            feh_range=np.array([0.0])
+            afe_range=np.array([0.0])
+            if type(feh)!=type(None):
+                i=np.argmin(abs(feh_range-feh))
+                feh0=feh_range[i]
+#                param['feh']=feh0
+                if feh0<0: s='m'
+                else: s='p'
+                feh1="{:.2f}".format(abs(feh0))            
+                model2=model+'_'+s+feh1
+            else: model2=model+'_p0.00'
+            if type(afe)!=type(None):
+                i=np.argmin(abs(afe_range-afe))
+                afe0=afe_range[i]
+#                param['afe']=afe0
+                if afe0<0: s='m'
+                else: s='p'
+                afe1="{:.1f}".format(abs(afe0))            
+                model2+='_'+s+afe1
+            else: model2+='_p0.0'
+            if B==0: 
+                model2+='_nomag'
+            else: 
+                model2+='_mag'
+#                param['B']=1  
+        elif model=='ekstroem':
+            feh_range=np.array([-1.5,0.0])
+            vcrit_range=np.array([0.0,0.4])
+            if type(feh)!=type(None):
+                i=np.argmin(abs(feh_range-feh))
+                feh0=feh_range[i]
+#                param['feh']=feh0
+                if feh0<0: s='m'
+                else: s='p'
+                feh1="{:.2f}".format(abs(feh0))            
+                model2=model+'_'+s+feh1
+            else: model2=model+'_p0.00'
+            if type(v_vcrit)!=type(None):
+                i=np.argmin(abs(vcrit_range-v_vcrit))
+                v_vcrit0=vcrit_range[i]
+#                param['v_vcrit']=v_vcrit0
+                if v_vcrit0<0.01: s='norot'
+                else: s='rot'
+                model2+='_'+s
+            else: model2+='_norot'
+        else: model2=model
+#        return model2,param
+        return model2
+    
+    @staticmethod
+    def get_isochrone_filter(model,filt):
+        if model=='bt_settl':
+            dic={'G':'G2018','Gbp':'G2018_BP','Grp':'G2018_RP','J':'J','H':'H','K':'K',
+                 'W1':'W1_W10','W2':'W2_W10','W3':'W3_W10','W4':'W4_W10','U':'U','B':'B',
+                 'V':'V','R':'R','I':'i','gmag':'g_p1','rmag':'r_p1','imag':'i_p1',
+                 'zmag':'z_p1','ymag':'y_p1','V_sl':'V','R_sl':'R','I_sl':'I','K_sl':'K',
+                 'R_sl2':'Rsloan','Z_sl':'Zsloan','M_sl':'Msloan',
+                 'Ymag':'B_Y','Jmag':'B_J','Hmag':'B_H','Kmag':'B_Ks','H2mag':'D_H2','H3mag':'D_H3',
+                 'H4mag':'D_H4','J2mag':'D_J2','J3mag':'D_J3','K1mag':'D_K1','K2mag':'D_K2',
+                 'Y2mag':'D_Y2','Y3mag':'D_Y3'}
+        elif model=='ames_cond':
+            dic={'G':'G','Gbp':'G_BP','Grp':'G_BP','J':'J','H':'H','K':'K',
+                 'W1':'W1_W10','W2':'W2_W10','W3':'W3_W10','W4':'W4_W10','U':'U','B':'B',
+                 'V':'V','R':'R','I':'i','gmag':'g_p1','rmag':'r_p1','imag':'i_p1',
+                 'zmag':'z_p1','ymag':'y_p1','V_sl':'V','R_sl':'R','I_sl':'I','K_sl':'K',
+                 'R_sl2':'Rsloan','Z_sl':'Zsloan','M_sl':'Msloan',
+                 'Ymag':'B_Y','Jmag':'B_J','Hmag':'B_H','Kmag':'B_Ks','H2mag':'D_H2','H3mag':'D_H3',
+                 'H4mag':'D_H4','J2mag':'D_J2','J3mag':'D_J3','K1mag':'D_K1','K2mag':'D_K2',
+                 'Y2mag':'D_Y2','Y3mag':'D_Y3'}
+        elif model=='ames_dusty':
+            dic={'G':'G','Gbp':'G_BP','Grp':'G_BP','J':'J','H':'H','K':'K',
+                 'W1':'W1_W10','W2':'W2_W10','W3':'W3_W10','W4':'W4_W10','U':'U','B':'B',
+                 'V':'V','R':'R','I':'i','gmag':'g_p1','rmag':'r_p1','imag':'i_p1',
+                 'zmag':'z_p1','ymag':'y_p1','V_sl':'V','R_sl':'R','I_sl':'I','K_sl':'K',
+                 'R_sl2':'Rsloan','Z_sl':'Zsloan','M_sl':'Msloan',
+                 'Ymag':'B_Y','Jmag':'B_J','Hmag':'B_H','Kmag':'B_Ks','H2mag':'D_H2','H3mag':'D_H3',
+                 'H4mag':'D_H4','J2mag':'D_J2','J3mag':'D_J3','K1mag':'D_K1','K2mag':'D_K2',
+                 'Y2mag':'D_Y2','Y3mag':'D_Y3'}
+        elif model=='mist':
+            dic={'G':'Gaia_G_EDR3','Gbp':'Gaia_BP_EDR3','Grp':'Gaia_RP_EDR3',
+                 'J':'2MASS_J','H':'2MASS_H','K':'2MASS_Ks',
+                 'W1':'WISE_W1','W2':'WISE_W2','W3':'WISE_W3','W4':'WISE_W4',
+                 'U':'Bessell_U','B':'Bessell_B','V':'Bessell_V','R':'Bessell_R','I':'Bessell_I',
+                 'Kp':'Kepler_Kp','KD51':'Kepler_D51','Hp':'Hipparcos_Hp',
+                 'B_tycho':'Tycho_B','V_tycho':'Tycho_V','TESS':'TESS'}            
+        elif model=='parsec':
+            dic={'G':'Gmag','Gbp':'G_BPmag','Grp':'G_RPmag',                 
+                 'J':'Jmag','H':'Hmag','K':'Ksmag','Spitzer_3.6':'IRAC_3.6mag',
+                 'Spitzer_4.5':'IRAC_4.5mag','Spitzer_5.8':'IRAC_5.8mag','Spitzer_8.0':'IRAC_8.0mag',
+                 'Spitzer_24':'MIPS_24mag','Spitzer_70':'MIPS_70mag','Spitzer_160':'MIPS_160mag',
+                 'W1':'W1mag','W2':'W2mag','W3':'W3mag','W4':'W4mag'} 
+        elif model=='spots':
+            dic={'G':'G_mag','Gbp':'BP_mag','Grp':'RP_mag',                 
+                 'J':'J_mag','H':'H_mag','K':'K_mag',
+                 'B':'B_mag','V':'V_mag','R':'Rc_mag','I':'Ic_mag',
+                 'W1':'W1_mag', 'W2':'nan', 'W3':'nan', 'W4':'nan'} 
+        elif model=='dartmouth':
+            dic={'B': 'jc_B','V': 'jc_V','R': 'jc_R','I': 'jc_I',
+                 'G':'gaia_G','Gbp':'gaia_BP','Grp':'gaia_RP',                 
+                 'U':'U','B':'B','V':'V','R':'R','I':'I',
+                 'J':'2mass_J','H':'2mass_H','K':'2mass_K'} 
+        elif model=='amard':
+            dic={'U':'M_U','B':'M_B','V':'M_V','R':'M_R','I':'M_I',
+                 'J':'M_J','H':'M_H','K':'M_K','G':'M_G','Gbp':'M_Gbp','Grp':'M_Grp'}
+        elif model=='bhac15':
+            dic={'G':'G','Gbp':'G_BP','Grp':'G_RP','J':'Mj','H':'Mh','K':'Mk',
+                 'gmag':'g_p1','rmag':'r_p1','imag':'i_p1',
+                 'zmag':'z_p1','ymag':'y_p1',
+                 'Ymag':'B_Y','Jmag':'B_J','Hmag':'B_H','Kmag':'B_Ks','H2mag':'D_H2','H3mag':'D_H3',
+                 'H4mag':'D_H4','J2mag':'D_J2','J3mag':'D_J3','K1mag':'D_K1','K2mag':'D_K2',
+                 'Y2mag':'D_Y2','Y3mag':'D_Y3'}
+        elif model=='atmo2020_ceq':
+            dic={'MKO_Y':'MKO_Y','MKO_J':'MKO_J','MKO_H':'MKO_H','MKO_K':'MKO_K','MKO_L':'MKO_Lp','MKO_M':'MKO_Mp',
+                 'W1':'W1','W2':'W2','W3':'W3','W4':'W4',
+                 'IRAC_CH1':'IRAC_CH1','IRAC_CH2':'IRAC_CH2'}
+        elif model=='atmo2020_neq_s':
+            dic={'MKO_Y':'MKO_Y','MKO_J':'MKO_J','MKO_H':'MKO_H','MKO_K':'MKO_K','MKO_L':'MKO_Lp','MKO_M':'MKO_Mp',
+                 'W1':'W1','W2':'W2','W3':'W3','W4':'W4',
+                 'IRAC_CH1':'IRAC_CH1','IRAC_CH2':'IRAC_CH2'}
+        elif model=='atmo2020_neq_w':
+            dic={'MKO_Y':'MKO_Y','MKO_J':'MKO_J','MKO_H':'MKO_H','MKO_K':'MKO_K','MKO_L':'MKO_Lp','MKO_M':'MKO_Mp',
+                 'W1':'W1','W2':'W2','W3':'W3','W4':'W4',
+                 'IRAC_CH1':'IRAC_CH1','IRAC_CH2':'IRAC_CH2'}
+        elif model=='ekstroem':
+            dic={'lum':'logL', 't_eff':'logTe','V':'Vmag','U-B':'U-B','B-V':'B-V',
+                 'B':'Bmag','U':'Umag', 'R':'nan', 'i':'nan'}
+
+        return dic[filt]
+    
+    
+    @staticmethod
+    def load_isochrones(model,filters,n_steps=[1000,500],feh=None,afe=None,v_vcrit=None,fspot=None,B=0, **kwargs):
 
         folder = os.path.dirname(os.path.realpath(__file__))
 
         add_search_path(folder)
-        iso_y=False
         for x in os.walk(folder):
             add_search_path(x[0])
-            if x[0].endswith('isochrones') and iso_y==False:
-                PIK_path=x[0]
-                iso_y=True
-        if iso_y==False: PIK_path=folder
 
-        if 'allwise' in surveys: surveys.remove('allwise')
-        load_gaia=0
-        if 'gaia_edr3' in surveys: 
-            load_gaia=1
-            surveys.remove('gaia_edr3')
-        if 'gaia_dr2' in surveys: 
-            load_gaia=1
-            surveys.remove('gaia_dr2')
-        if ('gaia' not in surveys) & load_gaia: surveys.append('gaia')        
-            
-        def filter_code(model,f_model,filt):
+        mass_range=[0.01,1.4]
+        age_range=[1,1000]
+        if len(kwargs)>0:
+            if 'age_range' in kwargs: age_range = kwargs['age_range']
+            if 'mass_range' in kwargs: mass_range = kwargs['mass_range']            
 
-            if model=='bt_settl':
-                dic={'G':'G2018','Gbp':'G2018_BP','Grp':'G2018_RP','J':'J','H':'H','K':'K',
-                     'W1':'W1_W10','W2':'W2_W10','W3':'W3_W10','W4':'W4_W10','U':'U','B':'B',
-                     'V':'V','R':'R','I':'i','gmag':'g_p1','rmag':'r_p1','imag':'i_p1',
-                     'zmag':'z_p1','ymag':'y_p1','V_sl':'V','R_sl':'R','I_sl':'I','K_sl':'K',
-                     'R_sl2':'Rsloan','Z_sl':'Zsloan','M_sl':'Msloan',
-                     'Ymag':'B_Y','Jmag':'B_J','Hmag':'B_H','Kmag':'B_Ks','H2mag':'D_H2','H3mag':'D_H3',
-                     'H4mag':'D_H4','J2mag':'D_J2','J3mag':'D_J3','K1mag':'D_K1','K2mag':'D_K2',
-                     'Y2mag':'D_Y2','Y3mag':'D_Y3'}
-            elif model=='ames_cond':
-                dic={'G':'G','Gbp':'G_BP','Grp':'G_BP','J':'J','H':'H','K':'K',
-                     'W1':'W1_W10','W2':'W2_W10','W3':'W3_W10','W4':'W4_W10','U':'U','B':'B',
-                     'V':'V','R':'R','I':'i','gmag':'g_p1','rmag':'r_p1','imag':'i_p1',
-                     'zmag':'z_p1','ymag':'y_p1','V_sl':'V','R_sl':'R','I_sl':'I','K_sl':'K',
-                     'R_sl2':'Rsloan','Z_sl':'Zsloan','M_sl':'Msloan',
-                     'Ymag':'B_Y','Jmag':'B_J','Hmag':'B_H','Kmag':'B_Ks','H2mag':'D_H2','H3mag':'D_H3',
-                     'H4mag':'D_H4','J2mag':'D_J2','J3mag':'D_J3','K1mag':'D_K1','K2mag':'D_K2',
-                     'Y2mag':'D_Y2','Y3mag':'D_Y3'}
-            elif model=='ames_dusty':
-                dic={'G':'G','Gbp':'G_BP','Grp':'G_BP','J':'J','H':'H','K':'K',
-                     'W1':'W1_W10','W2':'W2_W10','W3':'W3_W10','W4':'W4_W10','U':'U','B':'B',
-                     'V':'V','R':'R','I':'i','gmag':'g_p1','rmag':'r_p1','imag':'i_p1',
-                     'zmag':'z_p1','ymag':'y_p1','V_sl':'V','R_sl':'R','I_sl':'I','K_sl':'K',
-                     'R_sl2':'Rsloan','Z_sl':'Zsloan','M_sl':'Msloan',
-                     'Ymag':'B_Y','Jmag':'B_J','Hmag':'B_H','Kmag':'B_Ks','H2mag':'D_H2','H3mag':'D_H3',
-                     'H4mag':'D_H4','J2mag':'D_J2','J3mag':'D_J3','K1mag':'D_K1','K2mag':'D_K2',
-                     'Y2mag':'D_Y2','Y3mag':'D_Y3'}
-            elif model=='mist':
-                dic={'G':'Gaia_G_EDR3','Gbp':'Gaia_BP_EDR3','Grp':'Gaia_RP_EDR3',
-                     'J':'2MASS_J','H':'2MASS_H','K':'2MASS_Ks',
-                     'W1':'WISE_W1','W2':'WISE_W2','W3':'WISE_W3','W4':'WISE_W4',
-                     'U':'Bessell_U','B':'Bessell_B','V':'Bessell_V','R':'Bessell_R','I':'Bessell_I',
-                     'Kp':'Kepler_Kp','KD51':'Kepler_D51','Hp':'Hipparcos_Hp',
-                     'B_tycho':'Tycho_B','V_tycho':'Tycho_V','TESS':'TESS'}            
-            elif model=='parsec':
-                dic={'G':'Gmag','Gbp':'G_BPmag','Grp':'G_RPmag',                 
-                     'J':'Jmag','H':'Hmag','K':'Ksmag','Spitzer_3.6':'IRAC_3.6mag',
-                     'Spitzer_4.5':'IRAC_4.5mag','Spitzer_5.8':'IRAC_5.8mag','Spitzer_8.0':'IRAC_8.0mag',
-                     'Spitzer_24':'MIPS_24mag','Spitzer_70':'MIPS_70mag','Spitzer_160':'MIPS_160mag',
-                     'W1':'W1mag','W2':'W2mag','W3':'W3mag','W4':'W4mag'} 
-            elif model=='spots':
-                dic={'G':'G_mag','Gbp':'BP_mag','Grp':'RP_mag',                 
-                     'J':'J_mag','H':'H_mag','K':'K_mag',
-                     'B':'B_mag','V':'V_mag','R':'Rc_mag','I':'Ic_mag',
-                     'W1':'W1_mag', 'W2':'nan', 'W3':'nan', 'W4':'nan'} 
-            elif model=='dartmouth':
-                dic={'B': 'jc_B','V': 'jc_V','R': 'jc_R','I': 'jc_I',
-                     'G':'gaia_G','Gbp':'gaia_BP','Grp':'gaia_RP',                 
-                     'U':'U','B':'B','V':'V','R':'R','I':'I',
-                     'J':'2mass_J','H':'2mass_H','K':'2mass_K'} 
-            elif model=='amard':
-                dic={'U':'M_U','B':'M_B','V':'M_V','R':'M_R','I':'M_I',
-                     'J':'M_J','H':'M_H','K':'M_K','G':'M_G','Gbp':'M_Gbp','Grp':'M_Grp'}
-            elif model=='bhac15':
-                dic={'G':'G','Gbp':'G_BP','Grp':'G_RP','J':'Mj','H':'Mh','K':'Mk',
-                     'gmag':'g_p1','rmag':'r_p1','imag':'i_p1',
-                     'zmag':'z_p1','ymag':'y_p1',
-                     'Ymag':'B_Y','Jmag':'B_J','Hmag':'B_H','Kmag':'B_Ks','H2mag':'D_H2','H3mag':'D_H3',
-                     'H4mag':'D_H4','J2mag':'D_J2','J3mag':'D_J3','K1mag':'D_K1','K2mag':'D_K2',
-                     'Y2mag':'D_Y2','Y3mag':'D_Y3'}
-            elif model=='atmo2020_ceq':
-                dic={'MKO_Y':'MKO_Y','MKO_J':'MKO_J','MKO_H':'MKO_H','MKO_K':'MKO_K','MKO_L':'MKO_Lp','MKO_M':'MKO_Mp',
-                     'W1':'W1','W2':'W2','W3':'W3','W4':'W4',
-                     'IRAC_CH1':'IRAC_CH1','IRAC_CH2':'IRAC_CH2'}
-            elif model=='atmo2020_neq_s':
-                dic={'MKO_Y':'MKO_Y','MKO_J':'MKO_J','MKO_H':'MKO_H','MKO_K':'MKO_K','MKO_L':'MKO_Lp','MKO_M':'MKO_Mp',
-                     'W1':'W1','W2':'W2','W3':'W3','W4':'W4',
-                     'IRAC_CH1':'IRAC_CH1','IRAC_CH2':'IRAC_CH2'}
-            elif model=='atmo2020_neq_w':
-                dic={'MKO_Y':'MKO_Y','MKO_J':'MKO_J','MKO_H':'MKO_H','MKO_K':'MKO_K','MKO_L':'MKO_Lp','MKO_M':'MKO_Mp',
-                     'W1':'W1','W2':'W2','W3':'W3','W4':'W4',
-                     'IRAC_CH1':'IRAC_CH1','IRAC_CH2':'IRAC_CH2'}
-            elif model=='ekstroem':
-                dic={'lum':'logL', 't_eff':'logTe','V':'Vmag','U-B':'U-B','B-V':'B-V',
-                     'B':'Bmag','U':'Umag', 'R':'nan', 'i':'nan'}
-            w,=np.where(f_model==dic[filt])
+        def filters_to_surveys(filters):    
+            surveys=[]
+            gaia=np.array(['G','Gbp','Grp','G2','Gbp2','Grp2'])
+            tmass=np.array(['J','H','K'])
+            wise=np.array(['W1','W2','W3','W4'])
+            johnson=np.array(['U','B','V','R','i'])
+            panstarrs=np.array(['gmag','rmag','imag','zmag','ymag'])
+            sloan=np.array(['V_sl','R_sl','I_sl','K_sl','R_sl2','Z_sl','M_sl'])
+            sphere=np.array(['Ymag','Jmag','Hmag','Kmag','H2mag','H3mag','H4mag','J2mag','J3mag','K1mag','K2mag','Y2mag','Y3mag'])
+            if len(np.intersect1d(gaia,filters))>0: surveys.append('gaia')
+            if len(np.intersect1d(tmass,filters))>0: surveys.append('2mass')
+            if len(np.intersect1d(wise,filters))>0: surveys.append('wise')
+            if len(np.intersect1d(johnson,filters))>0: surveys.append('johnson')
+            if len(np.intersect1d(sloan,filters))>0: surveys.append('sloan')
+            if len(np.intersect1d(sphere,filters))>0: surveys.append('sphere')
 
-            return w
+            return surveys
 
-        def model_name(model,feh=None,afe=None,v_vcrit=None,fspot=None,B=0):
-            param={'model':model,'feh':0.0,'afe':0.0,'v_vcrit':0.0,'fspot':0.0,'B':0}
-            if model=='bt_settl': model2=model
-            elif model=='mist':
-                feh_range=np.array([-4.,-3.5,-3.,-2.5,-2,-1.75,-1.5,-1.25,-1.0,-0.75,-0.5,-0.25,0.0,0.25,0.5])
-                afe_range=np.array([0.0])
-                vcrit_range=np.array([0.0,0.4])
-                if type(feh)!=type(None):
-                    i=np.argmin(abs(feh_range-feh))
-                    feh0=feh_range[i]
-                    param['feh']=feh0
-                    if feh0<0: s='m'
-                    else: s='p'
-                    feh1="{:.2f}".format(abs(feh0))            
-                    model2=model+'_'+s+feh1
-                else: model2=model+'_p0.00'
-                if type(afe)!=type(None):
-                    i=np.argmin(abs(afe_range-afe))
-                    afe0=afe_range[i]
-                    param['afe']=afe0
-                    if afe0<0: s='m'
-                    else: s='p'
-                    afe1="{:.1f}".format(abs(afe0))            
-                    model2+='_'+s+afe1
-                else: model2+='_p0.0'
-                if type(v_vcrit)!=type(None):
-                    i=np.argmin(abs(vcrit_range-v_vcrit))
-                    v_vcrit0=vcrit_range[i]
-                    param['v_vcrit']=v_vcrit0
-                    if v_vcrit0<0: s='m'
-                    else: s='p'
-                    v_vcrit1="{:.1f}".format(abs(v_vcrit0))            
-                    model2+='_'+s+v_vcrit1
-                else: model2+='_p0.0'
-            elif model=='parsec':
-                feh_range=np.array([0.0])
-                if type(feh)!=type(None):
-                    i=np.argmin(abs(feh_range-feh))
-                    feh0=feh_range[i]
-                    param['feh']=feh0
-                    if feh0<0: s='m'
-                    else: s='p'
-                    feh1="{:.2f}".format(abs(feh0))            
-                    model2=model+'_'+s+feh1
-                else: model2=model+'_p0.00'
-            elif model=='amard':
-                feh_range=np.array([-0.813,-0.336,-0.211,-0.114,0.0,0.165,0.301])
-                vcrit_range=np.array([0.0,0.2,0.4,0.6])
-                if type(feh)!=type(None):
-                    i=np.argmin(abs(feh_range-feh))
-                    feh0=feh_range[i]
-                    param['feh']=feh0
-                    if feh0<0: s='m'
-                    else: s='p'
-                    feh1="{:.2f}".format(abs(feh0))            
-                    model2=model+'_'+s+feh1
-                else: model2=model+'_p0.00'
-                if type(v_vcrit)!=type(None):
-                    i=np.argmin(abs(vcrit_range-v_vcrit))
-                    v_vcrit0=vcrit_range[i]
-                    param['v_vcrit']=v_vcrit0
-                    if v_vcrit0<0: s='m'
-                    else: s='p'
-                    v_vcrit1="{:.1f}".format(abs(v_vcrit0))            
-                    model2+='_'+s+v_vcrit1
-                else: model2+='_p0.0'
-            elif model=='spots':
-                fspot_range=np.array([0.00,0.17,0.34,0.51,0.68,0.85])
-                if type(fspot)!=type(None):
-                    i=np.argmin(abs(fspot_range-fspot))
-                    fspot0=fspot_range[i]
-                    param['fspot']=fspot0
-                    fspot1="{:.2f}".format(abs(fspot0))            
-                    model2=model+'_p'+fspot1
-                else: model2=model+'_p0.00'
-            elif model=='dartmouth':
-                feh_range=np.array([0.0])
-                afe_range=np.array([0.0])
-                if type(feh)!=type(None):
-                    i=np.argmin(abs(feh_range-feh))
-                    feh0=feh_range[i]
-                    param['feh']=feh0
-                    if feh0<0: s='m'
-                    else: s='p'
-                    feh1="{:.2f}".format(abs(feh0))            
-                    model2=model+'_'+s+feh1
-                else: model2=model+'_p0.00'
-                if type(afe)!=type(None):
-                    i=np.argmin(abs(afe_range-afe))
-                    afe0=afe_range[i]
-                    param['afe']=afe0
-                    if afe0<0: s='m'
-                    else: s='p'
-                    afe1="{:.1f}".format(abs(afe0))            
-                    model2+='_'+s+afe1
-                else: model2+='_p0.0'
-                if B==0: 
-                    model2+='_nomag'
-                else: 
-                    model2+='_mag'
-                    param['B']=1  
-            elif model=='ekstroem':
-                feh_range=np.array([-1.5,0.0])
-                vcrit_range=np.array([0.0,0.4])
-                if type(feh)!=type(None):
-                    i=np.argmin(abs(feh_range-feh))
-                    feh0=feh_range[i]
-                    param['feh']=feh0
-                    if feh0<0: s='m'
-                    else: s='p'
-                    feh1="{:.2f}".format(abs(feh0))            
-                    model2=model+'_'+s+feh1
-                else: model2=model+'_p0.00'
-                if type(v_vcrit)!=type(None):
-                    i=np.argmin(abs(vcrit_range-v_vcrit))
-                    v_vcrit0=vcrit_range[i]
-                    param['v_vcrit']=v_vcrit0
-                    if v_vcrit0<0.01: s='norot'
-                    else: s='rot'
-                    model2+='_'+s
-                else: model2+='_norot'
-            else: model2=model
-            return model2,param
-
-        def filter_model(survey,model):
-            if survey!='gaia': return survey
+        def fix_filters(filters,model,mode='collapse'):
             mod2=['bt_settl','amard','spots','dartmouth','ames_cond','ames_dusty','bt_nextgen','nextgen','bhac15']
-            mod3=['mist','parsec']
-            if model in mod2: return 'gaia_dr2'
-            elif model in mod3: return 'gaia_edr3'            
+            mod3=['mist','parsec']        
+            if mode=='collapse':
+                filters=np.where(filters=='G2','G', filters)
+                filters=np.where(filters=='Gbp2','Gbp', filters)
+                filters=np.where(filters=='Grp2','Grp', filters)
+                filters=np.unique(filters)
+            elif mode=='replace':
+                if model in mod2: 
+                    filters=np.where(filters=='G','G2', filters)
+                    filters=np.where(filters=='Gbp','Gbp2', filters)
+                    filters=np.where(filters=='Grp','Grp2', filters)
+            return filters
 
-        filter_vec={'gaia':['G','Gbp','Grp'],'2mass':['J','H','K'],
-            'wise':['W1','W2','W3','W4'],'johnson':['U','B','V','R','i'],
-             'panstarrs':['gmag','rmag','imag','zmag','ymag'],
-             'sloan':['V_sl','R_sl','I_sl','K_sl','R_sl2','Z_sl','M_sl'],
-             'sphere':['Ymag','Jmag','Hmag','Kmag','H2mag','H3mag','H4mag','J2mag','J3mag','K1mag','K2mag','Y2mag','Y3mag'],
-                    'gaia_dr2':['G2','Gbp2','Grp2'],'gaia_edr3':['G','Gbp','Grp']}
+        surveys=filters_to_surveys(filters)        
 
-        model_code,param=model_name(model,feh=feh,afe=afe,v_vcrit=v_vcrit,fspot=fspot,B=B)
-        param['mass_range']=mass_range
-        param['age_range']=age_range
+        model_code=MADYS.model_name(model,feh=feh,afe=afe,v_vcrit=v_vcrit,fspot=fspot,B=B)
+    #    model_code,param=model_name(model,feh=feh,afe=afe,v_vcrit=v_vcrit,fspot=fspot,B=B)
+    #    param['mass_range']=mass_range
+    #    param['age_range']=age_range
 
-        file=model_code
-        for i in range(len(surveys)): file=file+'_'+sorted(surveys)[i]
-        PIK=Path(PIK_path) / (file+'.pkl')
+        fnew=fix_filters(filters,model,mode='collapse')
+        nf=len(fnew)
+        c=0
+#        print('Filters:',fnew)    
 
-        do_it=0
-        if MADYS.file_search(PIK)==0: do_it=1
+        n1=n_steps[0]
+        n2=n_steps[1]
+        mnew=M_sun.value/M_jup.value*np.exp(np.log(0.999*mass_range[0])+(np.log(1.001*mass_range[1])-np.log(0.999*mass_range[0]))/(n1-1)*np.arange(n1))
+
+        try:
+            len(age_range)
+            anew=np.exp(np.log(1.0001*age_range[0])+(np.log(0.9999*age_range[1])-np.log(1.0001*age_range[0]))/(n2-1)*np.arange(n2))
+        except TypeError:
+            anew=age_range
+            n2=1
+
+        iso_f=np.full(([n1,n2,nf]), np.nan) #final matrix    
+        found=np.zeros(nf,dtype=bool)
+        c=0
+        if n2>1:
+            for i in range(len(surveys)):
+                if c==nf: break
+                try:
+                    masses, ages, v0, data0 = model_data(surveys[i],model_code)
+                except ValueError: #if the survey is not found for the isochrone set, its filters are set to NaN
+                    continue
+                iso=np.full([n1,len(ages),len(fnew)],np.nan)
+                for j in range(len(fnew)):
+                    iso_filter=MADYS.get_isochrone_filter(model,fnew[j])
+                    w,=np.where(v0==iso_filter) #leaves NaN if the filter is not found
+                    if (len(w)>0) & (found[j]==False):
+                        found[j]=True
+                        #print(iso_filter,filters[j],i,j,c,found[j])
+                        for k in range(len(ages)): #interpolates along mass
+                            gv = np.isfinite(data0[:,k,w]).ravel()
+                            m0=masses[gv]
+                            if len(m0)>1:
+                                f=interp1d(m0,data0[gv,k,w],kind='linear',fill_value=np.nan,bounds_error=False)
+                                iso[:,k,j]=f(mnew)
+                        for k in range(n1):  #interpolates along age
+                            gv, igv = MADYS.split_if_nan((iso[k,:,j]).ravel())
+                            for l in range(len(gv)):
+                                a0=ages[igv[l]]
+                                an,=np.where((anew>0.95*a0[0]) & (anew<1.05*a0[-1]))
+                                if len(an)==0: continue
+                                if len(a0)>2:
+                                    f=interp1d(a0,iso[k,igv[l],j],kind='linear',fill_value='extrapolate',bounds_error=False)
+                                    iso_f[k,an,c]=f(anew[an])
+                                elif len(a0)==2:
+                                    f=lambda x: iso[k,igv[l].start,j]+(iso[k,igv[l].stop,j]-iso[k,igv[l].start,j])/(a0[1]-a0[0])*x
+                                    iso_f[k,an,c]=f(anew[an])
+                                elif len(a0)==1: iso_f[k,an,c]=iso[k,igv[l],j]
+                        c+=1
+                        if c==nf: break
         else:
-            with open(PIK,'rb') as f:
-                iso_f=pickle.load(f)
-                mnew=pickle.load(f)
-                anew=pickle.load(f)
-                fnew=pickle.load(f)
-                param0=pickle.load(f)
-            if ((param0['mass_range'][0] > mass_range[0]) | (param0['mass_range'][1] < mass_range[1]) |
-                (param0['age_range'][0] > age_range[0]) | (param0['age_range'][1] < age_range[1]) |
-                (param0['feh']!=param['feh']) | (param0['afe']!=param['afe']) | (param0['v_vcrit']!=param['v_vcrit'])
-                | (param0['fspot']!=param['fspot']) | (param0['B']!=param['B'])): 
-                del iso_f,mnew,anew
-                do_it=1
-            elif (param0['age_range'][0] < age_range[0]) | (param0['age_range'][1] > age_range[1]):
-                w,=np.where((anew>=age_range[0]) & (anew<=age_range[1]))
-                anew=anew[w]
-                iso_f=iso_f[:,w,:]
-
-        if do_it:
-            fnew=[]
-
-            survey_list=['gaia','2mass','wise','johnson','panstarrs','sloan','sphere']
-            survey_el=[3,3,4,5,5,7,13]
-            survey_filt=[['G','Gbp','Grp'],['J','H','K'],['W1','W2','W3','W4'],['U','B','V','R','i'],['gmag','rmag','imag','zmag','ymag'],['V_sl','R_sl','I_sl','K_sl','R_sl2','Z_sl','M_sl'],['Ymag','Jmag','Hmag','Kmag','H2mag','H3mag','H4mag','J2mag','J3mag','K1mag','K2mag','Y2mag','Y3mag']]
-            survey_col=[['G2018','G2018_BP','G2018_RP'],['J','H','K'],['W1_W10','W2_W10','W3_W10','W4_W10'],['U','B','V','R','i'],['g_p1','r_p1','i_p1','z_p1','y_p1'],['V','R','I','K','Rsloan','Zsloan','Msloan'],['B_Y','B_J','B_H','B_Ks','D_H2','D_H3','D_H4','D_J2','D_J3','D_K1','D_K2','D_Y2','D_Y3']]
-
-
-            fnew=[]
             for i in range(len(surveys)):
-                fnew.extend(filter_vec[filter_model(surveys[i],model)])
-            nf=len(fnew)
-            c=0
+                if c==nf: break
+                try:
+                    masses, ages, v0, data0 = model_data(surveys[i],model_code)
+                except ValueError: #if the survey is not found for the isochrone set, its filters are set to NaN
+                    continue
+                iso=np.full([n1,len(ages),len(fnew)],np.nan)
+                for j in range(len(fnew)):
+                    iso_filter=MADYS.get_isochrone_filter(model,fnew[j])
+                    w,=np.where(v0==iso_filter) #leaves NaN if the filter is not found                
+                    if (len(w)>0) & (found[j]==False):
+                        found[j]=True
+                        #print(iso_filter,filters[j],i,j,c,found[j])
+                        for k in range(len(ages)): #interpolates along mass
+                            gv = np.isfinite(data0[:,k,w]).ravel()
+                            m0=masses[gv]
+                            if len(m0)>1:
+                                f=interp1d(m0,data0[gv,k,w],kind='linear',fill_value=np.nan,bounds_error=False)
+                                iso[:,k,j]=f(mnew)
+                        for k in range(n1):  #interpolates along age
+                            gv, igv = MADYS.split_if_nan((iso[k,:,j]).ravel())
+                            for l in range(len(gv)):
+                                a0=ages[igv[l]]
+                                if (anew>0.95*a0[0]) & (anew<1.05*a0[-1]):
+                                    if len(a0)>2:
+                                        f=interp1d(a0,iso[k,igv[l],j],kind='linear',fill_value='extrapolate',bounds_error=False)
+                                        iso_f[k,0,c]=f(anew)
+                                    elif len(a0)==2:
+                                        f=lambda x: iso[k,igv[l].start,j]+(iso[k,igv[l].stop,j]-iso[k,igv[l].start,j])/(a0[1]-a0[0])*x
+                                        iso_f[k,0,c]=f(anew)
+                                    elif len(a0)==1: iso_f[k,0,c]=iso[k,igv[l],j]
+                        c+=1
+                        if c==nf: break
 
-            n1=n_steps[0]
-            n2=n_steps[1]
-            for i in range(len(surveys)):
-                masses, ages, v0, data0 = model_data(surveys[i],model_code,**kwargs)
-                if 'iso_f' not in locals():
-                    nm=len(masses)
-                    na=len(ages)
-                    mnew=M_sun.value/M_jup.value*np.exp(np.log(0.999*mass_range[0])+(np.log(1.001*mass_range[1])-np.log(0.999*mass_range[0]))/(n1-1)*np.arange(n1))
-                    anew=np.exp(np.log(1.0001*age_range[0])+(np.log(0.9999*age_range[1])-np.log(1.0001*age_range[0]))/(n2-1)*np.arange(n2))
-                    iso_f=np.full(([n1,n2,nf]), np.nan) #final matrix
-                iso=np.full(([n1,len(ages),len(filter_vec[surveys[i]])]),np.nan)
-
-                for j in range(len(filter_vec[surveys[i]])):
-                    w=filter_code(model,v0,filter_vec[surveys[i]][j])
-                    if len(w)==0: continue #leaves NaN if the filter is not found
-                    for k in range(len(ages)): #interpolates along mass
-                        gv = np.isfinite(data0[:,k,w]).ravel()
-                        m0=masses[gv]
-                        if len(m0)>1:
-                            f=interp1d(m0,data0[gv,k,w],kind='linear',fill_value=np.nan,bounds_error=False)
-                            iso[:,k,j]=f(mnew)
-                    for k in range(n1):  #interpolates along age
-                        gv, igv = MADYS.split_if_nan((iso[k,:,j]).ravel())
-                        for l in range(len(gv)):
-                            a0=ages[igv[l]]
-                            an,=np.where((anew>0.95*a0[0]) & (anew<1.05*a0[-1]))
-                            if len(an)==0: continue
-                            if len(a0)>2:
-                                f=interp1d(a0,iso[k,igv[l],j],kind='linear',fill_value='extrapolate',bounds_error=False)
-                                iso_f[k,an,j+c]=f(anew[an])
-                            elif len(a0)==2:
-                                f=lambda x: iso[k,igv[l].start,j]+(iso[k,igv[l].stop,j]-iso[k,igv[l].start,j])/(a0[1]-a0[0])*x
-                                iso_f[k,an,j+c]=f(anew[an])
-                            elif len(a0)==1: iso_f[k,an,j+c]=iso[k,igv[l],j]
-                c+=len(filter_vec[surveys[i]])
-
-            mnew=M_jup.value/M_sun.value*mnew
-            fnew=np.array(fnew)
-            with open(PIK,'wb') as f:
-                pickle.dump(iso_f,f)
-                pickle.dump(mnew,f)
-                pickle.dump(anew,f)
-                pickle.dump(fnew,f)
-                pickle.dump(param,f)
+        mnew=M_jup.value/M_sun.value*mnew
+        if n2==1: anew=np.array([anew])        
+        fnew=np.array(fnew)
+        fnew=fix_filters(fnew,model,mode='replace')
 
         return mnew,anew,fnew,iso_f
 
@@ -1613,6 +1584,7 @@ class MADYS:
         ang2=ang2[0]+form[0]+ang2[1]+form[1]+ang2[2]+form[2]
         return ang2
 
+    
     #################################################################
     # TO CREATE LOG FILES
 
@@ -1629,3 +1601,4 @@ class MADYS:
         logger.addHandler(handler)
     #    logger.addHandler(screen_handler)
         return logger
+    
