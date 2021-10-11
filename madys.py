@@ -1,3 +1,6 @@
+import copy
+import warnings
+from astropy.utils.exceptions import AstropyWarning
 import numpy as np
 from pathlib import Path
 import sys
@@ -28,9 +31,6 @@ from astropy.io import ascii
 from tap import (GaiaArchive, TAPVizieR, resolve, QueryStr, timeit)
 from astroquery.gaia import Gaia
 gaia = GaiaArchive()
-import copy
-import warnings
-from astropy.utils.exceptions import AstropyWarning
 
 class MADYS(object):
     def __init__(self, file, **kwargs):
@@ -49,7 +49,7 @@ class MADYS(object):
 
             kin=np.array(['parallax','parallax_err','ra','dec'])
             col=np.setdiff1d(np.unique(np.char.replace(col0,'_err','')),kin)
-            col_err=np.array([i+'_err' for i in col1])
+            col_err=np.array([i+'_err' for i in col])
             self.filters=np.array(col)
 
             n=len(col)
@@ -71,22 +71,15 @@ class MADYS(object):
     #        self.log_file = Path(self.path) / (self.__sample_name+'_log.txt')
     #        if 'logger' not in locals():
     #            self.__logger = MADYS.setup_custom_logger('madys',self.log_file)
-            surveys=['gaia','2mass']
+
             self.filters=np.array(['G','Gbp','Grp','G2','Gbp2','Grp2','J','H','K'])
-            self.ext_map='leike'
-            gaia_id=True
-            get_phot=True
-            save_phot=True
-            verbose=True
-            if len(kwargs)>0:
-                if 'surveys' in kwargs: surveys = kwargs['surveys']
-                if 'age_range' in kwargs: self.age_range = kwargs['age_range']
-                if 'mass_range' in kwargs: self.mass_range = kwargs['mass_range']
-                if 'verbose' in kwargs: verbose = kwargs['verbose']
-                if 'ext_map' in kwargs: self.ext_map = kwargs['ext_map']
-                if 'gaia_id' in kwargs: gaia_id = kwargs['gaia_id']
-                if 'get_phot' in kwargs: get_phot = kwargs['get_phot']
-                if 'save_phot' in kwargs: save_phot = kwargs['save_phot']
+            
+            surveys = kwargs['surveys'] if 'surveys' in kwargs else ['gaia','2mass']            
+            verbose = kwargs['verbose'] if 'verbose' in kwargs else True            
+            ext_map = kwargs['ext_map'] if 'ext_map' in kwargs else 'leike'
+            gaia_id = kwargs['gaia_id'] if 'gaia_id' in kwargs else True
+            get_phot = kwargs['get_phot'] if 'get_phot' in kwargs else True            
+            save_phot = kwargs['save_phot'] if 'save_phot' in kwargs else True            
 
             self.surveys=list(map(str.lower,surveys))    
 
@@ -110,7 +103,7 @@ class MADYS(object):
 
             phot=np.full([len(self.good_phot),9],np.nan)
             phot_err=np.full([len(self.good_phot),9],np.nan)
-            col=['edr3_gmag_corr','edr3_phot_bp_mean_mag','edr3_phot_rp_mean_mag','dr2_phot_g_mean_mag','dr2_phot_bp_mean_mag','dr2_phot_rp_mean_mag','j_m','h_m','ks_m']
+            col=['edr3_gmag_corr','edr3_phot_bp_mean_mag','edr3_phot_rp_mean_mag','dr2_phot_g_mean_magmo','dr2_phot_bp_mean_mag','dr2_phot_rp_mean_mag','j_m','h_m','ks_m']
             col_err=['edr3_phot_g_mean_mag_error','edr3_phot_bp_mean_mag_error','edr3_phot_rp_mean_mag_error','dr2_g_mag_error','dr2_bp_mag_error','dr2_rp_mag_error','j_msigcom','h_msigcom','ks_msigcom','w1mpro_error','w2mpro_error','w3mpro_error','w4mpro_error']
 
             for i in range(9):
@@ -125,7 +118,7 @@ class MADYS(object):
             if 'ebv' in kwargs:
                 self.ebv=kwargs['ebv']
             else:
-                self.ebv=self.interstellar_ext(ra=ra,dec=dec,par=par)
+                self.ebv=self.interstellar_ext(ra=ra,dec=dec,par=par,ext_map=ext_map)
     #        self.ebv=self.interstellar_ext(ra=coo[:,0],dec=coo[:,1],par=par,logger=self.__logger)
             self.abs_phot,self.abs_phot_err=self.app_to_abs_mag(self.__app_phot,par,app_mag_error=self.__app_phot_err,parallax_error=par_err,ebv=self.ebv,filters=self.filters)
     #        logging.shutdown() 
@@ -331,6 +324,7 @@ class MADYS(object):
             if 'B' in kwargs: self.B = kwargs['B']
             if 'ph_cut' in kwargs: self.ph_cut = kwargs['ph_cut']
             if 'm_unit' in kwargs: m_unit=kwargs['m_unit']        
+            if 'exact_age' in kwargs: exact_age=kwargs['exact_age'] #NEWLINE
         
 #        self.__logger.info('Starting age determination')
         iso_mass,iso_age,iso_filt,iso_data=MADYS.load_isochrones(model,self.filters,feh=self.feh,
@@ -352,6 +346,22 @@ class MADYS(object):
 #        print('isochrone filters:',iso_filt)
 #        print('order (phot):',filt2)
 #        print('phot. (ordered):',self.filters[filt2])
+        
+        mask=False
+        if isinstance(self.age_range,np.ndarray):            
+            if len(self.age_range.shape)==2:
+                if len(self.age_range)!=l0[0]: 
+                    raise ValueError('The number of stars is not equal to the number of input ages.')
+                mask=True
+                i_age=np.zeros(self.age_range.shape,dtype=int)
+                for i in range(l0[0]):
+                    i_age[i,:]=MADYS.closest(iso_age,self.age_range[i,:])
+            elif len(self.age_range.shape)==1:
+                relax=True
+                mask=True
+                if len(self.age_range)!=l0[0]:
+                    raise ValueError('The number of stars is not equal to the number of input ages.')
+        
 
         a_final=np.full(xlen,np.nan)
         m_final=np.full(xlen,np.nan)
@@ -363,30 +373,33 @@ class MADYS(object):
         if l[1]==1: relax=True #if just one age is provided, no need for strict conditions on photometry
         
         if relax:
+            sigma=np.full(([l[0],1,ylen]),np.nan)
             for i in range(xlen):
                 w,=np.where(MADYS.is_phot_good(phot[i,:],phot_err[i,:],max_phot_err=self.ph_cut))
                 if len(w)==0: continue
+                if mask: i00=i
+                else: i00=0
                 b=np.zeros(len(w),dtype=bool)
                 for h in range(len(w)):
                     ph=phot[i,w[h]]
-                    sigma[:,:,w[h]]=((iso_data[:,:,w[h]]-ph)/phot_err[i,w[h]])**2
+                    sigma[:,0,w[h]]=((iso_data[:,i00,w[h]]-ph)/phot_err[i,w[h]])**2
                     ii=divmod(np.nanargmin(sigma[:,:,w[h]]), sigma.shape[1])+(w[h],) #builds indices (i1,i2,i3) of closest theor. point
                     if abs(iso_data[ii]-ph)<0.2: b[h]=True #if the best theor. match is more than 0.2 mag away, discards it           
                 w2=w[b]
                 cr=np.sum(sigma[:,:,w2],axis=2)
                 est,ind=MADYS.min_v(cr)
                 m_final[i]=iso_mass[ind[0]]
-                a_final[i]=iso_age[ind[1]]
+                a_final[i]=iso_age[i00]
                 m_f1=np.zeros(20)
                 a_f1=np.zeros(20)
                 for j in range(20):
                     phot1=phot+phot_err*np.random.normal(size=(xlen,ylen))
                     for h in range(len(w2)):
-                        sigma[:,:,w2[h]]=((iso_data[:,:,w2[h]]-phot1[i,w2[h]])/phot_err[i,w2[h]])**2
+                        sigma[:,0,w2[h]]=((iso_data[:,i00,w2[h]]-phot1[i,w2[h]])/phot_err[i,w2[h]])**2
                     cr1=np.sum(sigma[:,:,w2],axis=2)
                     est1,ind1=MADYS.min_v(cr1)
                     m_f1[j]=iso_mass[ind1[0]]
-                    a_f1[j]=iso_age[ind1[1]]
+                    a_f1[j]=iso_age[i00]
                 m_err[i]=np.std(m_f1,ddof=1)
                 a_err[i]=np.std(a_f1,ddof=1)            
         else:
@@ -401,6 +414,9 @@ class MADYS(object):
                     if abs(iso_data[ii]-ph)<0.2: b[h]=True #if the best theor. match is more than 0.2 mag away, discards it           
                 w2=w[b]
                 if len(w2)<3: continue #at least 3 filters needed for the fit
+                if mask:
+                    sigma[:,:i_age[i,0],:]=np.nan
+                    sigma[:,i_age[i,1]+1:,:]=np.nan
                 cr=np.sum(sigma[:,:,w2],axis=2)
                 est,ind=MADYS.min_v(cr)
                 crit1=np.sort([sigma[ind+(w2[j],)] for j in range(len(w2))])
@@ -428,8 +444,8 @@ class MADYS(object):
         if verbose==True:
             filename=self.file
             f=open(os.path.join(self.path,str(self.__sample_name+'_ages_'+model+'.txt')), "w+")
-            f.write(tabulate(np.column_stack((m_final,m_err,a_final,a_err)),
-                             headers=['MASS','MASS_ERROR','AGE','AGE_ERROR'], tablefmt='plain', stralign='right', numalign='right', floatfmt=".2f"))
+            f.write(tabulate(np.column_stack((m_final,m_err,a_final,a_err,self.ebv)),
+                             headers=['MASS','MASS_ERROR','AGE','AGE_ERROR','E(B-V)'], tablefmt='plain', stralign='right', numalign='right', floatfmt=".2f"))
             f.close()
 
 #        self.__logger.info('Age determination ended. Results saved in ... ')
@@ -445,7 +461,7 @@ class MADYS(object):
         except TypeError:
             cmin=col_phot-0.1
             cmax=min(70,col_phot)+0.1
-
+        
         if stick_to_points:
             dic1={'G':[cmax,cmin], 'Gbp':[cmax,cmin], 'Grp':[cmax,cmin],
                 'J':[cmax,cmin], 'H':[cmax,cmin], 'K':[cmax,cmin],
@@ -470,22 +486,25 @@ class MADYS(object):
                 'G-W3':[min(0,cmin),max(10,cmax)], 'G-W4':[min(0,cmin),max(12,cmax)],
                 'J-H':[min(0,cmin),max(1,cmax)], 'J-K':[min(0,cmin),max(1.5,cmax)],
                 'H-K':[min(0,cmin),max(0.5,cmax)], 'Gbp-Grp':[min(0,cmin),max(5,cmax)],
-                'K1mag-K2mag':[min(-3,cmin),max(2,cmax)]
+#                'K1mag-K2mag':[min(-3,cmin),max(2,cmax)]
                 }
 
         try:
             xx=dic1[col_name]
         except KeyError:
             if '-' in col_name:
-                xx=[cmin,cmax]
-            else: xx=[cmax,cmin]
+                if cmax-cmin>5: x=[cmin,cmax]
+                else: xx=np.nanmean(col_phot)+[-3,3]
+            else: 
+                if cmax-cmin>5: x=[cmax,cmin]
+                else: xx=np.nanmean(col_phot)+[3,-3]
 
         return xx 
     
     def CMD(self,col,mag,model,ids=None,**kwargs):
 
         def filter_model(model,col):
-            if model in ['bt_settl','amard','spots','dartmouth','ames_cond','ames_dusty','bt_nextgen','nextgen']:
+            if model in ['bt_settl','starevol','spots','dartmouth','ames_cond','ames_dusty','bt_nextgen','nextgen']:
                 if col=='G': col2='G2'
                 elif col=='Gbp': col2='Gbp2'
                 elif col=='Grp': col2='Grp2'
@@ -579,11 +598,13 @@ class MADYS(object):
             iso_filters[w]=['G','Gbp','Grp']
 
         #axes ranges
-        if 'stick_to_points' in kwargs:
-            stick_to_points=kwargs['stick_to_points']
+        if 'stick_to_points' in kwargs: stick_to_points=kwargs['stick_to_points']
         else: stick_to_points=False
-        x_range=MADYS.axis_range(x_axis,x,stick_to_points)
-        y_range=MADYS.axis_range(y_axis,y,stick_to_points)
+        
+        if 'x_range' in kwargs: x_range=kwargs['x_range']
+        else: x_range=MADYS.axis_range(x_axis,x,stick_to_points=stick_to_points)
+        if 'y_range' in kwargs: y_range=kwargs['y_range']
+        else: y_range=MADYS.axis_range(y_axis,y,stick_to_points=stick_to_points)
 
         #finds color/magnitude isochrones to plot
         if '-' in x_axis: 
@@ -1266,8 +1287,8 @@ class MADYS(object):
                 feh1="{:.2f}".format(abs(feh0))            
                 model2=model+'_'+s+feh1
             else: model2=model+'_p0.00'
-        elif model=='amard':
-            feh_range=np.array([-0.813,-0.336,-0.211,-0.114,0.0,0.165,0.301])
+        elif model=='starevol':
+            feh_range=np.array([-0.826,-0.349,-0.224,-0.127,-0.013,0.152,0.288])
             vcrit_range=np.array([0.0,0.2,0.4,0.6])
             if type(feh)!=type(None):
                 i=np.argmin(abs(feh_range-feh))
@@ -1322,7 +1343,7 @@ class MADYS(object):
             else: 
                 model2+='_mag'
 #                param['B']=1  
-        elif model=='ekstroem':
+        elif model=='geneva':
             feh_range=np.array([-1.5,0.0])
             vcrit_range=np.array([0.0,0.4])
             if type(feh)!=type(None):
@@ -1356,7 +1377,7 @@ class MADYS(object):
                  'R_sl2':'Rsloan','Z_sl':'Zsloan','M_sl':'Msloan',
                  'Ymag':'B_Y','Jmag':'B_J','Hmag':'B_H','Kmag':'B_Ks','H2mag':'D_H2','H3mag':'D_H3',
                  'H4mag':'D_H4','J2mag':'D_J2','J3mag':'D_J3','K1mag':'D_K1','K2mag':'D_K2',
-                 'Y2mag':'D_Y2','Y3mag':'D_Y3'}
+                 'Y2mag':'D_Y2','Y3mag':'D_Y3'}            
         elif model=='ames_cond':
             dic={'G':'G','Gbp':'G_BP','Grp':'G_BP','J':'J','H':'H','K':'K',
                  'W1':'W1_W10','W2':'W2_W10','W3':'W3_W10','W4':'W4_W10','U':'U','B':'B',
@@ -1375,6 +1396,13 @@ class MADYS(object):
                  'Ymag':'B_Y','Jmag':'B_J','Hmag':'B_H','Kmag':'B_Ks','H2mag':'D_H2','H3mag':'D_H3',
                  'H4mag':'D_H4','J2mag':'D_J2','J3mag':'D_J3','K1mag':'D_K1','K2mag':'D_K2',
                  'Y2mag':'D_Y2','Y3mag':'D_Y3'}
+        elif model=='nextgen':
+            dic={'G':'G2018','Gbp':'G2018_BP','Grp':'G2018_RP','J':'J','H':'H','K':'K',
+                 'W1':'W1_W10','W2':'W2_W10','W3':'W3_W10','W4':'W4_W10',
+                 'gmag':'g_p1','rmag':'r_p1','imag':'i_p1','zmag':'z_p1','ymag':'y_p1',
+                 'Ymag':'B_Y','Jmag':'B_J','Hmag':'B_H','Kmag':'B_Ks','H2mag':'D_H2','H3mag':'D_H3',
+                 'H4mag':'D_H4','J2mag':'D_J2','J3mag':'D_J3','K1mag':'D_K1','K2mag':'D_K2',
+                 'Y2mag':'D_Y2','Y3mag':'D_Y3'}            
         elif model=='mist':
             dic={'G':'Gaia_G_EDR3','Gbp':'Gaia_BP_EDR3','Grp':'Gaia_RP_EDR3',
                  'J':'2MASS_J','H':'2MASS_H','K':'2MASS_Ks',
@@ -1398,7 +1426,7 @@ class MADYS(object):
                  'G':'gaia_G','Gbp':'gaia_BP','Grp':'gaia_RP',                 
                  'U':'U','B':'B','V':'V','R':'R','I':'I',
                  'J':'2mass_J','H':'2mass_H','K':'2mass_K'} 
-        elif model=='amard':
+        elif model=='starevol':
             dic={'U':'M_U','B':'M_B','V':'M_V','R':'M_R','I':'M_I',
                  'J':'M_J','H':'M_H','K':'M_K','G':'M_G','Gbp':'M_Gbp','Grp':'M_Grp'}
         elif model=='bhac15':
@@ -1407,7 +1435,7 @@ class MADYS(object):
                  'zmag':'z_p1','ymag':'y_p1',
                  'Ymag':'B_Y','Jmag':'B_J','Hmag':'B_H','Kmag':'B_Ks','H2mag':'D_H2','H3mag':'D_H3',
                  'H4mag':'D_H4','J2mag':'D_J2','J3mag':'D_J3','K1mag':'D_K1','K2mag':'D_K2',
-                 'Y2mag':'D_Y2','Y3mag':'D_Y3'}
+                 'Y2mag':'D_Y2','Y3mag':'D_Y3'}            
         elif model=='atmo2020_ceq':
             dic={'MKO_Y':'MKO_Y','MKO_J':'MKO_J','MKO_H':'MKO_H','MKO_K':'MKO_K','MKO_L':'MKO_Lp','MKO_M':'MKO_Mp',
                  'W1':'W1','W2':'W2','W3':'W3','W4':'W4',
@@ -1420,7 +1448,7 @@ class MADYS(object):
             dic={'MKO_Y':'MKO_Y','MKO_J':'MKO_J','MKO_H':'MKO_H','MKO_K':'MKO_K','MKO_L':'MKO_Lp','MKO_M':'MKO_Mp',
                  'W1':'W1','W2':'W2','W3':'W3','W4':'W4',
                  'IRAC_CH1':'IRAC_CH1','IRAC_CH2':'IRAC_CH2'}
-        elif model=='ekstroem':
+        elif model=='geneva':
             dic={'lum':'logL', 't_eff':'logTe','V':'Vmag','U-B':'U-B','B-V':'B-V',
                  'B':'Bmag','U':'Umag', 'R':'nan', 'i':'nan'}
 
@@ -1438,10 +1466,12 @@ class MADYS(object):
 
         mass_range=[0.01,1.4]
         age_range=[1,1000]
+        exact_age=False
         if len(kwargs)>0:
             if 'age_range' in kwargs: age_range = kwargs['age_range']
-            if 'mass_range' in kwargs: mass_range = kwargs['mass_range']            
-
+            if 'mass_range' in kwargs: mass_range = kwargs['mass_range']
+            if 'exact_age' in kwargs: exact_age = kwargs['exact_age'] #NEWLINE
+                
         def filters_to_surveys(filters):    
             surveys=[]
             gaia=np.array(['G','Gbp','Grp','G2','Gbp2','Grp2'])
@@ -1461,7 +1491,7 @@ class MADYS(object):
             return surveys
 
         def fix_filters(filters,model,mode='collapse'):
-            mod2=['bt_settl','amard','spots','dartmouth','ames_cond','ames_dusty','bt_nextgen','nextgen','bhac15']
+            mod2=['bt_settl','starevol','spots','dartmouth','ames_cond','ames_dusty','bt_nextgen','nextgen','bhac15']
             mod3=['mist','parsec']        
             if mode=='collapse':
                 filters=np.where(filters=='G2','G', filters)
@@ -1488,20 +1518,35 @@ class MADYS(object):
 #        print('Filters:',fnew)    
 
         n1=n_steps[0]
-        n2=n_steps[1]
         mnew=M_sun.value/M_jup.value*np.exp(np.log(0.999*mass_range[0])+(np.log(1.001*mass_range[1])-np.log(0.999*mass_range[0]))/(n1-1)*np.arange(n1))
 
-        try:
-            len(age_range)
-            anew=np.exp(np.log(1.0001*age_range[0])+(np.log(0.9999*age_range[1])-np.log(1.0001*age_range[0]))/(n2-1)*np.arange(n2))
-        except TypeError:
-            anew=age_range
-            n2=1
+        try: len(age_range) #NEWLINE
+        except TypeError: #NEWLINE
+            anew=age_range #NEWLINE
+            n2=1 #NEWLINE
+            case=1
+        else:
+            if isinstance(age_range,list): #NEWLINE
+                n2=n_steps[1]
+                anew=np.exp(np.log(1.0001*age_range[0])+(np.log(0.9999*age_range[1])-np.log(1.0001*age_range[0]))/(n2-1)*np.arange(n2)) #NEWLINE
+                case=2
+            elif isinstance(age_range,np.ndarray):  #NEWLINE
+                if len(age_range.shape)==1:
+                    anew=np.array(age_range)
+                    n2=len(anew)
+                    case=3
+                else:
+                    n2=n_steps[1]
+                    a0_min=np.min(age_range[:,0]) #NEWLINE
+                    a0_max=np.max(age_range[:,1]) #NEWLINE
+                    anew=np.exp(np.log(1.0001*a0_min)+(np.log(0.9999*a0_max)-np.log(1.0001*a0_min))/(n2-1)*np.arange(n2)) #NEWLINE
+                    case=4
+            else: raise TypeError('Only scalar, list or numpy arrays are valid inputs for the keyword "age_range".')
 
         iso_f=np.full(([n1,n2,nf]), np.nan) #final matrix    
         found=np.zeros(nf,dtype=bool)
         c=0
-        if n2>1:
+        if case>1:
             for i in range(len(surveys)):
                 if c==nf: break
                 try:
@@ -1601,4 +1646,140 @@ class MADYS(object):
         logger.addHandler(handler)
     #    logger.addHandler(screen_handler)
         return logger
-    
+
+    @staticmethod
+    def info_models(model=None):
+            folder = os.path.dirname(os.path.realpath(__file__))
+
+            paths=[x[0] for x in os.walk(folder)]
+            found = False
+            for path in paths:
+                if (Path(path) / 'isochrones').exists():
+                    found = True
+                    path=Path(path) / 'isochrones'
+                    folders=[x[0] for x in os.walk(path)]
+                    break
+                        
+            if type(model)==type(None):
+                print('AVAILABLE MODELS FOR MADYS')
+                print('')
+            else:
+                model=str.lower(model)
+                def fix_mod(model):
+                    dic={'atmo2020':'atmo','atmo2020_ceq':'atmo',
+                         'atmo2020_neq_s':'atmo','atmo2020_neq_w':'atmo','bhac 15':'bhac15',
+                         'ames dusty':'dusty','ames_dusty':'dusty',
+                         'ames cond':'cond','ames_cond':'cond', 
+                         'bt_settl':'settl','bt-settl':'settl','bt settl':'settl'                         
+                        }
+                    try: 
+                        return dic[model]
+                    except KeyError:
+                        return model
+                model=fix_mod(model)
+                found=False
+                
+            f_mods=[]
+            for path in folders:
+                if (Path(path) / 'info.txt').exists():
+                    info=Path(path) / 'info.txt'
+                    if type(model)!=type(None):
+                        if model not in str.lower(path): 
+                            if 'starevol' in str.lower(path): f_mods.append('starevol')
+                            elif 'atmo' in str.lower(path): f_mods.append('atmo2020')
+                            elif 'bhac15' in str.lower(path): f_mods.append('bhac15')
+                            elif 'mist' in str.lower(path): f_mods.append('mist')
+                            elif 'parsec' in str.lower(path): f_mods.append('parsec')
+                            elif 'cond' in str.lower(path): f_mods.append('ames_cond')
+                            elif 'dusty' in str.lower(path): f_mods.append('ames_dusty')
+                            elif 'nextgen' in str.lower(path): f_mods.append('nextgen')
+                            elif 'settl' in str.lower(path): f_mods.append('bt_settl')
+                            elif 'spots' in str.lower(path): f_mods.append('spots')
+                            elif 'dartmouth' in str.lower(path): f_mods.append('dartmouth')
+                            elif 'geneva' in str.lower(path): f_mods.append('geneva')
+                            continue
+                        else: found=True
+                    with open(info) as f:
+                        print(f.read())
+                    files=[x[2] for x in os.walk(path)]
+                    if 'starevol' in str.lower(path):
+                        expr = re.compile('Isochr_Z(.+)_Vini(.+)_t(.+).dat')
+                        z=[]
+                        v_vcrit=[]            
+                        for j in range(len(files[0])):
+                            string=files[0][j]
+                            m=expr.match(string)
+                            if (m is not None):
+                                z.append(float(m.group(1)))
+                                v_vcrit.append(m.group(2))
+                                #t=m.group(3)
+                        feh=["%.2f" % np.log10(np.array(d)/0.0134) for d in z]
+                        feh=np.unique(feh)
+                        v_vcrit=np.unique(v_vcrit)
+                        print('Available metallicities: [Fe/H]=[',','.join(feh),']')
+                        print('Available velocities/v_crit:[',','.join(v_vcrit),']')
+                        print("CALL IT AS: 'starevol'")
+                    elif 'atmo' in str.lower(path): 
+                        print("CALL IT AS: 'atmo2020_ceq'/'atmo2020_neq_s'/'atmo2020_neq_w'")                                        
+                    elif 'bhac15' in str.lower(path): 
+                        print("CALL IT AS: 'bhac15'")
+                    elif 'mist' in str.lower(path):
+                        expr = re.compile('MIST_v1.2_feh_(.+)_afe_(.+)_vvcrit(.+)_.+')
+                        feh=[]
+                        afe=[]
+                        v_vcrit=[]                    
+                        for j in range(len(files[0])):
+                            string=files[0][j]
+                            m=expr.match(string)
+                            if (m is not None):
+                                feh0=m.group(1).replace('m','-')
+                                feh.append(feh0.replace('p',''))
+                                afe0=m.group(2).replace('m','-')
+                                afe.append(afe0.replace('p',''))
+                                v_vcrit.append(m.group(3))
+                        feh=np.unique(feh)
+                        afe=np.unique(afe)
+                        v_vcrit=np.unique(v_vcrit)
+                        print('Available metallicities: [Fe/H]= [',','.join(feh),']')
+                        print("Available alpha enh's: [Fe/H]= [",','.join(afe),']')
+                        print('Available velocities/v_crit: [',','.join(v_vcrit),']')
+                        print("CALL IT AS: 'mist'")
+                    elif 'parsec' in str.lower(path):
+                        expr = re.compile('GAIA_EDR3_feh_(.+).txt')
+                        feh=[]
+                        for j in range(len(files[0])):
+                            string=files[0][j]
+                            m=expr.match(string)
+                            if (m is not None):
+                                feh0=m.group(1).replace('m','-')
+                                feh.append(feh0.replace('p',''))
+                        feh=np.unique(feh)
+                        print('Available metallicities: [Fe/H]= [',','.join(feh),']')
+                        print("CALL IT AS: 'parsec'")
+                    elif ('ames' in str.lower(path)) & ('cond' in str.lower(path)):
+                        print("CALL IT AS: 'ames_cond'")
+                    elif ('ames' in str.lower(path)) & ('dusty' in str.lower(path)):
+                        print("CALL IT AS: 'ames_dusty'")                    
+                    elif 'nextgen' in str.lower(path):
+                        print("CALL IT AS: 'nextgen'")
+                    elif 'settl' in str.lower(path):
+                        print("CALL IT AS: 'bt_settl'")                    
+                    elif 'spots' in str.lower(path):
+                        expr = re.compile('f(.+)_all')
+                        fspot=[]
+                        for j in range(len(files[0])):
+                            string=files[0][j] 
+                            m=expr.match(string)
+                            if (m is not None):
+                                fspot.append(m.group(1)[0]+'.'+m.group(1)[1:])
+                        print('Available spot fractions= [',','.join(fspot),']')
+                        print("CALL IT AS: 'spots'")
+                    elif 'dartmouth' in str.lower(path):
+                        print("CALL IT AS: 'dartmouth'")
+                    elif 'geneva' in str.lower(path):
+                        print("CALL IT AS: 'geneva'")                    
+
+                    print('--------------------------------------------------------------------------------------')
+            if found==False: 
+                mess='The inserted model does not exist. Check the spelling and try again. Available models: '+','.join(f_mods)
+                raise ValueError(mess)
