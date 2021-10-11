@@ -1,6 +1,7 @@
 import copy
 import warnings
 from astropy.utils.exceptions import AstropyWarning
+import logging
 import numpy as np
 from pathlib import Path
 import sys
@@ -42,7 +43,13 @@ class MADYS(object):
         while sample_name[i]!='.': i=i+1
         self.__ext=sample_name[i:] #estension
         self.__sample_name=sample_name[:i]        
-            
+
+        logging.shutdown() 
+        self.log_file = Path(self.path) / (self.__sample_name+'_log.txt')
+        if os.path.exists(self.log_file): os.remove(self.log_file)
+        self.__logger = MADYS.setup_custom_logger('madys',self.log_file)
+        ext_map = kwargs['ext_map'] if 'ext_map' in kwargs else 'leike'
+        
         if isinstance(file,Table):
             
             col0=file.colnames
@@ -58,25 +65,28 @@ class MADYS(object):
             for i in range(n):
                 self.abs_phot[:,i]=file[col[i]]               
                 self.abs_phot_err[:,i]=file[col_err[i]]
+                
+            self.__logger.info('Program started')
+            self.__logger.info('Input type: custom table')
+            self.__logger.info('Filters required: '+','.join(feh))
+                
             self.ebv=np.zeros(len(file))
             if 'ebv' in kwargs:
                 self.ebv=kwargs['ebv']
+                self.__logger.info('Extinction type: provided by the user')
             elif ('ra' in col0) & ('dec' in col0) & ('parallax' in col0):
-                self.ebv=MADYS.interstellar_ext(ra=file['ra'],dec=file['dec'],par=par)
+                self.ebv=MADYS.interstellar_ext(ra=file['ra'],dec=file['dec'],par=par,ext_map=ext_map,logger=self.__logger)
+                self.__logger.info('Extinction type: computed using '+ext_model+' extinction map')
             if 'parallax' in col0:
                 par=file['parallax']
                 par_err=file['parallax_err']
                 self.abs_phot,self.abs_phot_err=MADYS.app_to_abs_mag(self.abs_phot,par,app_mag_error=self.abs_phot_err,parallax_error=par_err,ebv=self.ebv,filters=col)
+                self.__logger.info('Photometry: apparent, converted to ab computed using '+model+' extinction map')
         else:
-    #        self.log_file = Path(self.path) / (self.__sample_name+'_log.txt')
-    #        if 'logger' not in locals():
-    #            self.__logger = MADYS.setup_custom_logger('madys',self.log_file)
-
             self.filters=np.array(['G','Gbp','Grp','G2','Gbp2','Grp2','J','H','K'])
             
             surveys = kwargs['surveys'] if 'surveys' in kwargs else ['gaia','2mass']            
             verbose = kwargs['verbose'] if 'verbose' in kwargs else True            
-            ext_map = kwargs['ext_map'] if 'ext_map' in kwargs else 'leike'
             gaia_id = kwargs['gaia_id'] if 'gaia_id' in kwargs else True
             get_phot = kwargs['get_phot'] if 'get_phot' in kwargs else True            
             save_phot = kwargs['save_phot'] if 'save_phot' in kwargs else True            
@@ -96,14 +106,13 @@ class MADYS(object):
                 self.phot_table=ascii.read(filename, format='csv')
             self.good_phot=self.check_phot(**kwargs)
 
-    #        self.__logger.info('Program started')
-    #        self.__logger.info('Input file:')
-    #        self.__logger.info('Coordinate type:'+str(coord_type))
-    #        self.__logger.info('Looking for photometry in the surveys:')
+            self.__logger.info('Program started')
+            self.__logger.info('Input file:')
+            self.__logger.info('Looking for photometry in the surveys:')
 
             phot=np.full([len(self.good_phot),9],np.nan)
             phot_err=np.full([len(self.good_phot),9],np.nan)
-            col=['edr3_gmag_corr','edr3_phot_bp_mean_mag','edr3_phot_rp_mean_mag','dr2_phot_g_mean_magmo','dr2_phot_bp_mean_mag','dr2_phot_rp_mean_mag','j_m','h_m','ks_m']
+            col=['edr3_gmag_corr','edr3_phot_bp_mean_mag','edr3_phot_rp_mean_mag','dr2_phot_g_mean_mag','dr2_phot_bp_mean_mag','dr2_phot_rp_mean_mag','j_m','h_m','ks_m']
             col_err=['edr3_phot_g_mean_mag_error','edr3_phot_bp_mean_mag_error','edr3_phot_rp_mean_mag_error','dr2_g_mag_error','dr2_bp_mag_error','dr2_rp_mag_error','j_msigcom','h_msigcom','ks_msigcom','w1mpro_error','w2mpro_error','w3mpro_error','w4mpro_error']
 
             for i in range(9):
@@ -118,10 +127,10 @@ class MADYS(object):
             if 'ebv' in kwargs:
                 self.ebv=kwargs['ebv']
             else:
-                self.ebv=self.interstellar_ext(ra=ra,dec=dec,par=par,ext_map=ext_map)
-    #        self.ebv=self.interstellar_ext(ra=coo[:,0],dec=coo[:,1],par=par,logger=self.__logger)
+                self.ebv=self.interstellar_ext(ra=ra,dec=dec,par=par,ext_map=ext_map,logger=self.__logger)
             self.abs_phot,self.abs_phot_err=self.app_to_abs_mag(self.__app_phot,par,app_mag_error=self.__app_phot_err,parallax_error=par_err,ebv=self.ebv,filters=self.filters)
-    #        logging.shutdown() 
+
+        logging.shutdown() 
         
     
     def get_gaia(self):
@@ -326,10 +335,10 @@ class MADYS(object):
             if 'm_unit' in kwargs: m_unit=kwargs['m_unit']        
             if 'exact_age' in kwargs: exact_age=kwargs['exact_age'] #NEWLINE
         
-#        self.__logger.info('Starting age determination')
+        self.__logger.info('Starting age determination')
         iso_mass,iso_age,iso_filt,iso_data=MADYS.load_isochrones(model,self.filters,feh=self.feh,
                                  afe=self.afe,v_vcrit=self.v_vcrit,fspot=self.fspot,B=self.B,**kwargs)
-#        self.__logger.info('Isochrones for model '+model+' correctly loaded.')               
+        self.__logger.info('Isochrones for model '+model+' correctly loaded.')               
    
         phot=self.abs_phot
         phot_err=self.abs_phot_err        
@@ -444,12 +453,14 @@ class MADYS(object):
         if verbose==True:
             filename=self.file
             f=open(os.path.join(self.path,str(self.__sample_name+'_ages_'+model+'.txt')), "w+")
-            f.write(tabulate(np.column_stack((m_final,m_err,a_final,a_err,self.ebv)),
-                             headers=['MASS','MASS_ERROR','AGE','AGE_ERROR','E(B-V)'], tablefmt='plain', stralign='right', numalign='right', floatfmt=".2f"))
+            f.write(tabulate(np.column_stack((self.GaiaID['ID'].value,m_final,m_err,a_final,a_err,self.ebv)),
+                             headers=['ID','MASS','MASS_ERROR','AGE','AGE_ERROR','E(B-V)'], tablefmt='plain', stralign='right', numalign='right', floatfmt=(None,".2f",".2f",".2f",".2f",".3f")))
+#            f.write(tabulate(np.column_stack((m_final,m_err,a_final,a_err,self.ebv)),
+#                             headers=[MASS','MASS_ERROR','AGE','AGE_ERROR','E(B-V)'], tablefmt='plain', stralign='right', numalign='right', floatfmt=(".2f",".2f",".2f",".2f",".3f")))
             f.close()
 
-#        self.__logger.info('Age determination ended. Results saved in ... ')
-#        logging.shutdown()
+        self.__logger.info('Age determination ended. Results saved in ... ')
+        logging.shutdown()
         return a_final,m_final,a_err,m_err
                 
     @staticmethod
@@ -1643,14 +1654,18 @@ class MADYS(object):
     #    screen_handler.setFormatter(formatter)
         logger = logging.getLogger(name)
         logger.setLevel(logging.DEBUG)
+        if (logger.hasHandlers()):
+            logger.handlers.clear()        
         logger.addHandler(handler)
-    #    logger.addHandler(screen_handler)
-        return logger
+    #    logger.addHandler(screen_handler)    
+
+        return logger    
 
     @staticmethod
     def info_models(model=None):
             folder = os.path.dirname(os.path.realpath(__file__))
 
+    #        paths=[x[0] for x in os.walk(folder)]
             paths=[x[0] for x in os.walk(folder)]
             found = False
             for path in paths:
