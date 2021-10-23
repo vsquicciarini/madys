@@ -1,16 +1,15 @@
+import sys
 import copy
 import warnings
 from astropy.utils.exceptions import AstropyWarning
 import logging
 import numpy as np
 from pathlib import Path
-import sys
 import os
 from evolution import *
 from scipy.interpolate import interp1d
 from astropy.constants import M_jup,M_sun
 import time
-import pickle
 from astropy.coordinates import Angle, SkyCoord, ICRS, Galactic, FK4, FK5, Latitude, Longitude,Galactocentric, galactocentric_frame_defaults
 from astropy import units as u
 from astroquery.simbad import Simbad
@@ -21,12 +20,10 @@ from astropy.table import Table, vstack
 from astropy.io import ascii
 from tabulate import tabulate
 import math
-import shutil
 import h5py
 from astropy.io import fits
 from astroquery.gaia import Gaia
 Vizier.TIMEOUT = 100000000 # rise the timeout for Vizier
-import numpy as np
 from astropy.table import Table, Column, vstack, hstack, MaskedColumn
 from astropy.io import ascii
 from tap import (GaiaArchive, TAPVizieR, resolve, QueryStr, timeit)
@@ -54,21 +51,24 @@ class MADYS(object):
             
             col0=file.colnames
 
-            kin=np.array(['parallax','parallax_err','ra','dec'])
+            kin=np.array(['parallax','parallax_err','ra','dec','name'])
             col=np.setdiff1d(np.unique(np.char.replace(col0,'_err','')),kin)
             col_err=np.array([i+'_err' for i in col])
             self.filters=np.array(col)
+            self.GaiaID=file['name']
 
             n=len(col)
-            self.abs_phot=np.full([len(file),n],np.nan)
-            self.abs_phot_err=np.full([len(file),n],np.nan)
+            nst=len(file)
+            self.abs_phot=np.full([nst,n],np.nan)
+            self.abs_phot_err=np.full([nst,n],np.nan)
             for i in range(n):
                 self.abs_phot[:,i]=file[col[i]]               
                 self.abs_phot_err[:,i]=file[col_err[i]]
                 
             self.__logger.info('Program started')
             self.__logger.info('Input type: custom table')
-            self.__logger.info('Filters required: '+','.join(feh))
+            self.__logger.info('Filters required: '+','.join(self.filters))
+            self.__logger.info('No. of stars: '+str(nst))
                 
             self.ebv=np.zeros(len(file))
             if 'ebv' in kwargs:
@@ -76,42 +76,69 @@ class MADYS(object):
                 self.__logger.info('Extinction type: provided by the user')
             elif ('ra' in col0) & ('dec' in col0) & ('parallax' in col0):
                 self.ebv=MADYS.interstellar_ext(ra=file['ra'],dec=file['dec'],par=par,ext_map=ext_map,logger=self.__logger)
-                self.__logger.info('Extinction type: computed using '+ext_model+' extinction map')
+                self.__logger.info('Extinction type: computed using '+ext_map+' extinction map')
             if 'parallax' in col0:
                 par=file['parallax']
                 par_err=file['parallax_err']
                 self.abs_phot,self.abs_phot_err=MADYS.app_to_abs_mag(self.abs_phot,par,app_mag_error=self.abs_phot_err,parallax_error=par_err,ebv=self.ebv,filters=col)
-                self.__logger.info('Photometry: apparent, converted to ab computed using '+model+' extinction map')
+                self.__logger.info('Input photometry: apparent, converted to absolute.')
+            else:
+                self.__logger.info('Input photometry: no parallax provided, assumed absolute.')
+                
         else:
             self.filters=np.array(['G','Gbp','Grp','G2','Gbp2','Grp2','J','H','K'])
             
             surveys = kwargs['surveys'] if 'surveys' in kwargs else ['gaia','2mass']            
             verbose = kwargs['verbose'] if 'verbose' in kwargs else True            
             gaia_id = kwargs['gaia_id'] if 'gaia_id' in kwargs else True
-            get_phot = kwargs['get_phot'] if 'get_phot' in kwargs else True            
-            save_phot = kwargs['save_phot'] if 'save_phot' in kwargs else True            
+            get_phot = kwargs['get_phot'] if 'get_phot' in kwargs else True
+            save_phot = kwargs['save_phot'] if 'save_phot' in kwargs else True
 
             self.surveys=list(map(str.lower,surveys))    
 
+            self.__logger.info('Program started')
+            self.__logger.info('Input file: list of IDs')
+            
             IDtab = ascii.read(self.file, format='csv')#, names=['ID']) #.field('ID')
             if len(IDtab[0])>1:
                 self.ID = IDtab.field('ID')
             else: self.ID=IDtab
 
+            nst=len(self.ID)
+            self.__logger.info('No. of stars: '+str(nst))
+            self.__logger.info('Looking for photometry in the surveys: '+','.join(self.surveys))
+                
             if gaia_id: self.GaiaID = self.ID
             else: self.get_gaia()
-            if get_phot: self.get_phot(save_phot)
-            else:
+
+            
+            if isinstance(self.GaiaID,Column): self.GaiaID=Table([self.GaiaID])
+            if isinstance(self.ID,Column): self.ID=Table([self.ID])
+
+            if get_phot==True: 
+                self.__logger.info('Starting data query...')
+                self.get_phot(save_phot)
+                self.__logger.info('Data query: ended.')                
+            elif get_phot==False:
                 filename=os.path.join(self.path,(self.__sample_name+'_phot_table.csv'))
-                self.phot_table=ascii.read(filename, format='csv')
+                if os.path.exists(filename):
+                    self.phot_table=ascii.read(filename, format='csv')
+                    self.__logger.info('Data recovered from a previous execution. File: '+filename)
+                else: 
+                    self.__logger.warning('get_phot is set to False but the file '+filename+' was not found. Program ended.')
+                    raise ValueError('get_phot is set to False but the file '+filename+' was not found. Set get_phot=True to query the provided IDs, or get_phot=full_file_path to recover them from an input file.')
+            else:
+                filename=get_phot
+                if os.path.exists(filename):
+                    self.phot_table=ascii.read(filename, format='csv')
+                    self.__logger.info('Data recovered from a previous execution. File: '+filename)
+                else: 
+                    self.__logger.warning('The provided file '+filename+' was not found. Program ended.')
+                    raise ValueError('The provided file file '+filename+' was not found. Set get_phot=True to query the provided IDs, or check the file name.')
             self.good_phot=self.check_phot(**kwargs)
 
-            self.__logger.info('Program started')
-            self.__logger.info('Input file:')
-            self.__logger.info('Looking for photometry in the surveys:')
-
-            phot=np.full([len(self.good_phot),9],np.nan)
-            phot_err=np.full([len(self.good_phot),9],np.nan)
+            phot=np.full([nst,9],np.nan)
+            phot_err=np.full([nst,9],np.nan)
             col=['edr3_gmag_corr','edr3_phot_bp_mean_mag','edr3_phot_rp_mean_mag','dr2_phot_g_mean_mag','dr2_phot_bp_mean_mag','dr2_phot_rp_mean_mag','j_m','h_m','ks_m']
             col_err=['edr3_phot_g_mean_mag_error','edr3_phot_bp_mean_mag_error','edr3_phot_rp_mean_mag_error','dr2_g_mag_error','dr2_bp_mag_error','dr2_rp_mag_error','j_msigcom','h_msigcom','ks_msigcom','w1mpro_error','w2mpro_error','w3mpro_error','w4mpro_error']
 
@@ -126,9 +153,12 @@ class MADYS(object):
             par_err=np.array(self.good_phot['edr3_parallax_error'].filled(np.nan))
             if 'ebv' in kwargs:
                 self.ebv=kwargs['ebv']
+                self.__logger.info('Extinction type: provided by the user')
             else:
                 self.ebv=self.interstellar_ext(ra=ra,dec=dec,par=par,ext_map=ext_map,logger=self.__logger)
+                self.__logger.info('Extinction type: computed using '+ext_map+' extinction map')
             self.abs_phot,self.abs_phot_err=self.app_to_abs_mag(self.__app_phot,par,app_mag_error=self.__app_phot_err,parallax_error=par_err,ebv=self.ebv,filters=self.filters)
+            self.__logger.info('Input photometry: apparent, converted to absolute')
 
         logging.shutdown() 
         
@@ -148,7 +178,6 @@ class MADYS(object):
         start = time.time()
         for i in range(len(self.GaiaID)):            
             id=str(self.GaiaID[i]).split('Gaia DR2 ')[1]
-            #print(i, id)
             qstr="""
             select all
             edr3.designation as edr3_id, dr2.designation as dr2_id,
@@ -200,7 +229,7 @@ class MADYS(object):
             allwise.w2mpro,allwise.w2mpro_error,
             allwise.w3mpro,allwise.w3mpro_error,
             allwise.w4mpro,allwise.w4mpro_error,
-            allwise.cc_flags, allwise.ext_flag, allwise.var_flag, allwise.ph_qual, allwise.tmass_key,
+            allwise.cc_flags, allwise.ext_flag, allwise.var_flag, allwise.ph_qual as ph_qual_2, allwise.tmass_key,
             apass.b_v, apass.e_b_v, apass.vmag, apass.e_vmag, apass.bmag, apass.e_bmag, apass.r_mag, apass.e_r_mag, apass.i_mag, apass.e_i_mag,
             sloan.u, sloan.err_u, sloan.g, sloan.err_g, sloan.r, sloan.err_r, sloan.i, sloan.err_i, sloan.u, sloan.err_u
             from
@@ -241,8 +270,96 @@ class MADYS(object):
             WHERE dr2xmatch.dr2_source_id = """ + id
 
             adql = QueryStr(qstr,verbose=False)
-#            t=timeit(gaia.query)(adql)
-            t=gaia.query(adql)
+    #            t=timeit(gaia.query)(adql)
+
+            try:
+                t=gaia.query(adql)        
+                t=MADYS.fix_double_entries(t)
+            except:
+                qstr="""
+                select all
+                edr3.designation as edr3_id, dr2.designation as dr2_id,
+                allwise.designation as allwise_id,
+                apass.recno as apassdr9_id, sloan.objid as sloan_id,
+                edr3.ra as ra, edr3.dec as dec,
+                edr3.ref_epoch as edr3_epoch, edr3.parallax as edr3_parallax,
+                edr3.parallax_error as edr3_parallax_error, edr3.parallax_over_error as edr3_parallax_over_error,
+                edr3.pmra as edr3_pmra, edr3.pmra_error as edr3_pmra_error,
+                edr3.pmdec as edr3_pmdec, edr3.pmdec_error as edr3_pmdec_error,
+                edr3.ra_dec_corr as edr3_ra_dec_corr, edr3.ra_parallax_corr as edr3_ra_parallax_corr,
+                edr3.ra_pmra_corr as edr3_ra_pmra_corr, edr3.ra_pmdec_corr as edr3_ra_pmdec_corr,
+                edr3.dec_parallax_corr as edr3_dec_parallax_corr,
+                edr3.dec_pmra_corr as edr3_dec_pmra_corr, edr3.dec_pmdec_corr as edr3_dec_pmdec_corr,
+                edr3.parallax_pmra_corr as edr3_parallax_pmra_corr, edr3.parallax_pmdec_corr as edr3_parallax_pmdec_corr,
+                edr3.pmra_pmdec_corr as edr3_pmra_pmdec_corr, edr3.phot_g_mean_mag as edr3_phot_g_mean_mag,
+                edr3.phot_g_mean_flux as edr3_phot_g_mean_flux, edr3.phot_g_mean_flux_error as edr3_phot_g_mean_flux_error,
+                edr3.phot_bp_mean_flux as edr3_phot_bp_mean_flux, edr3.phot_bp_mean_flux_error as edr3_phot_bp_mean_flux_error,
+                edr3.phot_bp_mean_mag as edr3_phot_bp_mean_mag,
+                edr3.phot_rp_mean_flux as edr3_phot_rp_mean_flux, edr3.phot_rp_mean_flux_error as edr3_phot_rp_mean_flux_error,
+                edr3.phot_rp_mean_mag as edr3_phot_rp_mean_mag,
+                edr3.bp_rp as edr3_bp_rp, edr3.phot_bp_rp_excess_factor as edr3_phot_bp_rp_excess_factor,
+                edr3.ruwe as edr3_ruwe, edr3.astrometric_params_solved as edr3_astrometric_params_solved,
+                dr2.ref_epoch as dr2_epoch, dr2.ra as dr2_ra, dr2.dec as dr2_dec,
+                dr2.parallax as dr2_parallax,
+                dr2.parallax_error as dr2_parallax_error, dr2.parallax_over_error as dr2_parallax_over_error,
+                dr2.pmra as dr2_pmra, dr2.pmra_error as dr2_pmra_error,
+                dr2.pmdec as dr2_pmdec, dr2.pmdec_error as dr2_pmdec_error,
+                dr2.ra_dec_corr as dr2_ra_dec_corr, dr2.ra_parallax_corr as dr2_ra_parallax_corr,
+                dr2.ra_pmra_corr as dr2_ra_pmra_corr, dr2.ra_pmdec_corr as dr2_ra_pmdec_corr,
+                dr2.dec_parallax_corr as dr2_dec_parallax_corr,
+                dr2.dec_pmra_corr as dr2_dec_pmra_corr, dr2.dec_pmdec_corr as dr2_dec_pmdec_corr,
+                dr2.parallax_pmra_corr as dr2_parallax_pmra_corr, dr2.parallax_pmdec_corr as dr2_parallax_pmdec_corr,
+                dr2.pmra_pmdec_corr as dr2_pmra_pmdec_corr, dr2.phot_g_mean_mag as dr2_phot_g_mean_mag,
+                dr2.phot_g_mean_flux as dr2_phot_g_mean_flux, dr2.phot_g_mean_flux_error as dr2_phot_g_mean_flux_error,
+                dr2.phot_bp_mean_flux as dr2_phot_bp_mean_flux, dr2.phot_bp_mean_flux_error as dr2_phot_bp_mean_flux_error,
+                dr2.phot_bp_mean_mag as dr2_phot_bp_mean_mag,
+                dr2.phot_rp_mean_flux as dr2_phot_rp_mean_flux, dr2.phot_rp_mean_flux_error as dr2_phot_rp_mean_flux_error,
+                dr2.phot_rp_mean_mag as dr2_phot_rp_mean_mag,
+                dr2.bp_rp as dr2_bp_rp, dr2.phot_bp_rp_excess_factor as dr2_phot_bp_rp_excess_factor,
+                dr2ruwe.ruwe as dr2_ruwe, dr2.astrometric_params_solved as dr2_astrometric_params_solved,
+                dr2.radial_velocity, dr2.radial_velocity_error,
+                allwise.w1mpro, allwise.w1mpro_error,
+                allwise.w2mpro,allwise.w2mpro_error,
+                allwise.w3mpro,allwise.w3mpro_error,
+                allwise.w4mpro,allwise.w4mpro_error,
+                allwise.cc_flags, allwise.ext_flag, allwise.var_flag, allwise.ph_qual as ph_qual_2, allwise.tmass_key,
+                apass.b_v, apass.e_b_v, apass.vmag, apass.e_vmag, apass.bmag, apass.e_bmag, apass.r_mag, apass.e_r_mag, apass.i_mag, apass.e_i_mag,
+                sloan.u, sloan.err_u, sloan.g, sloan.err_g, sloan.r, sloan.err_r, sloan.i, sloan.err_i, sloan.u, sloan.err_u
+                from
+                    gaiaedr3.gaia_source as edr3
+                LEFT OUTER JOIN
+                    gaiaedr3.dr2_neighbourhood AS dr2xmatch
+                    ON edr3.source_id = dr2xmatch.dr3_source_id
+                LEFT OUTER JOIN
+                    gaiadr2.gaia_source as dr2
+                    ON dr2xmatch.dr2_source_id = dr2.source_id
+                LEFT OUTER JOIN
+                    gaiadr2.ruwe as dr2ruwe
+                    ON dr2xmatch.dr2_source_id = dr2ruwe.source_id
+                LEFT OUTER JOIN
+                    gaiaedr3.allwise_best_neighbour AS allwisexmatch
+                    ON edr3.source_id = allwisexmatch.source_id
+                LEFT OUTER JOIN
+                    gaiadr1.allwise_original_valid AS allwise
+                    ON allwisexmatch.original_ext_source_id = allwise.designation
+                LEFT OUTER JOIN
+                    gaiaedr3.apassdr9_best_neighbour AS apassxmatch
+                    ON edr3.source_id = apassxmatch.source_id
+                LEFT OUTER JOIN
+                    external.apassdr9 AS apass
+                    ON apassxmatch.clean_apassdr9_oid = apass.recno
+                LEFT OUTER JOIN
+                    gaiaedr3.sdssdr13_best_neighbour AS sloanxmatch
+                    ON edr3.source_id = sloanxmatch.source_id
+                LEFT OUTER JOIN
+                    external.sdssdr13_photoprimary as sloan
+                    ON sloanxmatch.clean_sdssdr13_oid = sloan.objid
+                WHERE dr2xmatch.dr2_source_id = """ + id
+                adql = QueryStr(qstr,verbose=False)
+                t=gaia.query(adql)
+                t=MADYS.fix_double_entries(t)
+                t=MADYS.fix_2mass(t)        
+        
             edr3_gmag_corr, edr3_gflux_corr = self.correct_gband(t.field('edr3_bp_rp'), t.field('edr3_astrometric_params_solved'), t.field('edr3_phot_g_mean_mag'), t.field('edr3_phot_g_mean_flux'))
             edr3_bp_rp_excess_factor_corr = self.edr3_correct_flux_excess_factor(t.field('edr3_bp_rp'), t.field('edr3_phot_bp_rp_excess_factor'))
             edr3_g_mag_error, edr3_bp_mag_error, edr3_rp_mag_error = self.gaia_mag_errors(t.field('edr3_phot_g_mean_flux'), t.field('edr3_phot_g_mean_flux_error'), t.field('edr3_phot_bp_mean_flux'), t.field('edr3_phot_bp_mean_flux_error'), t.field('edr3_phot_rp_mean_flux'), t.field('edr3_phot_rp_mean_flux_error'))
@@ -253,7 +370,9 @@ class MADYS(object):
                 units=["mag", "'electron'.s**-1", "", "mag", "mag", "mag", "", "mag", "mag", "mag"],
                 descriptions=['EDR3 G-band mean mag corrected as per Riello et al. (2020)', 'EDR3 G-band mean flux corrected as per Riello et al. (2020)', 'EDR3 BP/RP excess factor corrected as per Riello et al. (2020)','EDR3 Error on G-band mean mag', 'EDR3 Error on BP-band mean mag', 'EDR3 Error on RP-band mean mag', 'DR2 BP/RP excess factor corrected', 'DR2 Error on G-band mean mag', 'DR2 Error on BP-band mean mag', 'DR2 Error on RP-band mean mag'])
             data.append(hstack([self.ID[i], t, t_ext]))
-        self.phot_table=vstack(data)
+        with warnings.catch_warnings():
+            warnings.simplefilter('ignore')
+            self.phot_table=vstack(data)
         if save_phot == True:
             filename=os.path.join(self.path,(self.__sample_name+'_phot_table.csv'))
             ascii.write(self.phot_table, filename, format='csv', overwrite=True)
@@ -261,7 +380,7 @@ class MADYS(object):
             end = time.time()
             hours, rem = divmod(end-start, 3600)
             minutes, seconds = divmod(rem, 60)
-            print("Total time needed to retrieve photometry for "+ np.str(len(self.GaiaID))+ " targets: - {:0>2}:{:0>2}:{:05.2f}".format(int(hours),int(minutes),seconds))
+            print("Total time needed to retrieve photometry for "+ np.str(len(self.GaiaID))+ " targets: - {:0>2}:{:0>2}:{:05.2f}".format(int(hours),int(minutes),seconds))            
 
     def check_phot(self,**kwargs):
         if 'max_tmass_q' in kwargs:
@@ -305,72 +424,81 @@ class MADYS(object):
         t['w4mpro'].fill_value = np.nan
         
         return t
-        #print(t.field('j_m').filled().data)
 
     def get_agemass(self, model, **kwargs):
         model=(str.lower(model)).replace('-','_')        
-        self.mass_range = [0.01,1.4]
-        self.age_range = [1,1000]
-        self.n_steps = [1000,500]
-        self.feh = None
-        self.afe = None
-        self.v_vcrit = None
-        self.fspot = None
-        self.B = 0
-        self.ph_cut = 0.2       
-        verbose = True
-        m_unit='m_sun'
         relax=False
-        if len(kwargs)>0:
-            if 'mass_range' in kwargs: self.mass_range = kwargs['mass_range']
-            if 'age_range' in kwargs: self.age_range = kwargs['age_range']
-            if 'n_steps' in kwargs: self.n_steps = kwargs['n_steps']
-            if 'verbose' in kwargs: verbose = kwargs['verbose']
-            if 'feh' in kwargs: self.feh = kwargs['feh']
-            if 'afe' in kwargs: self.afe = kwargs['afe']
-            if 'v_vcrit' in kwargs: self.v_vcrit = kwargs['v_vcrit']
-            if 'fspot' in kwargs: self.f_spot = kwargs['fspot']
-            if 'B' in kwargs: self.B = kwargs['B']
-            if 'ph_cut' in kwargs: self.ph_cut = kwargs['ph_cut']
-            if 'm_unit' in kwargs: m_unit=kwargs['m_unit']        
-            if 'exact_age' in kwargs: exact_age=kwargs['exact_age'] #NEWLINE
+        self.mass_range = kwargs['mass_range'] if 'mass_range' in kwargs else [0.01,1.4]
+        self.age_range = kwargs['age_range'] if 'age_range' in kwargs else [1,1000]
+        self.n_steps = kwargs['n_steps'] if 'n_steps' in kwargs else [1000,500]
+        verbose = kwargs['verbose'] if 'verbose' in kwargs else True
+        self.feh = kwargs['feh'] if 'feh' in kwargs else None
+        self.afe = kwargs['afe'] if 'afe' in kwargs else None
+        self.v_vcrit = kwargs['v_vcrit'] if 'v_vcrit' in kwargs else None
+        self.fspot = kwargs['fspot'] if 'fspot' in kwargs else None
+        self.B = kwargs['B'] if 'B' in kwargs else 0
+        self.ph_cut = kwargs['ph_cut'] if 'ph_cut' in kwargs else 0.2
+        m_unit=kwargs['m_unit'] if 'm_unit' in kwargs else 'm_sun'
         
-        self.__logger.info('Starting age determination')
+        self.__logger.info('Starting age determination...')
         iso_mass,iso_age,iso_filt,iso_data=MADYS.load_isochrones(model,self.filters,feh=self.feh,
                                  afe=self.afe,v_vcrit=self.v_vcrit,fspot=self.fspot,B=self.B,**kwargs)
-        self.__logger.info('Isochrones for model '+model+' correctly loaded.')               
+        self.__logger.info('Isochrones for model '+model+' correctly loaded')
+        mass_range_str=["%.2f" % s for s in self.mass_range]
+        try:
+            age_range_str=["%s" % s for s in self.age_range]
+        except TypeError: age_range_str=[str(self.age_range)]
+
+        self.__logger.info('Input parameters for the model: mass range = ['+','.join(mass_range_str)+'] M_sun; age range = ['+','.join(age_range_str)+'] Myr')
+        if self.feh==None: self.__logger.info('Metallicity: solar (use MADYS.info_models('+model+') for details).')
+        else: self.__logger.info('Metallicity: [Fe/H]='+str(self.feh)+' (use MADYS.info_models('+model+') for details).')
+        if self.afe==None: self.__logger.info('Alpha enhancement: [a/Fe]=0.00')
+        else: self.__logger.info('Alpha enhancement: [a/Fe]='+str(self.afe))
+        if self.v_vcrit==None: self.__logger.info('Rotational velocity: 0.00 (non-rotating model).')
+        else: self.__logger.info('Rotational velocity: '+str(self.v_vcrit)+' * v_crit.')
+        if self.fspot==None: self.__logger.info('Spot fraction: f_spot=0.00.')
+        else: self.__logger.info('Spot fraction: f_spot='+str(self.fspot))
+        if self.B==0: self.__logger.info('Magnetic model? No')
+        else: self.__logger.info('Magnetic model? Yes')
+        
+        self.__logger.info('Maximum allowed photometric uncertainty: '+str(self.ph_cut)+' mag')
+        self.__logger.info('Mass unit of the results: '+m_unit)
+        self.__logger.info('Age unit of the results: Myr')
    
         phot=self.abs_phot
         phot_err=self.abs_phot_err        
 
         l0=phot.shape
-        xlen=l0[0] #no. of stars: 85
-        ylen=len(iso_filt) #no. of filters: 6
+        xlen=l0[0] #no. of stars
+        ylen=len(iso_filt) #no. of filters
 
-        filt2=MADYS.where_v(iso_filt,self.filters)
+        filt2=MADYS.where_v(MADYS.fix_filters(iso_filt,model),self.filters)
+
         phot=phot[:,filt2] #ordered columns. Cuts unnecessary columns
         phot_err=phot_err[:,filt2] #ordered columns. Cuts unnecessary columns
         
-#        print('phot. filters:',self.filters)
-#        print('isochrone filters:',iso_filt)
-#        print('order (phot):',filt2)
-#        print('phot. (ordered):',self.filters[filt2])
-        
+                
         mask=False
         if isinstance(self.age_range,np.ndarray):            
-            if len(self.age_range.shape)==2:
-                if len(self.age_range)!=l0[0]: 
+            if len(self.age_range.shape)==1:
+                relax=True
+                mask=True
+                if len(self.age_range)!=l0[0]:
+                    self.__logger.error('The number of stars is not equal to the number of input ages. Check the length of your input ages')
                     raise ValueError('The number of stars is not equal to the number of input ages.')
+            elif len(self.age_range[0])==3:
+                relax=True
                 mask=True
                 i_age=np.zeros(self.age_range.shape,dtype=int)
                 for i in range(l0[0]):
                     i_age[i,:]=MADYS.closest(iso_age,self.age_range[i,:])
-            elif len(self.age_range.shape)==1:
-                relax=True
-                mask=True
                 if len(self.age_range)!=l0[0]:
+                    self.__logger.error('The number of stars is not equal to the number of input ages. Check the length of your input ages')
                     raise ValueError('The number of stars is not equal to the number of input ages.')
-        
+                a_min=np.full(xlen,np.nan)
+                a_max=np.full(xlen,np.nan)
+                m_err_p=np.full(xlen,np.nan)
+                m_err_m=np.full(xlen,np.nan)
 
         a_final=np.full(xlen,np.nan)
         m_final=np.full(xlen,np.nan)
@@ -386,7 +514,8 @@ class MADYS(object):
             for i in range(xlen):
                 w,=np.where(MADYS.is_phot_good(phot[i,:],phot_err[i,:],max_phot_err=self.ph_cut))
                 if len(w)==0: continue
-                if mask: i00=i
+                if 'i_age' in locals(): i00=i_age[i,0]
+                elif mask: i00=i
                 else: i00=0
                 b=np.zeros(len(w),dtype=bool)
                 for h in range(len(w)):
@@ -399,18 +528,36 @@ class MADYS(object):
                 est,ind=MADYS.min_v(cr)
                 m_final[i]=iso_mass[ind[0]]
                 a_final[i]=iso_age[i00]
-                m_f1=np.zeros(20)
-                a_f1=np.zeros(20)
-                for j in range(20):
-                    phot1=phot+phot_err*np.random.normal(size=(xlen,ylen))
+                if 'i_age' in locals():
                     for h in range(len(w2)):
-                        sigma[:,0,w2[h]]=((iso_data[:,i00,w2[h]]-phot1[i,w2[h]])/phot_err[i,w2[h]])**2
+                        ph=phot[i,w2[h]]
+                        sigma[:,0,w2[h]]=((iso_data[:,i_age[i,1],w2[h]]-ph)/phot_err[i,w2[h]])**2
                     cr1=np.sum(sigma[:,:,w2],axis=2)
                     est1,ind1=MADYS.min_v(cr1)
-                    m_f1[j]=iso_mass[ind1[0]]
-                    a_f1[j]=iso_age[i00]
-                m_err[i]=np.std(m_f1,ddof=1)
-                a_err[i]=np.std(a_f1,ddof=1)            
+                    m_f1=iso_mass[ind1[0]]
+                    a_min[i]=iso_age[i_age[i,1]]
+                    for h in range(len(w2)):
+                        ph=phot[i,w2[h]]
+                        sigma[:,0,w2[h]]=((iso_data[:,i_age[i,2],w2[h]]-ph)/phot_err[i,w2[h]])**2
+                    cr1=np.sum(sigma[:,:,w2],axis=2)
+                    est1,ind1=MADYS.min_v(cr1)
+                    m_f2=iso_mass[ind1[0]]
+                    a_max[i]=iso_age[i_age[i,2]]
+                    m_err_m[i]=m_final[i]-m_f1
+                    m_err_p[i]=m_f2-m_final[i]                    
+                else:
+                    m_f1=np.zeros(20)
+                    a_f1=np.zeros(20)
+                    for j in range(20):
+                        phot1=phot+phot_err*np.random.normal(size=(xlen,ylen))
+                        for h in range(len(w2)):
+                            sigma[:,0,w2[h]]=((iso_data[:,i00,w2[h]]-phot1[i,w2[h]])/phot_err[i,w2[h]])**2
+                        cr1=np.sum(sigma[:,:,w2],axis=2)
+                        est1,ind1=MADYS.min_v(cr1)
+                        m_f1[j]=iso_mass[ind1[0]]
+                        a_f1[j]=iso_age[i00]
+                    m_err[i]=np.std(m_f1,ddof=1)
+                    a_err[i]=np.std(a_f1,ddof=1)            
         else:
             for i in range(xlen):
                 w,=np.where(MADYS.is_phot_good(phot[i,:],phot_err[i,:],max_phot_err=self.ph_cut))
@@ -423,9 +570,6 @@ class MADYS(object):
                     if abs(iso_data[ii]-ph)<0.2: b[h]=True #if the best theor. match is more than 0.2 mag away, discards it           
                 w2=w[b]
                 if len(w2)<3: continue #at least 3 filters needed for the fit
-                if mask:
-                    sigma[:,:i_age[i,0],:]=np.nan
-                    sigma[:,i_age[i,1]+1:,:]=np.nan
                 cr=np.sum(sigma[:,:,w2],axis=2)
                 est,ind=MADYS.min_v(cr)
                 crit1=np.sort([sigma[ind+(w2[j],)] for j in range(len(w2))])
@@ -449,19 +593,28 @@ class MADYS(object):
         if m_unit=='m_jup':
             m_final*=M_sun.value/M_jup.value
             m_err*=M_sun.value/M_jup.value
+            if 'i_age' in locals():
+                m_err_p*=M_sun.value/M_jup.value
+                m_err_m*=M_sun.value/M_jup.value
 
         if verbose==True:
+            if type(self.GaiaID)==Table: star_names=self.GaiaID['ID'].value
+            else: star_names=self.GaiaID.value
             filename=self.file
             f=open(os.path.join(self.path,str(self.__sample_name+'_ages_'+model+'.txt')), "w+")
-            f.write(tabulate(np.column_stack((self.GaiaID['ID'].value,m_final,m_err,a_final,a_err,self.ebv)),
-                             headers=['ID','MASS','MASS_ERROR','AGE','AGE_ERROR','E(B-V)'], tablefmt='plain', stralign='right', numalign='right', floatfmt=(None,".2f",".2f",".2f",".2f",".3f")))
-#            f.write(tabulate(np.column_stack((m_final,m_err,a_final,a_err,self.ebv)),
-#                             headers=[MASS','MASS_ERROR','AGE','AGE_ERROR','E(B-V)'], tablefmt='plain', stralign='right', numalign='right', floatfmt=(".2f",".2f",".2f",".2f",".3f")))
+            if 'i_age' in locals():
+                f.write(tabulate(np.column_stack((star_names,m_final,m_err_m,m_err_p,a_final,a_min,a_max,self.ebv)),
+                                 headers=['ID','MASS','MASS_ERROR_M','MASS_ERROR_P','AGE','AGE_MIN','AGE_MAX','E(B-V)'], tablefmt='plain', stralign='right', numalign='right', floatfmt=(None,".2f",".2f",".2f",".2f",".2f",".2f",".3f")))
+            else:
+                f.write(tabulate(np.column_stack((star_names,m_final,m_err,a_final,a_err,self.ebv)),
+                                 headers=['ID','MASS','MASS_ERROR','AGE','AGE_ERROR','E(B-V)'], tablefmt='plain', stralign='right', numalign='right', floatfmt=(None,".2f",".2f",".2f",".2f",".3f")))
             f.close()
 
-        self.__logger.info('Age determination ended. Results saved in ... ')
+        self.__logger.info('Age determination ended. Results saved in '+filename)
         logging.shutdown()
-        return a_final,m_final,a_err,m_err
+
+        if 'i_age' in locals(): return a_final,m_final,a_min,a_max,m_err_m,m_err_p
+        else: return a_final,m_final,a_err,m_err
                 
     @staticmethod
     def axis_range(col_name,col_phot,stick_to_points=False):
@@ -839,6 +992,46 @@ class MADYS(object):
             if (ph_qual2[i][2] in q[0:w+1]) & (cc_flags[i][2]=='0'): qW3[i]=True
             if (ph_qual2[i][3] in q[0:w+1]) & (cc_flags[i][3]=='0'): qW4[i]=True
         return qW1,qW2,qW3,qW4
+    
+    @staticmethod    
+    def fix_2mass(t):
+        ra0=t['ra'].value[0]
+        dec0=t['dec'].value[0]
+        pmra0=t['edr3_pmra'].value[0]
+        pmdec0=t['edr3_pmdec'].value[0]
+        ep=t['edr3_epoch'].value[0]
+        ra1=ra0-(ep-2000)*pmra0/3.6e+6
+        dec1=dec0-(ep-2000)*pmdec0/3.6e+6
+
+        v = Vizier(columns=["*", "+_r", "Cntr"], catalog="II/246")
+        no_res=False
+        try:
+            res=v.query_region(SkyCoord(ra=ra1, dec=dec1,unit=(u.deg, u.deg),frame='icrs'),width="10s",catalog=["2MASS"])[0]
+        except IndexError: no_res=True
+        else:
+            w,=np.where(res['Cntr']==t['tmass_key'])
+            if len(w)==0: no_res=True
+        finally:
+            if no_res:
+                t_ext=Table([[np.nan],[np.nan],[np.nan],[np.nan],[np.nan],[np.nan],['XXX'],[ra1],[dec1]],
+                    names=['j_m', 'h_m','ks_m','j_msigcom', 'h_msigcom','ks_msigcom','ph_qual','tmass_ra','tmass_dec'],
+                    units=["mag","mag", "mag","mag","mag", "mag","","deg","deg"])
+            else:
+                t_ext=Table([res['Jmag'][w],res['Hmag'][w],res['Kmag'][w],res['e_Jmag'][w],res['e_Hmag'][w],res['e_Kmag'][w],res['Qflg'][w],res['RAJ2000'][w],res['DEJ2000'][w]],
+                    names=['j_m', 'h_m','ks_m','j_msigcom','h_msigcom','ks_msigcom','ph_qual','tmass_ra','tmass_dec'],
+                    units=["mag","mag","mag","mag","mag","mag","","deg","deg"])
+            t_ext['ph_qual']=MaskedColumn(res['Qflg'][w],dtype=object)
+
+        return hstack([t, t_ext])
+    
+    @staticmethod
+    def fix_double_entries(t):
+        if len(t)<2: return t
+        else:
+            id2=t['dr2_id'][0].split('Gaia DR2 ')[1]
+            id3=np.array([t['edr3_id'][i].split('Gaia EDR3 ')[1] for i in range(len(t))])
+            w,=np.where(id3==id2)
+            return t[w]    
 
     #################################################################
     # UTILITY FUNCTIONS
@@ -1181,7 +1374,7 @@ class MADYS(object):
     @staticmethod
     def app_to_abs_mag(app_mag,parallax,app_mag_error=None,parallax_error=None,ebv=None,filters=None):
         if isinstance(app_mag,list): app_mag=np.array(app_mag)
-        if isinstance(parallax,list): parallax=np.array(parallax)
+        if (isinstance(parallax,list)) | (isinstance(parallax,Column)): parallax=np.array(parallax,dtype=float)
         dm=5*np.log10(100./parallax) #modulo di distanza
 
         try:
@@ -1197,7 +1390,7 @@ class MADYS(object):
                 abs_mag-=red
             if (type(app_mag_error)!=type(None)) & (type(parallax_error)!=type(None)): 
                 if isinstance(app_mag_error,list): app_mag_error=np.array(app_mag_error)
-                if isinstance(parallax_error,list): parallax_error=np.array(parallax_error)
+                if (isinstance(parallax_error,list)) | (isinstance(parallax_error,Column)): parallax_error=np.array(parallax_error,dtype=float)
                 total_error=np.sqrt(app_mag_error**2+(5/np.log(10)/parallax)**2*parallax_error**2)
                 result=(abs_mag,total_error)
             else: result=abs_mag
@@ -1207,7 +1400,7 @@ class MADYS(object):
             for i in range(l[1]): abs_mag[:,i]=app_mag[:,i]-dm
             if type(parallax_error)!=type(None):
                 if isinstance(app_mag_error,list): app_mag_error=np.array(app_mag_error)
-                if isinstance(parallax_error,list): parallax_error=np.array(parallax_error)
+                if (isinstance(parallax_error,list)) | (isinstance(parallax_error,Column)): parallax_error=np.array(parallax_error,dtype=float)
                 total_error=np.empty([l[0],l[1]])
                 for i in range(l[1]): 
                     total_error[:,i]=np.sqrt(app_mag_error[:,i]**2+(5/np.log(10)/parallax)**2*parallax_error**2)
@@ -1227,7 +1420,8 @@ class MADYS(object):
                'G2':0.789,'Gbp2':1.002,'Grp2':0.589,
            'W1':0.039,'W2':0.026,'W3':0.040,'W4':0.020,
            'gmag':1.155,'rmag':0.843,'imag':0.628,'zmag':0.487,'ymag':0.395,
-               'K1mag':0.078,'K2mag':0.078,
+               'K1mag':0.078,'K2mag':0.078, #copied from 2MASS, should be checked
+               'Hmag': 0.131, 'Jmag': 0.243, 'H2mag': 0.131 #copied from 2MASS, should be checked
           } #absorption coefficients
 
         if '-' in col:
@@ -1465,6 +1659,21 @@ class MADYS(object):
 
         return dic[filt]
     
+    @staticmethod
+    def fix_filters(filters,model,mode='collapse'):
+        mod2=['bt_settl','starevol','spots','dartmouth','ames_cond','ames_dusty','bt_nextgen','nextgen','bhac15']
+        mod3=['mist','parsec']        
+        if mode=='collapse':
+            filters=np.where(filters=='G2','G', filters)
+            filters=np.where(filters=='Gbp2','Gbp', filters)
+            filters=np.where(filters=='Grp2','Grp', filters)
+            filters=np.unique(filters)
+        elif mode=='replace':
+            if model in mod2: 
+                filters=np.where(filters=='G','G2', filters)
+                filters=np.where(filters=='Gbp','Gbp2', filters)
+                filters=np.where(filters=='Grp','Grp2', filters)
+        return filters
     
     @staticmethod
     def load_isochrones(model,filters,n_steps=[1000,500],feh=None,afe=None,v_vcrit=None,fspot=None,B=0, **kwargs):
@@ -1478,10 +1687,9 @@ class MADYS(object):
         mass_range=[0.01,1.4]
         age_range=[1,1000]
         exact_age=False
-        if len(kwargs)>0:
-            if 'age_range' in kwargs: age_range = kwargs['age_range']
-            if 'mass_range' in kwargs: mass_range = kwargs['mass_range']
-            if 'exact_age' in kwargs: exact_age = kwargs['exact_age'] #NEWLINE
+        
+        if 'age_range' in kwargs: age_range = kwargs['age_range']
+        if 'mass_range' in kwargs: mass_range = kwargs['mass_range']
                 
         def filters_to_surveys(filters):    
             surveys=[]
@@ -1501,21 +1709,6 @@ class MADYS(object):
 
             return surveys
 
-        def fix_filters(filters,model,mode='collapse'):
-            mod2=['bt_settl','starevol','spots','dartmouth','ames_cond','ames_dusty','bt_nextgen','nextgen','bhac15']
-            mod3=['mist','parsec']        
-            if mode=='collapse':
-                filters=np.where(filters=='G2','G', filters)
-                filters=np.where(filters=='Gbp2','Gbp', filters)
-                filters=np.where(filters=='Grp2','Grp', filters)
-                filters=np.unique(filters)
-            elif mode=='replace':
-                if model in mod2: 
-                    filters=np.where(filters=='G','G2', filters)
-                    filters=np.where(filters=='Gbp','Gbp2', filters)
-                    filters=np.where(filters=='Grp','Grp2', filters)
-            return filters
-
         surveys=filters_to_surveys(filters)        
 
         model_code=MADYS.model_name(model,feh=feh,afe=afe,v_vcrit=v_vcrit,fspot=fspot,B=B)
@@ -1523,10 +1716,9 @@ class MADYS(object):
     #    param['mass_range']=mass_range
     #    param['age_range']=age_range
 
-        fnew=fix_filters(filters,model,mode='collapse')
+        fnew=MADYS.fix_filters(filters,model,mode='collapse')
         nf=len(fnew)
         c=0
-#        print('Filters:',fnew)    
 
         n1=n_steps[0]
         mnew=M_sun.value/M_jup.value*np.exp(np.log(0.999*mass_range[0])+(np.log(1.001*mass_range[1])-np.log(0.999*mass_range[0]))/(n1-1)*np.arange(n1))
@@ -1546,11 +1738,9 @@ class MADYS(object):
                     anew=np.array(age_range)
                     n2=len(anew)
                     case=3
-                else:
-                    n2=n_steps[1]
-                    a0_min=np.min(age_range[:,0]) #NEWLINE
-                    a0_max=np.max(age_range[:,1]) #NEWLINE
-                    anew=np.exp(np.log(1.0001*a0_min)+(np.log(0.9999*a0_max)-np.log(1.0001*a0_min))/(n2-1)*np.arange(n2)) #NEWLINE
+                elif len(age_range[0]==3):
+                    anew=np.unique(age_range.ravel())
+                    n2=len(anew)
                     case=4
             else: raise TypeError('Only scalar, list or numpy arrays are valid inputs for the keyword "age_range".')
 
@@ -1570,7 +1760,6 @@ class MADYS(object):
                     w,=np.where(v0==iso_filter) #leaves NaN if the filter is not found
                     if (len(w)>0) & (found[j]==False):
                         found[j]=True
-                        #print(iso_filter,filters[j],i,j,c,found[j])
                         for k in range(len(ages)): #interpolates along mass
                             gv = np.isfinite(data0[:,k,w]).ravel()
                             m0=masses[gv]
@@ -1605,7 +1794,6 @@ class MADYS(object):
                     w,=np.where(v0==iso_filter) #leaves NaN if the filter is not found                
                     if (len(w)>0) & (found[j]==False):
                         found[j]=True
-                        #print(iso_filter,filters[j],i,j,c,found[j])
                         for k in range(len(ages)): #interpolates along mass
                             gv = np.isfinite(data0[:,k,w]).ravel()
                             m0=masses[gv]
@@ -1630,7 +1818,7 @@ class MADYS(object):
         mnew=M_jup.value/M_sun.value*mnew
         if n2==1: anew=np.array([anew])        
         fnew=np.array(fnew)
-        fnew=fix_filters(fnew,model,mode='replace')
+        fnew=MADYS.fix_filters(fnew,model,mode='replace')
 
         return mnew,anew,fnew,iso_f
 
@@ -1665,7 +1853,6 @@ class MADYS(object):
     def info_models(model=None):
             folder = os.path.dirname(os.path.realpath(__file__))
 
-    #        paths=[x[0] for x in os.walk(folder)]
             paths=[x[0] for x in os.walk(folder)]
             found = False
             for path in paths:
