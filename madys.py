@@ -75,6 +75,7 @@ class MADYS(object):
                 self.ebv=kwargs['ebv']
                 self.__logger.info('Extinction type: provided by the user')
             elif ('ra' in col0) & ('dec' in col0) & ('parallax' in col0):
+                par=file['parallax']
                 self.ebv=MADYS.interstellar_ext(ra=file['ra'],dec=file['dec'],par=par,ext_map=ext_map,logger=self.__logger)
                 self.__logger.info('Extinction type: computed using '+ext_map+' extinction map')
             if 'parallax' in col0:
@@ -135,6 +136,7 @@ class MADYS(object):
                 else: 
                     self.__logger.warning('The provided file '+filename+' was not found. Program ended.')
                     raise ValueError('The provided file file '+filename+' was not found. Set get_phot=True to query the provided IDs, or check the file name.')
+                    
             self.good_phot=self.check_phot(**kwargs)
 
             phot=np.full([nst,9],np.nan)
@@ -271,6 +273,7 @@ class MADYS(object):
 
             adql = QueryStr(qstr,verbose=False)
     #            t=timeit(gaia.query)(adql)
+            print(id)
 
             try:
                 t=gaia.query(adql)        
@@ -441,8 +444,7 @@ class MADYS(object):
         m_unit=kwargs['m_unit'] if 'm_unit' in kwargs else 'm_sun'
         
         self.__logger.info('Starting age determination...')
-        iso_mass,iso_age,iso_filt,iso_data=MADYS.load_isochrones(model,self.filters,feh=self.feh,
-                                 afe=self.afe,v_vcrit=self.v_vcrit,fspot=self.fspot,B=self.B,**kwargs)
+        iso_mass,iso_age,iso_filt,iso_data=MADYS.load_isochrones(model,self.filters,**kwargs)        
         self.__logger.info('Isochrones for model '+model+' correctly loaded')
         mass_range_str=["%.2f" % s for s in self.mass_range]
         try:
@@ -477,7 +479,6 @@ class MADYS(object):
         phot=phot[:,filt2] #ordered columns. Cuts unnecessary columns
         phot_err=phot_err[:,filt2] #ordered columns. Cuts unnecessary columns
         
-                
         mask=False
         if isinstance(self.age_range,np.ndarray):            
             if len(self.age_range.shape)==1:
@@ -499,7 +500,7 @@ class MADYS(object):
                 a_max=np.full(xlen,np.nan)
                 m_err_p=np.full(xlen,np.nan)
                 m_err_m=np.full(xlen,np.nan)
-
+        
         a_final=np.full(xlen,np.nan)
         m_final=np.full(xlen,np.nan)
         a_err=np.full(xlen,np.nan)
@@ -522,7 +523,7 @@ class MADYS(object):
                     ph=phot[i,w[h]]
                     sigma[:,0,w[h]]=((iso_data[:,i00,w[h]]-ph)/phot_err[i,w[h]])**2
                     ii=divmod(np.nanargmin(sigma[:,:,w[h]]), sigma.shape[1])+(w[h],) #builds indices (i1,i2,i3) of closest theor. point
-                    if abs(iso_data[ii]-ph)<0.2: b[h]=True #if the best theor. match is more than 0.2 mag away, discards it           
+                    if abs(iso_data[ii[0],i00,w[h]]-ph)<0.2: b[h]=True #if the best theor. match is more than 0.2 mag away, discards it
                 w2=w[b]
                 cr=np.sum(sigma[:,:,w2],axis=2)
                 est,ind=MADYS.min_v(cr)
@@ -1676,7 +1677,7 @@ class MADYS(object):
         return filters
     
     @staticmethod
-    def load_isochrones(model,filters,n_steps=[1000,500],feh=None,afe=None,v_vcrit=None,fspot=None,B=0, **kwargs):
+    def load_isochrones(model,filters,n_steps=[1000,500], **kwargs):
 
         folder = os.path.dirname(os.path.realpath(__file__))
 
@@ -1690,7 +1691,12 @@ class MADYS(object):
         
         if 'age_range' in kwargs: age_range = kwargs['age_range']
         if 'mass_range' in kwargs: mass_range = kwargs['mass_range']
-                
+        B=kwargs['B'] if 'B' in kwargs else 0
+        feh=kwargs['feh'] if 'feh' in kwargs else None
+        afe=kwargs['afe'] if 'afe' in kwargs else None
+        v_vcrit=kwargs['v_vcrit'] if 'v_vcrit' in kwargs else None
+        fspot=kwargs['fspot'] if 'fspot' in kwargs else None
+
         def filters_to_surveys(filters):    
             surveys=[]
             gaia=np.array(['G','Gbp','Grp','G2','Gbp2','Grp2'])
@@ -1709,17 +1715,19 @@ class MADYS(object):
 
             return surveys
 
-        surveys=filters_to_surveys(filters)        
 
         model_code=MADYS.model_name(model,feh=feh,afe=afe,v_vcrit=v_vcrit,fspot=fspot,B=B)
     #    model_code,param=model_name(model,feh=feh,afe=afe,v_vcrit=v_vcrit,fspot=fspot,B=B)
     #    param['mass_range']=mass_range
     #    param['age_range']=age_range
 
+        
         fnew=MADYS.fix_filters(filters,model,mode='collapse')
         nf=len(fnew)
         c=0
 
+        surveys=filters_to_surveys(fnew)
+        
         n1=n_steps[0]
         mnew=M_sun.value/M_jup.value*np.exp(np.log(0.999*mass_range[0])+(np.log(1.001*mass_range[1])-np.log(0.999*mass_range[0]))/(n1-1)*np.arange(n1))
 
@@ -1746,10 +1754,11 @@ class MADYS(object):
 
         iso_f=np.full(([n1,n2,nf]), np.nan) #final matrix    
         found=np.zeros(nf,dtype=bool)
-        c=0
+#        c=0
         if case>1:
             for i in range(len(surveys)):
-                if c==nf: break
+#                if c==nf: break
+                if np.sum(found)==nf: break
                 try:
                     masses, ages, v0, data0 = model_data(surveys[i],model_code)
                 except ValueError: #if the survey is not found for the isochrone set, its filters are set to NaN
@@ -1774,13 +1783,17 @@ class MADYS(object):
                                 if len(an)==0: continue
                                 if len(a0)>2:
                                     f=interp1d(a0,iso[k,igv[l],j],kind='linear',fill_value='extrapolate',bounds_error=False)
-                                    iso_f[k,an,c]=f(anew[an])
+                                    iso_f[k,an,j]=f(anew[an])
+#                                    iso_f[k,an,c]=f(anew[an])
                                 elif len(a0)==2:
                                     f=lambda x: iso[k,igv[l].start,j]+(iso[k,igv[l].stop,j]-iso[k,igv[l].start,j])/(a0[1]-a0[0])*x
-                                    iso_f[k,an,c]=f(anew[an])
-                                elif len(a0)==1: iso_f[k,an,c]=iso[k,igv[l],j]
-                        c+=1
-                        if c==nf: break
+                                    iso_f[k,an,j]=f(anew[an])
+#                                    iso_f[k,an,c]=f(anew[an])
+                                elif len(a0)==1: iso_f[k,an,j]=iso[k,igv[l],j]
+#                                elif len(a0)==1: iso_f[k,an,c]=iso[k,igv[l],j]
+#                        c+=1
+#                        if c==nf: break
+                        if np.sum(found)==nf: break
         else:
             for i in range(len(surveys)):
                 if c==nf: break
@@ -1807,13 +1820,17 @@ class MADYS(object):
                                 if (anew>0.95*a0[0]) & (anew<1.05*a0[-1]):
                                     if len(a0)>2:
                                         f=interp1d(a0,iso[k,igv[l],j],kind='linear',fill_value='extrapolate',bounds_error=False)
-                                        iso_f[k,0,c]=f(anew)
+                                        iso_f[k,0,j]=f(anew)
+#                                        iso_f[k,0,c]=f(anew)
                                     elif len(a0)==2:
                                         f=lambda x: iso[k,igv[l].start,j]+(iso[k,igv[l].stop,j]-iso[k,igv[l].start,j])/(a0[1]-a0[0])*x
-                                        iso_f[k,0,c]=f(anew)
-                                    elif len(a0)==1: iso_f[k,0,c]=iso[k,igv[l],j]
-                        c+=1
-                        if c==nf: break
+                                        iso_f[k,0,j]=f(anew)
+#                                        iso_f[k,0,c]=f(anew)
+                                    elif len(a0)==1: iso_f[k,0,j]=iso[k,igv[l],j]
+#                                    elif len(a0)==1: iso_f[k,0,c]=iso[k,igv[l],j]
+#                        c+=1
+#                        if c==nf: break
+                        if np.sum(found)==nf: break
 
         mnew=M_jup.value/M_sun.value*mnew
         if n2==1: anew=np.array([anew])        
@@ -1852,7 +1869,7 @@ class MADYS(object):
     @staticmethod
     def info_models(model=None):
             folder = os.path.dirname(os.path.realpath(__file__))
-
+        
             paths=[x[0] for x in os.walk(folder)]
             found = False
             for path in paths:
