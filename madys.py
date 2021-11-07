@@ -35,12 +35,30 @@ class MADYS(object):
         if isinstance(file,Table): self.file = kwargs['output_file']
         else: self.file = file
         self.path = os.path.dirname(self.file)     #working path        
-        sample_name=os.path.split(self.file)[1] #file name
-        i=0
-        while sample_name[i]!='.': i=i+1
-        self.__ext=sample_name[i:] #estension
-        self.__sample_name=sample_name[:i]        
+        
+        if isinstance(file,Table):            
+            col0=file.colnames
+            kin=np.array(['parallax','parallax_err','ra','dec','name'])
+            col=np.setdiff1d(np.unique(np.char.replace(col0,'_err','')),kin)
+            col_err=np.array([i+'_err' for i in col])
+            self.filters=np.array(col)
+            self.GaiaID=file['name']
+        else:
+            self.filters=np.array(['G','Gbp','Grp','G2','Gbp2','Grp2','J','H','K'])
+            
+            surveys = kwargs['surveys'] if 'surveys' in kwargs else ['gaia','2mass']            
+            verbose = kwargs['verbose'] if 'verbose' in kwargs else True                        
+            self.__id_type = kwargs['id_type'] if 'id_type' in kwargs else 'DR2'            
+            get_phot = kwargs['get_phot'] if 'get_phot' in kwargs else True
+            save_phot = kwargs['save_phot'] if 'save_phot' in kwargs else True
 
+            self.surveys=list(map(str.lower,surveys))    
+            
+            self.ID=self.read_IDs()
+            if self.__id_type!='other': self.GaiaID = self.ID
+            else: self.get_gaia()
+        
+        
         logging.shutdown() 
         self.log_file = Path(self.path) / (self.__sample_name+'_log.txt')
         if os.path.exists(self.log_file): os.remove(self.log_file)
@@ -48,15 +66,6 @@ class MADYS(object):
         ext_map = kwargs['ext_map'] if 'ext_map' in kwargs else 'leike'
         
         if isinstance(file,Table):
-            
-            col0=file.colnames
-
-            kin=np.array(['parallax','parallax_err','ra','dec','name'])
-            col=np.setdiff1d(np.unique(np.char.replace(col0,'_err','')),kin)
-            col_err=np.array([i+'_err' for i in col])
-            self.filters=np.array(col)
-            self.GaiaID=file['name']
-
             n=len(col)
             nst=len(file)
             self.abs_phot=np.full([nst,n],np.nan)
@@ -86,36 +95,15 @@ class MADYS(object):
             else:
                 self.__logger.info('Input photometry: no parallax provided, assumed absolute.')
                 
-        else:
-            self.filters=np.array(['G','Gbp','Grp','G2','Gbp2','Grp2','J','H','K'])
-            
-            surveys = kwargs['surveys'] if 'surveys' in kwargs else ['gaia','2mass']            
-            verbose = kwargs['verbose'] if 'verbose' in kwargs else True            
-            gaia_id = kwargs['gaia_id'] if 'gaia_id' in kwargs else True
-            get_phot = kwargs['get_phot'] if 'get_phot' in kwargs else True
-            save_phot = kwargs['save_phot'] if 'save_phot' in kwargs else True
-
-            self.surveys=list(map(str.lower,surveys))    
+        else:            
+            nst=len(self.ID)                
 
             self.__logger.info('Program started')
             self.__logger.info('Input file: list of IDs')
             
-            IDtab = ascii.read(self.file, format='csv')#, names=['ID']) #.field('ID')
-            if len(IDtab[0])>1:
-                self.ID = IDtab.field('ID')
-            else: self.ID=IDtab
-
-            nst=len(self.ID)
             self.__logger.info('No. of stars: '+str(nst))
             self.__logger.info('Looking for photometry in the surveys: '+','.join(self.surveys))
                 
-            if gaia_id: self.GaiaID = self.ID
-            else: self.get_gaia()
-
-            
-            if isinstance(self.GaiaID,Column): self.GaiaID=Table([self.GaiaID])
-            if isinstance(self.ID,Column): self.ID=Table([self.ID])
-
             if get_phot==True: 
                 self.__logger.info('Starting data query...')
                 self.get_phot(save_phot)
@@ -164,6 +152,41 @@ class MADYS(object):
 
         logging.shutdown() 
         
+    def read_IDs(self):
+
+        sample_name=os.path.split(self.file)[1]
+        i=0
+        while sample_name[i]!='.': i=i+1
+        self.__ext=sample_name[i:]
+        self.__sample_name=sample_name[:i]
+
+        if self.__ext=='.csv':
+            IDtab = pd.read_csv(self.file)
+        else:
+            IDtab = pd.read_csv(self.file, skipinitialspace=True,sep='\s{2,}',engine='python')
+
+        col=IDtab.columns
+
+        if len(col)>1:
+            if 'id' in col: ID = IDtab['id']
+            elif 'ID' in col: ID = IDtab['ID']
+            elif 'source_id' in col: ID = IDtab['source_id']
+            else: raise ValueError('The columns with IDs was not found! Check that a "ID" or "source_id" column is present, and try again.')    
+        else: ID=IDtab[col[0]]
+
+        if self.__id_type=='DR2':
+            for i in range(len(ID)): 
+                if 'Gaia DR2' not in str(ID.loc[i]):
+                    ID.loc[i]='Gaia DR2 '+str(ID.loc[i])
+        elif self.__id_type=='EDR3':
+            for i in range(len(ID)):
+                if 'Gaia EDR3' not in str(ID.loc[i]):
+                    ID.loc[i]='Gaia EDR3 '+str(ID.loc[i])
+
+        if isinstance(ID,pd.Series): ID=ID.to_frame()
+        ID=Table.from_pandas(ID)
+        ID.rename_column(ID.colnames[0], 'ID')
+        return ID
     
     def get_gaia(self):
         ns=len(self.ID)
@@ -174,12 +197,15 @@ class MADYS(object):
                 res=Simbad.query_objectids(self.ID[i])
                 for rr in res:
                     if str(rr[0]).startswith('Gaia DR2'): self.GaiaID[i]=str(rr[0])#
+                    
 
     def get_phot(self, save_phot, verbose=True):
         data=[]
         start = time.time()
+        id_str = 'Gaia EDR3 ' if self.__id_type=='EDR3' else 'Gaia DR2 '
+        id_sea = 'edr3.source_id' if self.__id_type=='EDR3' else 'dr2xmatch.dr2_source_id'
         for i in range(len(self.GaiaID)):            
-            id=str(self.GaiaID[i]).split('Gaia DR2 ')[1]
+            id=str(self.GaiaID[i]).split(id_str)[1]
             qstr="""
             select all
             edr3.designation as edr3_id, dr2.designation as dr2_id,
@@ -269,15 +295,15 @@ class MADYS(object):
             LEFT OUTER JOIN
                 external.sdssdr13_photoprimary as sloan
                 ON sloanxmatch.clean_sdssdr13_oid = sloan.objid
-            WHERE dr2xmatch.dr2_source_id = """ + id
+            WHERE """ + id_sea + ' = ' + id
+#            WHERE dr2xmatch.dr2_source_id = """ + id
 
             adql = QueryStr(qstr,verbose=False)
     #            t=timeit(gaia.query)(adql)
-            print(id)
 
             try:
                 t=gaia.query(adql)        
-                t=MADYS.fix_double_entries(t)
+                t=MADYS.fix_double_entries(t,self.__id_type)
             except:
                 qstr="""
                 select all
@@ -360,19 +386,20 @@ class MADYS(object):
                 WHERE dr2xmatch.dr2_source_id = """ + id
                 adql = QueryStr(qstr,verbose=False)
                 t=gaia.query(adql)
-                t=MADYS.fix_double_entries(t)
+                t=MADYS.fix_double_entries(t,self.__id_type)
                 t=MADYS.fix_2mass(t)        
         
-            edr3_gmag_corr, edr3_gflux_corr = self.correct_gband(t.field('edr3_bp_rp'), t.field('edr3_astrometric_params_solved'), t.field('edr3_phot_g_mean_mag'), t.field('edr3_phot_g_mean_flux'))
-            edr3_bp_rp_excess_factor_corr = self.edr3_correct_flux_excess_factor(t.field('edr3_bp_rp'), t.field('edr3_phot_bp_rp_excess_factor'))
-            edr3_g_mag_error, edr3_bp_mag_error, edr3_rp_mag_error = self.gaia_mag_errors(t.field('edr3_phot_g_mean_flux'), t.field('edr3_phot_g_mean_flux_error'), t.field('edr3_phot_bp_mean_flux'), t.field('edr3_phot_bp_mean_flux_error'), t.field('edr3_phot_rp_mean_flux'), t.field('edr3_phot_rp_mean_flux_error'))
-            dr2_bp_rp_excess_factor_corr = self.dr2_correct_flux_excess_factor(t.field('dr2_phot_g_mean_mag'), t.field('dr2_bp_rp'), t.field('dr2_phot_bp_rp_excess_factor'))
-            dr2_g_mag_error, dr2_bp_mag_error, dr2_rp_mag_error = self.gaia_mag_errors(t.field('dr2_phot_g_mean_flux'), t.field('dr2_phot_g_mean_flux_error'), t.field('dr2_phot_bp_mean_flux'), t.field('dr2_phot_bp_mean_flux_error'), t.field('dr2_phot_rp_mean_flux'), t.field('dr2_phot_rp_mean_flux_error'))
-            t_ext=Table([edr3_gmag_corr, edr3_gflux_corr, edr3_bp_rp_excess_factor_corr, edr3_g_mag_error, edr3_bp_mag_error, edr3_rp_mag_error, dr2_bp_rp_excess_factor_corr, dr2_g_mag_error, dr2_bp_mag_error, dr2_rp_mag_error],
-                names=['edr3_gmag_corr', 'edr3_gflux_corr','edr3_phot_bp_rp_excess_factor_corr', 'edr3_phot_g_mean_mag_error', 'edr3_phot_bp_mean_mag_error', 'edr3_phot_rp_mean_mag_error', 'dr2_phot_bp_rp_excess_factor_corr', 'dr2_g_mag_error', 'dr2_bp_mag_error', 'dr2_rp_mag_error'],
-                units=["mag", "'electron'.s**-1", "", "mag", "mag", "mag", "", "mag", "mag", "mag"],
-                descriptions=['EDR3 G-band mean mag corrected as per Riello et al. (2020)', 'EDR3 G-band mean flux corrected as per Riello et al. (2020)', 'EDR3 BP/RP excess factor corrected as per Riello et al. (2020)','EDR3 Error on G-band mean mag', 'EDR3 Error on BP-band mean mag', 'EDR3 Error on RP-band mean mag', 'DR2 BP/RP excess factor corrected', 'DR2 Error on G-band mean mag', 'DR2 Error on BP-band mean mag', 'DR2 Error on RP-band mean mag'])
-            data.append(hstack([self.ID[i], t, t_ext]))
+            with np.errstate(divide='ignore',invalid='ignore'):        
+                edr3_gmag_corr, edr3_gflux_corr = self.correct_gband(t.field('edr3_bp_rp'), t.field('edr3_astrometric_params_solved'), t.field('edr3_phot_g_mean_mag'), t.field('edr3_phot_g_mean_flux'))
+                edr3_bp_rp_excess_factor_corr = self.edr3_correct_flux_excess_factor(t.field('edr3_bp_rp'), t.field('edr3_phot_bp_rp_excess_factor'))
+                edr3_g_mag_error, edr3_bp_mag_error, edr3_rp_mag_error = self.gaia_mag_errors(t.field('edr3_phot_g_mean_flux'), t.field('edr3_phot_g_mean_flux_error'), t.field('edr3_phot_bp_mean_flux'), t.field('edr3_phot_bp_mean_flux_error'), t.field('edr3_phot_rp_mean_flux'), t.field('edr3_phot_rp_mean_flux_error'))
+                dr2_bp_rp_excess_factor_corr = self.dr2_correct_flux_excess_factor(t.field('dr2_phot_g_mean_mag'), t.field('dr2_bp_rp'), t.field('dr2_phot_bp_rp_excess_factor'))
+                dr2_g_mag_error, dr2_bp_mag_error, dr2_rp_mag_error = self.gaia_mag_errors(t.field('dr2_phot_g_mean_flux'), t.field('dr2_phot_g_mean_flux_error'), t.field('dr2_phot_bp_mean_flux'), t.field('dr2_phot_bp_mean_flux_error'), t.field('dr2_phot_rp_mean_flux'), t.field('dr2_phot_rp_mean_flux_error'))
+                t_ext=Table([edr3_gmag_corr, edr3_gflux_corr, edr3_bp_rp_excess_factor_corr, edr3_g_mag_error, edr3_bp_mag_error, edr3_rp_mag_error, dr2_bp_rp_excess_factor_corr, dr2_g_mag_error, dr2_bp_mag_error, dr2_rp_mag_error],
+                    names=['edr3_gmag_corr', 'edr3_gflux_corr','edr3_phot_bp_rp_excess_factor_corr', 'edr3_phot_g_mean_mag_error', 'edr3_phot_bp_mean_mag_error', 'edr3_phot_rp_mean_mag_error', 'dr2_phot_bp_rp_excess_factor_corr', 'dr2_g_mag_error', 'dr2_bp_mag_error', 'dr2_rp_mag_error'],
+                    units=["mag", "'electron'.s**-1", "", "mag", "mag", "mag", "", "mag", "mag", "mag"],
+                    descriptions=['EDR3 G-band mean mag corrected as per Riello et al. (2020)', 'EDR3 G-band mean flux corrected as per Riello et al. (2020)', 'EDR3 BP/RP excess factor corrected as per Riello et al. (2020)','EDR3 Error on G-band mean mag', 'EDR3 Error on BP-band mean mag', 'EDR3 Error on RP-band mean mag', 'DR2 BP/RP excess factor corrected', 'DR2 Error on G-band mean mag', 'DR2 Error on BP-band mean mag', 'DR2 Error on RP-band mean mag'])
+                data.append(hstack([self.ID[i], t, t_ext]))
         with warnings.catch_warnings():
             warnings.simplefilter('ignore')
             self.phot_table=vstack(data)
@@ -1026,13 +1053,24 @@ class MADYS(object):
         return hstack([t, t_ext])
     
     @staticmethod
-    def fix_double_entries(t):
+    def fix_double_entries(t,id_type='DR2'):
         if len(t)<2: return t
         else:
-            id2=t['dr2_id'][0].split('Gaia DR2 ')[1]
-            id3=np.array([t['edr3_id'][i].split('Gaia EDR3 ')[1] for i in range(len(t))])
+            if id_type=='EDR3':
+                id3=t['edr3_id'][0].split('Gaia EDR3 ')[1]
+                id2=np.array([t['dr2_id'][i].split('Gaia DR2 ')[1] for i in range(len(t))])
+                cols=['dr2_id', 'dr2_epoch', 'dr2_ra', 'dr2_dec', 'dr2_parallax', 'dr2_parallax_error', 'dr2_parallax_over_error', 'dr2_pmra', 'dr2_pmra_error', 'dr2_pmdec', 'dr2_pmdec_error', 'dr2_ra_dec_corr', 'dr2_ra_parallax_corr', 'dr2_ra_pmra_corr', 'dr2_ra_pmdec_corr', 'dr2_dec_parallax_corr', 'dr2_dec_pmra_corr', 'dr2_dec_pmdec_corr', 'dr2_parallax_pmra_corr', 'dr2_parallax_pmdec_corr', 'dr2_pmra_pmdec_corr', 'dr2_phot_g_mean_mag', 'dr2_phot_g_mean_flux', 'dr2_phot_g_mean_flux_error', 'dr2_phot_bp_mean_flux', 'dr2_phot_bp_mean_flux_error', 'dr2_phot_bp_mean_mag', 'dr2_phot_rp_mean_flux', 'dr2_phot_rp_mean_flux_error', 'dr2_phot_rp_mean_mag', 'dr2_bp_rp', 'dr2_phot_bp_rp_excess_factor', 'dr2_ruwe', 'dr2_astrometric_params_solved', 'radial_velocity', 'radial_velocity_error']
+            else:
+                id2=t['dr2_id'][0].split('Gaia DR2 ')[1]
+                id3=np.array([t['edr3_id'][i].split('Gaia EDR3 ')[1] for i in range(len(t))])
+                cols=['edr3_id', 'ra', 'dec', 'edr3_epoch', 'edr3_parallax', 'edr3_parallax_error', 'edr3_parallax_over_error', 'edr3_pmra', 'edr3_pmra_error', 'edr3_pmdec', 'edr3_pmdec_error', 'edr3_ra_dec_corr', 'edr3_ra_parallax_corr', 'edr3_ra_pmra_corr', 'edr3_ra_pmdec_corr', 'edr3_dec_parallax_corr', 'edr3_dec_pmra_corr', 'edr3_dec_pmdec_corr', 'edr3_parallax_pmra_corr', 'edr3_parallax_pmdec_corr', 'edr3_pmra_pmdec_corr', 'edr3_phot_g_mean_mag', 'edr3_phot_g_mean_flux', 'edr3_phot_g_mean_flux_error', 'edr3_phot_bp_mean_flux', 'edr3_phot_bp_mean_flux_error', 'edr3_phot_bp_mean_mag', 'edr3_phot_rp_mean_flux', 'edr3_phot_rp_mean_flux_error', 'edr3_phot_rp_mean_mag', 'edr3_bp_rp', 'edr3_phot_bp_rp_excess_factor', 'edr3_ruwe', 'edr3_astrometric_params_solved']
+
             w,=np.where(id3==id2)
-            return t[w]    
+            if len(w)==0:
+                for i in cols: t[i].mask=True
+                w=np.array([0])
+
+            return t[w]
 
     #################################################################
     # UTILITY FUNCTIONS
@@ -1293,7 +1331,17 @@ class MADYS(object):
         sun=[MADYS.closest(x,0),MADYS.closest(z,0)]
 
         #  ;Sun-centered Cartesian Galactic coordinates (right-handed frame)
-        if type(d)==type(None): d=1000./par #computes heliocentric distance, if missing
+        if type(d)==type(None): 
+            try:
+                len(par)
+                with warnings.catch_warnings():
+                    warnings.simplefilter('ignore')
+                    par=np.where(par<0,np.nan,par)
+            except TypeError:
+                with warnings.catch_warnings():
+                    warnings.simplefilter('ignore')
+                    if par<0: par=np.nan
+            d=1000./par #computes heliocentric distance, if missing
         if type(ra)!=type(None): #equatorial coordinates
             c1 = SkyCoord(ra=ra*u.degree, dec=dec*u.degree,
                                 distance=d*u.pc,
@@ -1348,17 +1396,24 @@ class MADYS(object):
                         ebv_s[i]=np.std(ebv0[i,:],ddof=1) #sample std dev                
         except TypeError:
             if px<len(x)-1: px2=(x0-x[px])/dist+px
+            else: px2=px
             if py<len(y)-1: py2=(y0-y[py])/dist+py
+            else: py2=py
             if pz<len(z)-1: pz2=(z0-z[pz])/dist+pz
+            else: pz2=pz
             if ext_map=='stilism': ebv=dist*MADYS.Wu_line_integrate(data,sun[0],px2,sun[0],py2,sun[1],pz2,star_id=0,logger=logger)/3.16
             elif ext_map=='leike': 
                 if error==False:
-                    ebv=dist*(2.5*MADYS.Wu_line_integrate(data,sun[0],px2,sun[0],py2,sun[1],pz2,star_id=0,logger=logger)*np.log10(np.exp(1)))/3.16/0.789
+                    if np.isnan(px2)==0:
+                        ebv=dist*(2.5*MADYS.Wu_line_integrate(data,sun[0],px2,sun[0],py2,sun[1],pz2,star_id=0,logger=logger)*np.log10(np.exp(1)))/3.16/0.789
+                    else: return np.nan
                 else:
                     dim=data.shape
                     ebv0=np.zeros(dim[0])
-                    for k in range(dim[0]):
-                        ebv0[k]=dist*(2.5*MADYS.Wu_line_integrate(data,sun[0],px2,sun[0],py2,sun[1],pz2,layer=k)*np.log10(np.exp(1)))/3.16/0.789
+                    if np.isnan(px2)==0:
+                        for k in range(dim[0]):
+                            ebv0[k]=dist*(2.5*MADYS.Wu_line_integrate(data,sun[0],px2,sun[0],py2,sun[1],pz2,layer=k)*np.log10(np.exp(1)))/3.16/0.789
+                    else: return np.nan,np.nan
                     ebv=np.mean(ebv0)
                     ebv_s=np.std(ebv0,ddof=1) #sample std dev
 
@@ -1376,7 +1431,10 @@ class MADYS(object):
     def app_to_abs_mag(app_mag,parallax,app_mag_error=None,parallax_error=None,ebv=None,filters=None):
         if isinstance(app_mag,list): app_mag=np.array(app_mag)
         if (isinstance(parallax,list)) | (isinstance(parallax,Column)): parallax=np.array(parallax,dtype=float)
-        dm=5*np.log10(100./parallax) #modulo di distanza
+        
+        with warnings.catch_warnings():
+            warnings.simplefilter('ignore')
+            dm=5*np.log10(100./parallax) #modulo di distanza
 
         try:
             dd=len(app_mag)
@@ -1869,7 +1927,7 @@ class MADYS(object):
     @staticmethod
     def info_models(model=None):
             folder = os.path.dirname(os.path.realpath(__file__))
-        
+
             paths=[x[0] for x in os.walk(folder)]
             found = False
             for path in paths:
