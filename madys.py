@@ -206,6 +206,7 @@ class MADYS(object):
         id_sea = 'edr3.source_id' if self.__id_type=='EDR3' else 'dr2xmatch.dr2_source_id'
         for i in range(len(self.GaiaID)):            
             id=str(self.GaiaID[i]).split(id_str)[1]
+            print('temp',i,id)
             qstr="""
             select all
             edr3.designation as edr3_id, dr2.designation as dr2_id,
@@ -383,7 +384,7 @@ class MADYS(object):
                 LEFT OUTER JOIN
                     external.sdssdr13_photoprimary as sloan
                     ON sloanxmatch.clean_sdssdr13_oid = sloan.objid
-                WHERE dr2xmatch.dr2_source_id = """ + id
+                WHERE """ + id_sea + ' = ' + id
                 adql = QueryStr(qstr,verbose=False)
                 t=gaia.query(adql)
                 t=MADYS.fix_double_entries(t,self.__id_type)
@@ -1048,7 +1049,7 @@ class MADYS(object):
                 t_ext=Table([res['Jmag'][w],res['Hmag'][w],res['Kmag'][w],res['e_Jmag'][w],res['e_Hmag'][w],res['e_Kmag'][w],res['Qflg'][w],res['RAJ2000'][w],res['DEJ2000'][w]],
                     names=['j_m', 'h_m','ks_m','j_msigcom','h_msigcom','ks_msigcom','ph_qual','tmass_ra','tmass_dec'],
                     units=["mag","mag","mag","mag","mag","mag","","deg","deg"])
-            t_ext['ph_qual']=MaskedColumn(res['Qflg'][w],dtype=object)
+            t_ext['ph_qual']=MaskedColumn(t_ext['ph_qual'],dtype=object)
 
         return hstack([t, t_ext])
     
