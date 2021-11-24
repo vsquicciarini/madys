@@ -30,11 +30,69 @@ from tap import (GaiaArchive, TAPVizieR, resolve, QueryStr, timeit)
 from astroquery.gaia import Gaia
 gaia = GaiaArchive()
 
+"""
+Class: MADYS
+
+Tool for age and mass determination of young stellar and substellar objects. Given a list of stars:
+- it retrieves and cross-matches photometry from Gaia and 2MASS
+- corrects for interstellar extinction
+- assesses the quality of each photometric measurement
+- uses reliable photometric data to derive ages and masses of individual stars.
+MADYS allows a selection of one among 13 theoretical models, many of which with several tunable parameters (metallicity, rotational velocity, etc).
+Check the provided manual for additional details on general working, customizable settings and allowed inputs.
+
+MADYS can work in two modes, differing in the shape of input data:
+ (mode 1) uses just a list of targets;
+ (mode 2) uses a Table containing both the target list and photometric data.
+Parameters that are only used in mode 1 will be labeled with (1), and similarly for mode 2. Parameters common to both modes will be labeled with (1,2).
+
+Parameters:
+- file (1): string, required. Full path of the file containing target names
+- file (2): astropy.table.table.Table, required. Table containing target names and photometric data.
+- mock_file (2): string, required. Full path of the non-existing file where the Table would come from if in mode 1. Used to extract the working path and to name the outputs after it.
+- surveys (1): list, optional. 
+- id_type (1): string, optional. Type of IDs provided: must be one among 'DR2','EDR3' or 'other'. Default: 'DR2'
+- get_phot (1): bool or string, optional. Set to:
+        -True: to query the provided IDs;
+        -False: to recover photometric data from a previous execution; the filename and path must match the default one.
+        -string: full path of the file to load photometric data from. The file should come from a previous execution.
+  Default: True.
+- save_phot (1): bool, optional. Set to True to create a .csv file with the retrieved photometry. Default: True.
+- ext_map (1,2): string, optional. Extinction map used between 'leike' or 'stilism'. Default: 'leike'.
+- ebv (1,2): float or numpy array, optional. If set, uses the i-th element of the array as E(B-V) for the i-th star. Default: not set, computes E(B-V) through the map instead.
+- max_tmass_q (1): worse 2MASS photometric flag ('ph_qual') still considered reliable. Possible values, ordered by decreasing quality: 'A','B','C','D','E','F','U','X'. For a given choice, excludes all measurements with a lower quality flag. Default: 'A'.
+- max_wise_q (1): worse ALLWISE photometric flag ('ph_qual2') still considered reliable. Possible values, ordered by decreasing quality: 'A','B','C','U','Z','X'. For a given choice, excludes all measurements with a lower quality flag. Default: 'A'.
+
+Methods:
+
+1) get_agemass
+Estimates age and mass of individual stars by comparison with isochrone grids.
+    Parameters:
+    - model: string, required. Chosen model of isochrone grids. Use MADYS.info_models() for further information on the available models.
+    - mass_range: list, optional. A two-element list with minimum and maximum mass to consider (M_sun). Default: [0.01,1.4]
+    - age_range: list or numpy array, optional. It can be either:
+            - a two-element list with minimum and maximum age to consider for the whole sample (Myr);
+            - a 1D numpy array, so that the i-th age (Myr) is used as fixed age for the i-th star;
+            - a 2D numpy array with 3 columns. The i-th row is used as fixed (mean_age,lower_age,upper_age) for the i-th star.
+      Default: [1,1000]
+    - n_steps: list, optional. Number of (mass, age) steps of the interpolated grid. Default: [1000,500].
+    - verbose: bool, optional. Set to True to save the results in a file. Default: True.
+    - feh: float, optional. Selects [Fe/H] of the isochrone set. Default: None (=0.00, solar metallicity).
+    - afe: float, optional. Selects alpha enhancement [a/Fe] of the isochrone set. Default: None (=0.00).
+    - v_vcrit: float, optional. Selects rotational velocity of the isochrone set. Default: None (=0.00, non-rotating).
+    - fspot: float, optional. Selects fraction of stellar surface covered by star spots. Default: None (=0.00).
+    - B: int, optional. Set to 1 to turn on the magnetic field (only for Dartmouth models). Default: 0.
+    - ph_cut: float, optional. Maximum  allowed photometric uncertainty [mag]. Default: 0.2.
+    - m_unit: string, optional. Unit of measurement of the resulting mass. Choose either 'm_sun' or 'm_jup'. Default: 'm_sun'.
+
+"""
+
 class MADYS(object):
     def __init__(self, file, **kwargs):
-        if isinstance(file,Table): self.file = kwargs['output_file']
+        if isinstance(file,Table): self.file = kwargs['mock_file']
         else: self.file = file
         self.path = os.path.dirname(self.file)     #working path        
+        self.sample_name_ext()
         
         if isinstance(file,Table):            
             col0=file.colnames
@@ -44,15 +102,10 @@ class MADYS(object):
             self.filters=np.array(col)
             self.GaiaID=file['name']
         else:
-            self.filters=np.array(['G','Gbp','Grp','G2','Gbp2','Grp2','J','H','K'])
-            
-            surveys = kwargs['surveys'] if 'surveys' in kwargs else ['gaia','2mass']            
-            verbose = kwargs['verbose'] if 'verbose' in kwargs else True                        
+            self.filters=np.array(['G','Gbp','Grp','G2','Gbp2','Grp2','J','H','K'])            
             self.__id_type = kwargs['id_type'] if 'id_type' in kwargs else 'DR2'            
             get_phot = kwargs['get_phot'] if 'get_phot' in kwargs else True
             save_phot = kwargs['save_phot'] if 'save_phot' in kwargs else True
-
-            self.surveys=list(map(str.lower,surveys))    
             
             self.ID=self.read_IDs()
             if self.__id_type!='other': self.GaiaID = self.ID
@@ -87,6 +140,9 @@ class MADYS(object):
                 par=file['parallax']
                 self.ebv=MADYS.interstellar_ext(ra=file['ra'],dec=file['dec'],par=par,ext_map=ext_map,logger=self.__logger)
                 self.__logger.info('Extinction type: computed using '+ext_map+' extinction map')
+            else:                
+                self.__logger.warning('No E(B-V) was provided, but star coordinates were not given. Please provide an extinction vector or check that the columns "ra", "dec" and "parallax" are present in the Table. Program ended.')
+                raise ValueError('No E(B-V) was provided, but star coordinates were not given. Please provide an extinction vector through the keyword "ebv" or check that the columns "ra", "dec" and "parallax" are present in the Table.')
             if 'parallax' in col0:
                 par=file['parallax']
                 par_err=file['parallax_err']
@@ -102,7 +158,7 @@ class MADYS(object):
             self.__logger.info('Input file: list of IDs')
             
             self.__logger.info('No. of stars: '+str(nst))
-            self.__logger.info('Looking for photometry in the surveys: '+','.join(self.surveys))
+            self.__logger.info('Looking for photometry in the surveys: '+','.join(['gaia','2mass']))
                 
             if get_phot==True: 
                 self.__logger.info('Starting data query...')
@@ -152,13 +208,14 @@ class MADYS(object):
 
         logging.shutdown() 
         
-    def read_IDs(self):
-
+    def sample_name_ext(self):
         sample_name=os.path.split(self.file)[1]
         i=0
         while sample_name[i]!='.': i=i+1
         self.__ext=sample_name[i:]
         self.__sample_name=sample_name[:i]
+        
+    def read_IDs(self):
 
         if self.__ext=='.csv':
             IDtab = pd.read_csv(self.file)
@@ -206,7 +263,7 @@ class MADYS(object):
         id_sea = 'edr3.source_id' if self.__id_type=='EDR3' else 'dr2xmatch.dr2_source_id'
         for i in range(len(self.GaiaID)):            
             id=str(self.GaiaID[i]).split(id_str)[1]
-            print('temp',i,id)
+            print('star ',i,': ',id)
             qstr="""
             select all
             edr3.designation as edr3_id, dr2.designation as dr2_id,
@@ -461,7 +518,6 @@ class MADYS(object):
         relax=False
         self.mass_range = kwargs['mass_range'] if 'mass_range' in kwargs else [0.01,1.4]
         self.age_range = kwargs['age_range'] if 'age_range' in kwargs else [1,1000]
-        self.n_steps = kwargs['n_steps'] if 'n_steps' in kwargs else [1000,500]
         verbose = kwargs['verbose'] if 'verbose' in kwargs else True
         self.feh = kwargs['feh'] if 'feh' in kwargs else None
         self.afe = kwargs['afe'] if 'afe' in kwargs else None
@@ -629,9 +685,19 @@ class MADYS(object):
         if verbose==True:
             if type(self.GaiaID)==Table: star_names=self.GaiaID['ID'].value
             else: star_names=self.GaiaID.value
-            filename=self.file
-            f=open(os.path.join(self.path,str(self.__sample_name+'_ages_'+model+'.txt')), "w+")
+            filename=os.path.join(self.path,str(self.__sample_name+'_ages_'+model+'.txt'))
+            f=open(filename, "w+")
             if 'i_age' in locals():
+                print(star_names)
+                print(type(star_names))
+                print(len(star_names))
+                print(type(star_names[0]))
+                print(type(m_final),len(m_final))
+                print(type(m_err),len(m_err))
+                print(type(a_final),len(a_final))
+                print(type(a_min),len(a_min))
+                print(type(a_max),len(a_max))
+                print(type(self.ebv),len(self.ebv))
                 f.write(tabulate(np.column_stack((star_names,m_final,m_err_m,m_err_p,a_final,a_min,a_max,self.ebv)),
                                  headers=['ID','MASS','MASS_ERROR_M','MASS_ERROR_P','AGE','AGE_MIN','AGE_MAX','E(B-V)'], tablefmt='plain', stralign='right', numalign='right', floatfmt=(None,".2f",".2f",".2f",".2f",".2f",".2f",".3f")))
             else:
@@ -1243,7 +1309,7 @@ class MADYS(object):
                 w_g,=np.where((x[1:]!=x[:-1]) | (y[1:]!=y[:-1]))
                 w_g=np.insert(w_g+1,0,0)
                 w_f=np.insert(w_g[1:]-w_g[:-1],len(w_g)-1,len(x)-w_g[-1])            
-                w,=np.where((x[w_g]<dim[0]) & (y[w_g]<dim[1]))
+                w,=np.where((x[w_g]<dim[0]) & (y[w_g]<dim[1]) & (x[w_g]>=0) & (y[w_g]>=0))
                 if (len(w)<len(w_g)) & (logger!=None):
                     logger.info('Star '+str(star_id)+' outside the extinction map. Its extinction is an underestimate.')                
                 w2=w_g[w]
@@ -1254,7 +1320,7 @@ class MADYS(object):
                 w_g,=np.where((x[1:]!=x[:-1]) | (y[1:]!=y[:-1]) | (z[1:]!=z[:-1]))
                 w_g=np.insert(w_g+1,0,0)
                 w_f=np.insert(w_g[1:]-w_g[:-1],len(w_g)-1,len(x)-w_g[-1])            
-                w,=np.where((x[w_g]<dim[0]) & (y[w_g]<dim[1]) & (z[w_g]<dim[2]))
+                w,=np.where((x[w_g]<dim[0]) & (y[w_g]<dim[1]) & (z[w_g]<dim[2]) & (x[w_g]>=0) & (y[w_g]>=0) & (z[w_g]>=0))
                 if (len(w)<len(w_g)) & (logger!=None):
                     logger.info('Star '+str(star_id)+' outside the extinction map. Its extinction is an underestimate.')                
                 w2=w_g[w]
@@ -1265,7 +1331,7 @@ class MADYS(object):
                 w_g,=np.where((x[1:]!=x[:-1]) | (y[1:]!=y[:-1]))
                 w_g=np.insert(w_g+1,0,0)
                 w_f=np.insert(w_g[1:]-w_g[:-1],len(w_g)-1,len(x)-w_g[-1])            
-                w,=np.where((x[w_g]<dim[1]) & (y[w_g]<dim[2]))
+                w,=np.where((x[w_g]<dim[1]) & (y[w_g]<dim[2]) & (x[w_g]>=0) & (y[w_g]>=0))
                 if (len(w)<len(w_g)) & (logger!=None):
                     logger.info('Star '+str(star_id)+' outside the extinction map. Its extinction is an underestimate.')                
                 w2=w_g[w]
@@ -1276,7 +1342,7 @@ class MADYS(object):
                 w_g,=np.where((x[1:]!=x[:-1]) | (y[1:]!=y[:-1]) | (z[1:]!=z[:-1]))
                 w_g=np.insert(w_g+1,0,0)
                 w_f=np.insert(w_g[1:]-w_g[:-1],len(w_g)-1,len(x)-w_g[-1])            
-                w,=np.where((x[w_g]<dim[1]) & (y[w_g]<dim[2]) & (z[w_g]<dim[3]))
+                w,=np.where((x[w_g]<dim[1]) & (y[w_g]<dim[2]) & (z[w_g]<dim[3]) & (x[w_g]>=0) & (y[w_g]>=0) & (z[w_g]>=0))
                 if (len(w)<len(w_g)) & (logger!=None):
                     logger.info('Star '+str(star_id)+' outside the extinction map. Its extinction is an underestimate.')                
                 w2=w_g[w]
@@ -1736,9 +1802,11 @@ class MADYS(object):
         return filters
     
     @staticmethod
-    def load_isochrones(model,filters,n_steps=[1000,500], **kwargs):
+    def load_isochrones(model,filters,**kwargs):
 
         folder = os.path.dirname(os.path.realpath(__file__))
+
+        n_steps = kwargs['n_steps'] if 'n_steps' in kwargs else [1000,500]
 
         add_search_path(folder)
         for x in os.walk(folder):
