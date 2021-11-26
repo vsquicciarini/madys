@@ -683,8 +683,8 @@ class MADYS(object):
                 m_err_m*=M_sun.value/M_jup.value
 
         if verbose==True:
-            if type(self.GaiaID)==Table: star_names=self.GaiaID['ID'].value
-            else: star_names=self.GaiaID.value
+            if type(self.GaiaID)==Table: star_names=self.GaiaID['ID']#.value
+            else: star_names=self.GaiaID#.value
             filename=os.path.join(self.path,str(self.__sample_name+'_ages_'+model+'.txt'))
             f=open(filename, "w+")
             if 'i_age' in locals():
