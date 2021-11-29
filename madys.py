@@ -50,7 +50,6 @@ Parameters:
 - file (1): string, required. Full path of the file containing target names
 - file (2): astropy.table.table.Table, required. Table containing target names and photometric data.
 - mock_file (2): string, required. Full path of the non-existing file where the Table would come from if in mode 1. Used to extract the working path and to name the outputs after it.
-- surveys (1): list, optional. 
 - id_type (1): string, optional. Type of IDs provided: must be one among 'DR2','EDR3' or 'other'. Default: 'DR2'
 - get_phot (1): bool or string, optional. Set to:
         -True: to query the provided IDs;
@@ -62,6 +61,14 @@ Parameters:
 - ebv (1,2): float or numpy array, optional. If set, uses the i-th element of the array as E(B-V) for the i-th star. Default: not set, computes E(B-V) through the map instead.
 - max_tmass_q (1): worse 2MASS photometric flag ('ph_qual') still considered reliable. Possible values, ordered by decreasing quality: 'A','B','C','D','E','F','U','X'. For a given choice, excludes all measurements with a lower quality flag. Default: 'A'.
 - max_wise_q (1): worse ALLWISE photometric flag ('ph_qual2') still considered reliable. Possible values, ordered by decreasing quality: 'A','B','C','U','Z','X'. For a given choice, excludes all measurements with a lower quality flag. Default: 'A'.
+
+Attributes:
+- file: corresponing to either file (1) or mock_file (2).
+- path: working path, where all inputs and outputs are present.
+- log_file: name of the log_file. Open it for details on the process outcome.
+- phot_table: Table containing all retrieved data.
+- abs_mag: absolute magnitudes in the required filters.
+- filters: set of filters, given either by filters of Gaia DR2+EDR3 + 2MASS (1) or by column names (2) 
 
 Methods:
 
@@ -84,7 +91,94 @@ Estimates age and mass of individual stars by comparison with isochrone grids.
     - B: int, optional. Set to 1 to turn on the magnetic field (only for Dartmouth models). Default: 0.
     - ph_cut: float, optional. Maximum  allowed photometric uncertainty [mag]. Default: 0.2.
     - m_unit: string, optional. Unit of measurement of the resulting mass. Choose either 'm_sun' or 'm_jup'. Default: 'm_sun'.
+    Output:
+        (case 1: if age_range is a list or a 1D numpy array)
+    - a_final: numpy array. Final age estimates, one element per star [Myr]
+    - m_final: numpy array. Final mass estimates, one element per star [M_sun or M_jup]
+    - a_err: numpy array. Error on age estimates, one element per star [Myr]
+    - m_err: numpy array. Error on mass estimates, one element per star [M_sun or M_jup]
+        (case 2: if age_range is a 2D numpy array)
+    - a_final: numpy array. Final age estimates, one element per star [Myr]
+    - m_final: numpy array. Final mass estimates, one element per star [M_sun or M_jup]
+    - a_min: numpy array. Minimum age given by the user [Myr]
+    - a_max: numpy array. Maximum age given by the user [Myr]
+    - m_err_m: numpy array. Mass estimate corresponding to the a_min [M_sun or M_jup]
+    - m_err_p: numpy array. Mass estimate corresponding to the a_max [M_sun or M_jup]
+    
+2) CMD
+Draws a color-magnitude diagram (CMD) containing both the measured photometry and a set of theoretical isochrones.
+    Parameters:
+    - col: string, required. Quantity to be plotted along the x axis (e.g.: 'G' or 'G-K')
+    - mag: string, required. Quantity to be plotted along the y axis (e.g.: 'G' or 'G-K')
+    - model: string, required. Chosen model of isochrone grids. Use MADYS.info_models() for further information on the available models.
+    - mass_range: list, optional. A two-element list with minimum and maximum mass to consider (M_sun). Default: [0.01,1.4]
+    - age_range: list or numpy array, optional. It can be either:
+            - a two-element list with minimum and maximum age to consider for the whole sample (Myr);
+            - a 1D numpy array, so that the i-th age (Myr) is used as fixed age for the i-th star;
+            - a 2D numpy array with 3 columns. The i-th row is used as fixed (mean_age,lower_age,upper_age) for the i-th star.
+      Default: [1,1000]
+    - n_steps: list, optional. Number of (mass, age) steps of the interpolated grid. Default: [1000,500].
+    - feh: float, optional. Selects [Fe/H] of the isochrone set. Default: None (=0.00, solar metallicity).
+    - afe: float, optional. Selects alpha enhancement [a/Fe] of the isochrone set. Default: None (=0.00).
+    - v_vcrit: float, optional. Selects rotational velocity of the isochrone set. Default: None (=0.00, non-rotating).
+    - fspot: float, optional. Selects fraction of stellar surface covered by star spots. Default: None (=0.00).
+    - B: int, optional. Set to 1 to turn on the magnetic field (only for Dartmouth models). Default: 0.
+    - ids: list or numpy array of integers, optional. Array of indices, selects the subset of input data to be drawn.
+    - plot_ages: numpy array or bool, optional. It can be either:
+            - a numpy array containing the ages (in Myr) of the isochrones to be plotted;
+            - False, not to plot any isochrone.
+      Default: [1,3,5,10,20,30,100,200,500,1000].
+    - plot_masses: numpy array or bool, optional. It can be either:
+            - a numpy array containing the masses (in M_sun) of the tracks to be plotted.             - a numpy array containing the ages (in Myr) of the isochrones to be plotted;
+            - False, not to plot any track.
+      Default: 0.1,0.3,0.5,0.7,0.85,1.0,1.3,2].
+    - stick_to_points: bool, optional. Zooms the view on data points so that the axes are defined as [min(data)-0.1,max(data)+0.1]. Default: False.
+    - x_range: list, optional. A two-element list with minimum and maximum value for the x axis. Similar to pyplot's xlim.
+    - y_range: list, optional. A two-element list with minimum and maximum value for the y axis. Similar to pyplot's ylim.
+    - groups: list or numpy array of integers, optional. Draws different groups of stars in different colors. The i-th element is a number, indicating to which group the i-th star belongs. Default: None.
+    - group_list: list or numpy array of strings, optional. Names of the groups defined by the 'groups' keyword. No. of elements must match the no. of groups. Default: None.
+    - label_points: bool, optional. Draws a label next to each point, specifying its row index. Default: True.
+    - tofile: bool, optional. Saves the output to as .png image. Default: False.
 
+3) interstellar_ext
+Computes the reddening/extinction in a custom band, given the position of a star.
+No parameter is strictly required, but at one between RA and l, one between dec and b, one between par and d must be supplied.
+    Parameters:
+    - ra: float or numpy array, optional. Right ascension of the star(s) [deg].
+    - dec: float or numpy array, optional. Declination of the star(s) [deg].
+    - l: float or numpy array, optional. Galactic longitude of the star(s) [deg].
+    - b: float or numpy array, optional. Galactic latitude of the star(s) [deg].
+    - par: float or numpy array, optional. Parallax of the star(s) [mas].
+    - d: float or numpy array, optional. Distance of the star(s) [pc].
+    - ext_map: string, optional. Extinction map to be used: must be 'leike' or 'stilism'. Default: 'leike'.
+    - color: string, optional. Band in which the reddening/extinction is desired. Default: B-V.
+    - error: bool, optional. Computes also the uncertainty on the estimate. Default: False.
+    Output:
+    - ext: float or numpy array. Best estimate of reddening/extinction for each star.
+    (only if error==True:)
+    (- err: float or numpy array. Uncertainty on the best estimate of reddening/extinction for each star.)
+
+4) app_to_abs_mag
+Turns one or more apparent magnitude(s) into absolute magnitude(s).
+    Parameters:
+    - app_mag: float, list or numpy array (1D or 2D), required. Input apparent magnitude(s).
+      If a 2D numpy array, each row corresponds to a star, each row to a certain band.
+    - parallax: float, list or 1D numpy array, required. Input parallax(es).
+    - app_mag_error: float, list or numpy array (1D or 2D), optional. Error on apparent magnitude(s); no error estimation if ==None. Default: None.
+    - parallax_error: float, list or 1D numpy array, optional. Error on parallax(es); no error estimation if ==None. Default: None.
+    - ebv: float, list or 1D numpy array, optional. E(B-V) affecting input magnitude(s); assumed null if ==None. Default: None.
+    - filters: list or 1D numpy array, optional. Names of the filters; length must equal no. of columns of app_mag. Default: None.
+    Output:
+    - abs_mag: float or numpy array. Absolute magnitudes, same shape as app_mag.
+    (only if app_mag_error!=None and parallax_error!=None)
+    (- abs_err: float or numpy array. Propagated uncertainty on abs_mag.)
+    
+5) info_models
+Prints info about available models for MADYS.
+Informs about 1) the calling sequence; 2) the customizable parameters; 3) age and mass range; 4) adopted solar metallicity and helium content; 5) literature reference.
+    Parameters:
+    - model: string, optional. Use it to print info about a specific model. If None, prints info about all the available models. Default: None.
+    
 """
 
 class MADYS(object):
@@ -193,10 +287,19 @@ class MADYS(object):
                 phot_err[:,i]=self.good_phot[col_err[i]].filled(np.nan)
             self.__app_phot=phot
             self.__app_phot_err=phot_err
-            par=np.array(self.good_phot['edr3_parallax'].filled(np.nan))
             ra=np.array(self.good_phot['ra'].filled(np.nan))
             dec=np.array(self.good_phot['dec'].filled(np.nan))
+            par=np.array(self.good_phot['edr3_parallax'].filled(np.nan))
             par_err=np.array(self.good_phot['edr3_parallax_error'].filled(np.nan))
+            u,=np.where(np.isnan(par))
+            if len(u)>0:
+                par2=np.array(self.good_phot['dr2_parallax'].filled(np.nan))
+                par_err2=np.array(self.good_phot['dr2_parallax_error'].filled(np.nan))
+                u2,=np.where((np.isnan(par)) & (np.isnan(par2)==False))
+                par=np.where(np.isnan(par),par2,par)
+                par_err=np.where(np.isnan(par_err),par_err2,par_err)
+                for i in range(len(u2)):
+                    self.__logger.info('Invalid parallax in Gaia EDR3 for star '+str(self.ID[u2[i]][0])+', using DR2 instead')                    
             if 'ebv' in kwargs:
                 self.ebv=kwargs['ebv']
                 self.__logger.info('Extinction type: provided by the user')
@@ -204,7 +307,7 @@ class MADYS(object):
                 self.ebv=self.interstellar_ext(ra=ra,dec=dec,par=par,ext_map=ext_map,logger=self.__logger)
                 self.__logger.info('Extinction type: computed using '+ext_map+' extinction map')
             self.abs_phot,self.abs_phot_err=self.app_to_abs_mag(self.__app_phot,par,app_mag_error=self.__app_phot_err,parallax_error=par_err,ebv=self.ebv,filters=self.filters)
-            self.__logger.info('Input photometry: apparent, converted to absolute')
+            self.__logger.info('Input photometry: apparent, converted to absolute')            
 
         logging.shutdown() 
         
@@ -518,6 +621,7 @@ class MADYS(object):
         relax=False
         self.mass_range = kwargs['mass_range'] if 'mass_range' in kwargs else [0.01,1.4]
         self.age_range = kwargs['age_range'] if 'age_range' in kwargs else [1,1000]
+        self.n_steps = kwargs['n_steps'] if 'n_steps' in kwargs else [1000,500]        
         verbose = kwargs['verbose'] if 'verbose' in kwargs else True
         self.feh = kwargs['feh'] if 'feh' in kwargs else None
         self.afe = kwargs['afe'] if 'afe' in kwargs else None
@@ -580,14 +684,16 @@ class MADYS(object):
                 if len(self.age_range)!=l0[0]:
                     self.__logger.error('The number of stars is not equal to the number of input ages. Check the length of your input ages')
                     raise ValueError('The number of stars is not equal to the number of input ages.')
-                a_min=np.full(xlen,np.nan)
-                a_max=np.full(xlen,np.nan)
+                a_final=iso_age[i_age[:,0]]
+                a_min=iso_age[i_age[:,1]]
+                a_max=iso_age[i_age[:,2]]
                 m_err_p=np.full(xlen,np.nan)
                 m_err_m=np.full(xlen,np.nan)
+        else:
+            a_final=np.full(xlen,np.nan)
+            a_err=np.full(xlen,np.nan)
         
-        a_final=np.full(xlen,np.nan)
         m_final=np.full(xlen,np.nan)
-        a_err=np.full(xlen,np.nan)
         m_err=np.full(xlen,np.nan)
         l=iso_data.shape
         sigma=np.full(([l[0],l[1],ylen]),np.nan)
@@ -821,19 +927,17 @@ class MADYS(object):
         stick_to_points=False
         tofile=False
         
-        if len(kwargs)>0:
-            if 'stick_to_points' in kwargs: stick_to_points=kwargs['stick_to_points']
-            if 'tofile' in kwargs: tofile=kwargs['tofile']
-            if 'plot_masses' in kwargs: plot_masses=kwargs['plot_masses']
-            if 'plot_ages' in kwargs: plot_ages=kwargs['plot_ages']
+        if 'stick_to_points' in kwargs: stick_to_points=kwargs['stick_to_points']
+        if 'tofile' in kwargs: tofile=kwargs['tofile']
+        if 'plot_masses' in kwargs: plot_masses=kwargs['plot_masses']
+        if 'plot_ages' in kwargs: plot_ages=kwargs['plot_ages']
 
         try:
             len(col_err)
             col_err=col_err.ravel()
             mag_err=mag_err.ravel()
-            po=np.arange(len(mag_data))
         except TypeError:
-            po=np.array([0])
+            pass
         
         x=col_data
         y=mag_data
@@ -842,9 +946,9 @@ class MADYS(object):
         ebv=ebv1
         x_error=col_err
         y_error=mag_err
-        label_points=po        
-        groups=None
-        group_names=None
+        label_points = kwargs['label_points'] if 'label_points' in kwargs else True        
+        groups = kwargs['groups'] if 'groups' in kwargs else None
+        group_names = kwargs['group_names'] if 'group_names' in kwargs else None
         
         isochrones=iso[3]
         iso_ages=iso[1]
@@ -891,10 +995,10 @@ class MADYS(object):
 
         fig, ax = plt.subplots(figsize=(16,12))
 
-        if type(ebv)!=type(None): #extinction already subtracted. Draws arrow if E(B-V) is provided
-            x_ext=MADYS.extinction(ebv,x_axis)
-            y_ext=MADYS.extinction(ebv,y_axis)
-            plt.arrow(x_range[0]+0.2*(x_range[1]-x_range[0]),y_range[0]+0.1*(y_range[1]-y_range[0]),-np.median(x_ext),-np.median(y_ext),head_width=0.05, head_length=0.1, fc='k', ec='k', label='reddening')
+        x_ext=MADYS.extinction(self.ebv,x_axis)
+        y_ext=MADYS.extinction(self.ebv,y_axis)
+        plt.arrow(x_range[0]+0.2*(x_range[1]-x_range[0]),y_range[0]+0.1*(y_range[1]-y_range[0]),-np.median(x_ext),-np.median(y_ext),head_width=0.05, head_length=0.1, fc='k', ec='k', label='reddening')
+
         x1=x
         y1=y
 
@@ -903,7 +1007,7 @@ class MADYS(object):
                 ii=MADYS.closest(iso_ages,plot_ages[i])
                 plt.plot(col_th[:,ii],mag_th[:,ii],label=str(plot_ages[i])+' Myr')
 
-        if type(plot_ages)!=bool:
+        if type(plot_masses)!=bool:
             for i in range(len(plot_masses)):
                 im=MADYS.closest(iso_masses,plot_masses[i])
                 plt.plot(col_th[im,:],mag_th[im,:],linestyle='dashed',color='gray')
@@ -929,17 +1033,10 @@ class MADYS(object):
                         plt.scatter(x1[w], y1[w], s=50, facecolors='none', edgecolors=colorst[j], label=group_names[j])
                     else: plt.errorbar(x1[w], y1[w], yerr=y_error[w], xerr=x_error[w], fmt='o', color=colorst[j], label=group_names[j])
 
-        if MADYS.n_elements(label_points)==1:
-            if label_points==True:
-                n=(np.linspace(0,npo-1,num=npo,dtype=int)).astype('str')
-                for i, txt in enumerate(n):
-                    ax.annotate(txt, (x1[i], y1[i]))
-        else:
-            if isinstance(label_points[0],str)==0:
-                if isinstance(label_points,list): label_points=np.array(label_points,dtype=str)
-            for i, txt in enumerate(label_points):
+        if label_points==True:
+            po=(np.linspace(0,npo-1,num=npo,dtype=int)).astype('str')
+            for i, txt in enumerate(po):
                 ax.annotate(txt, (x1[i], y1[i]))
-
 
         plt.ylim(y_range)
         plt.xlim(x_range)
