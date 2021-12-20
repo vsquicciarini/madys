@@ -811,8 +811,9 @@ class MADYS(object):
                 f.write(tabulate(np.column_stack((star_names,m_final,m_err,a_final,a_err,self.ebv)),
                                  headers=['ID','MASS','MASS_ERROR','AGE','AGE_ERROR','E(B-V)'], tablefmt='plain', stralign='right', numalign='right', floatfmt=(None,".2f",".2f",".2f",".2f",".3f")))
             f.close()
-
-        self.__logger.info('Age determination ended. Results saved in '+filename)
+            self.__logger.info('Age determination ended. Results saved in '+filename)
+        else:
+            self.__logger.info('Age determination ended. Results not saved in any file because "verbose" is set to False.')
         logging.shutdown()
 
         if 'i_age' in locals(): return a_final,m_final,a_min,a_max,m_err_m,m_err_p
