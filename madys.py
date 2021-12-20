@@ -759,6 +759,7 @@ class MADYS(object):
                     sigma[:,:,w[h]]=((iso_data[:,:,w[h]]-ph)/phot_err[i,w[h]])**2
                     ii=divmod(np.nanargmin(sigma[:,:,w[h]]), sigma.shape[1])+(w[h],) #builds indices (i1,i2,i3) of closest theor. point
                     if abs(iso_data[ii]-ph)<0.2: b[h]=True #if the best theor. match is more than 0.2 mag away, discards it           
+                if np.sum(b)<0.5: continue                     
                 w2=w[b]
                 if len(w2)<3: continue #at least 3 filters needed for the fit
                 cr=np.sum(sigma[:,:,w2],axis=2)
