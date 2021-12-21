@@ -465,6 +465,7 @@ class MADYS(object):
             try:
                 t=gaia.query(adql)        
                 t=MADYS.fix_double_entries(t,self.__id_type)
+                t=MADYS.fix_edr3(t)                        
             except:
                 qstr="""
                 select all
@@ -549,6 +550,7 @@ class MADYS(object):
                 t=gaia.query(adql)
                 t=MADYS.fix_double_entries(t,self.__id_type)
                 t=MADYS.fix_2mass(t)        
+                t=MADYS.fix_edr3(t)                        
         
             with np.errstate(divide='ignore',invalid='ignore'):        
                 edr3_gmag_corr, edr3_gflux_corr = self.correct_gband(t.field('edr3_bp_rp'), t.field('edr3_astrometric_params_solved'), t.field('edr3_phot_g_mean_mag'), t.field('edr3_phot_g_mean_flux'))
@@ -1217,7 +1219,70 @@ class MADYS(object):
             t_ext['ph_qual']=MaskedColumn(t_ext['ph_qual'],dtype=object)
 
         return hstack([t, t_ext])
-    
+
+    @staticmethod    
+    def fix_edr3(t):
+        if t['ra'].mask==False: return t
+
+        ra0=t['dr2_ra'].value[0]
+        dec0=t['dr2_dec'].value[0]
+        pmra0=t['dr2_pmra'].value[0]
+        pmdec0=t['dr2_pmdec'].value[0]
+        ep=t['dr2_epoch'].value[0]
+        ra1=ra0+(2016-ep)*pmra0/3.6e+6
+        dec1=dec0+(2016-ep)*pmdec0/3.6e+6
+
+        r=np.sqrt((pmra0/1000)**2+(pmdec0/1000))*1.5*(2016-ep)
+        r=str(r)+'s'
+        print(r)
+        v = Vizier(columns=["*", "+_r", "Cntr"], catalog="I/350/gaiaedr3")
+        no_res=False
+        try:
+            res=v.query_region(SkyCoord(ra=ra1, dec=dec1,unit=(u.deg, u.deg),frame='icrs'),width=r,catalog=["I/350/gaiaedr3"])[0]
+        except IndexError: no_res=True
+        else:
+            if len(res)>1:
+                w=np.argmin(np.abs(res['pmRA']-pmra0))
+                res=res[w]
+        finally:
+            if no_res==False:
+                id=str(res['Source'])
+                print(id)
+                qstr="""
+                select all
+                edr3.designation as edr3_id,
+                edr3.ra as ra, edr3.dec as dec,
+                edr3.ref_epoch as edr3_epoch, edr3.parallax as edr3_parallax,
+                edr3.parallax_error as edr3_parallax_error, edr3.parallax_over_error as edr3_parallax_over_error,
+                edr3.pmra as edr3_pmra, edr3.pmra_error as edr3_pmra_error,
+                edr3.pmdec as edr3_pmdec, edr3.pmdec_error as edr3_pmdec_error,
+                edr3.ra_dec_corr as edr3_ra_dec_corr, edr3.ra_parallax_corr as edr3_ra_parallax_corr,
+                edr3.ra_pmra_corr as edr3_ra_pmra_corr, edr3.ra_pmdec_corr as edr3_ra_pmdec_corr,
+                edr3.dec_parallax_corr as edr3_dec_parallax_corr,
+                edr3.dec_pmra_corr as edr3_dec_pmra_corr, edr3.dec_pmdec_corr as edr3_dec_pmdec_corr,
+                edr3.parallax_pmra_corr as edr3_parallax_pmra_corr, edr3.parallax_pmdec_corr as edr3_parallax_pmdec_corr,
+                edr3.pmra_pmdec_corr as edr3_pmra_pmdec_corr, edr3.phot_g_mean_mag as edr3_phot_g_mean_mag,
+                edr3.phot_g_mean_flux as edr3_phot_g_mean_flux, edr3.phot_g_mean_flux_error as edr3_phot_g_mean_flux_error,
+                edr3.phot_bp_mean_flux as edr3_phot_bp_mean_flux, edr3.phot_bp_mean_flux_error as edr3_phot_bp_mean_flux_error,
+                edr3.phot_bp_mean_mag as edr3_phot_bp_mean_mag,
+                edr3.phot_rp_mean_flux as edr3_phot_rp_mean_flux, edr3.phot_rp_mean_flux_error as edr3_phot_rp_mean_flux_error,
+                edr3.phot_rp_mean_mag as edr3_phot_rp_mean_mag,
+                edr3.bp_rp as edr3_bp_rp, edr3.phot_bp_rp_excess_factor as edr3_phot_bp_rp_excess_factor,
+                edr3.ruwe as edr3_ruwe, edr3.astrometric_params_solved as edr3_astrometric_params_solved
+                from
+                    gaiaedr3.gaia_source as edr3
+                WHERE edr3.source_id = """ + id
+                adql = QueryStr(qstr,verbose=False)
+                try:
+                    t2=gaia.query(adql)
+                except:
+                    pass
+                else:
+                    col=t2.colnames
+                    for i in range(len(col)):
+                        t[col[i]]=t2[col[i]]
+                    return t
+       
     @staticmethod
     def fix_double_entries(t,id_type='DR2'):
         if len(t)<2: return t
