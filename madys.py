@@ -22,7 +22,6 @@ from tabulate import tabulate
 import math
 import h5py
 from astropy.io import fits
-from astroquery.gaia import Gaia
 Vizier.TIMEOUT = 100000000 # rise the timeout for Vizier
 from astropy.table import Table, Column, vstack, hstack, MaskedColumn
 from astropy.io import ascii
@@ -1205,8 +1204,22 @@ class MADYS(object):
             res=v.query_region(SkyCoord(ra=ra1, dec=dec1,unit=(u.deg, u.deg),frame='icrs'),width="10s",catalog=["2MASS"])[0]
         except IndexError: no_res=True
         else:
-            w,=np.where(res['Cntr']==t['tmass_key'])
-            if len(w)==0: no_res=True
+            l=len(res)
+            if l>1:
+                no_res=True
+                if np.sum(res['pmRA'].mask)<l:
+                    w=np.argmin(np.abs(res['pmRA']-pmra0))
+                    res=res[w]
+                    no_res=False
+                elif np.sum(res['pmDE'].mask)<l:
+                    w=np.argmin(np.abs(res['pmDE']-pmdec0))
+                    res=res[w]
+                    no_res=False
+                elif np.sum(res['Plx'].mask)<l:
+                    print(res.colnames)
+                    w=np.argmin(np.abs(res['Plx']-t['dr2_parallax'].value[0]))
+                    res=res[w]
+                    no_res=False
         finally:
             if no_res:
                 t_ext=Table([[np.nan],[np.nan],[np.nan],[np.nan],[np.nan],[np.nan],['XXX'],[ra1],[dec1]],
