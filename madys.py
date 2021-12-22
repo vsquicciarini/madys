@@ -1245,16 +1245,16 @@ class MADYS(object):
                 if np.sum(res['pmRA'].mask)<l:
                     w=np.argmin(np.abs(res['pmRA']-pmra0))
                     res=res[w]
-                    no_res=False
+                    if np.abs(res['Gmag']-t['dr2_phot_g_mean_mag'].value[0])<0.2: no_res=False
                 elif np.sum(res['pmDE'].mask)<l:
                     w=np.argmin(np.abs(res['pmDE']-pmdec0))
                     res=res[w]
-                    no_res=False
+                    if np.abs(res['Gmag']-t['dr2_phot_g_mean_mag'].value[0])<0.2: no_res=False
                 elif np.sum(res['Plx'].mask)<l:
                     print(res.colnames)
                     w=np.argmin(np.abs(res['Plx']-t['dr2_parallax'].value[0]))
                     res=res[w]
-                    no_res=False
+                    if np.abs(res['Gmag']-t['dr2_phot_g_mean_mag'].value[0])<0.2: no_res=False
         finally:
             if no_res==False:
                 id=str(res['Source'])
