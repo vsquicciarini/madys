@@ -1204,22 +1204,8 @@ class MADYS(object):
             res=v.query_region(SkyCoord(ra=ra1, dec=dec1,unit=(u.deg, u.deg),frame='icrs'),width="10s",catalog=["2MASS"])[0]
         except IndexError: no_res=True
         else:
-            l=len(res)
-            if l>1:
-                no_res=True
-                if np.sum(res['pmRA'].mask)<l:
-                    w=np.argmin(np.abs(res['pmRA']-pmra0))
-                    res=res[w]
-                    no_res=False
-                elif np.sum(res['pmDE'].mask)<l:
-                    w=np.argmin(np.abs(res['pmDE']-pmdec0))
-                    res=res[w]
-                    no_res=False
-                elif np.sum(res['Plx'].mask)<l:
-                    print(res.colnames)
-                    w=np.argmin(np.abs(res['Plx']-t['dr2_parallax'].value[0]))
-                    res=res[w]
-                    no_res=False
+            w,=np.where(res['Cntr']==t['tmass_key'])
+            if len(w)==0: no_res=True
         finally:
             if no_res:
                 t_ext=Table([[np.nan],[np.nan],[np.nan],[np.nan],[np.nan],[np.nan],['XXX'],[ra1],[dec1]],
@@ -1247,16 +1233,28 @@ class MADYS(object):
 
         r=np.sqrt((pmra0/1000)**2+(pmdec0/1000))*1.5*(2016-ep)
         r=str(r)+'s'
-        print(r)
-        v = Vizier(columns=["*", "+_r", "Cntr"], catalog="I/350/gaiaedr3")
+        v = Vizier(columns=["*", "+_r"], catalog="I/350/gaiaedr3")
         no_res=False
         try:
             res=v.query_region(SkyCoord(ra=ra1, dec=dec1,unit=(u.deg, u.deg),frame='icrs'),width=r,catalog=["I/350/gaiaedr3"])[0]
         except IndexError: no_res=True
         else:
-            if len(res)>1:
-                w=np.argmin(np.abs(res['pmRA']-pmra0))
-                res=res[w]
+            l=len(res)
+            if l>1:
+                no_res=True
+                if np.sum(res['pmRA'].mask)<l:
+                    w=np.argmin(np.abs(res['pmRA']-pmra0))
+                    res=res[w]
+                    no_res=False
+                elif np.sum(res['pmDE'].mask)<l:
+                    w=np.argmin(np.abs(res['pmDE']-pmdec0))
+                    res=res[w]
+                    no_res=False
+                elif np.sum(res['Plx'].mask)<l:
+                    print(res.colnames)
+                    w=np.argmin(np.abs(res['Plx']-t['dr2_parallax'].value[0]))
+                    res=res[w]
+                    no_res=False
         finally:
             if no_res==False:
                 id=str(res['Source'])
