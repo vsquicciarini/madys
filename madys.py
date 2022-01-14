@@ -186,7 +186,7 @@ class MADYS(object):
         else: self.file = file
         self.path = os.path.dirname(self.file)     #working path        
         self.sample_name_ext()
-        
+
         if isinstance(file,Table):            
             col0=file.colnames
             kin=np.array(['parallax','parallax_err','ra','dec','name'])
@@ -195,7 +195,7 @@ class MADYS(object):
             self.filters=np.array(col)
             self.GaiaID=file['name']
         else:
-            self.filters=np.array(['G','Gbp','Grp','G2','Gbp2','Grp2','J','H','K'])            
+            self.filters=np.array(['G','Gbp','Grp','G2','Gbp2','Grp2','J','H','K'])
             self.__id_type = kwargs['id_type'] if 'id_type' in kwargs else 'DR2'            
             get_phot = kwargs['get_phot'] if 'get_phot' in kwargs else True
             save_phot = kwargs['save_phot'] if 'save_phot' in kwargs else True
@@ -233,9 +233,6 @@ class MADYS(object):
                 par=file['parallax']
                 self.ebv=MADYS.interstellar_ext(ra=file['ra'],dec=file['dec'],par=par,ext_map=ext_map,logger=self.__logger)
                 self.__logger.info('Extinction type: computed using '+ext_map+' extinction map')
-            else:                
-                self.__logger.warning('No E(B-V) was provided, but star coordinates were not given. Please provide an extinction vector or check that the columns "ra", "dec" and "parallax" are present in the Table. Program ended.')
-                raise ValueError('No E(B-V) was provided, but star coordinates were not given. Please provide an extinction vector through the keyword "ebv" or check that the columns "ra", "dec" and "parallax" are present in the Table.')
             if 'parallax' in col0:
                 par=file['parallax']
                 par_err=file['parallax_err']
@@ -306,7 +303,7 @@ class MADYS(object):
                 self.ebv=self.interstellar_ext(ra=ra,dec=dec,par=par,ext_map=ext_map,logger=self.__logger)
                 self.__logger.info('Extinction type: computed using '+ext_map+' extinction map')
             self.abs_phot,self.abs_phot_err=self.app_to_abs_mag(self.__app_phot,par,app_mag_error=self.__app_phot_err,parallax_error=par_err,ebv=self.ebv,filters=self.filters)
-            self.__logger.info('Input photometry: apparent, converted to absolute')            
+            self.__logger.info('Input photometry: apparent, converted to absolute')
 
         logging.shutdown() 
         
@@ -365,7 +362,6 @@ class MADYS(object):
         id_sea = 'edr3.source_id' if self.__id_type=='EDR3' else 'dr2xmatch.dr2_source_id'
         for i in range(len(self.GaiaID)):            
             id=str(self.GaiaID[i]).split(id_str)[1]
-            print('star ',i,': ',id)
             qstr="""
             select all
             edr3.designation as edr3_id, dr2.designation as dr2_id,
@@ -464,7 +460,6 @@ class MADYS(object):
             try:
                 t=gaia.query(adql)        
                 t=MADYS.fix_double_entries(t,self.__id_type)
-                t=MADYS.fix_edr3(t)                        
             except:
                 qstr="""
                 select all
@@ -545,12 +540,15 @@ class MADYS(object):
                     external.sdssdr13_photoprimary as sloan
                     ON sloanxmatch.clean_sdssdr13_oid = sloan.objid
                 WHERE """ + id_sea + ' = ' + id
+    #            WHERE dr2xmatch.dr2_source_id = """ + id
                 adql = QueryStr(qstr,verbose=False)
                 t=gaia.query(adql)
                 t=MADYS.fix_double_entries(t,self.__id_type)
-                t=MADYS.fix_2mass(t)        
-                t=MADYS.fix_edr3(t)                        
-        
+                t=MADYS.fix_2mass(t)
+
+            print(i,id)
+            t=MADYS.fix_edr3(t)                
+            
             with np.errstate(divide='ignore',invalid='ignore'):        
                 edr3_gmag_corr, edr3_gflux_corr = self.correct_gband(t.field('edr3_bp_rp'), t.field('edr3_astrometric_params_solved'), t.field('edr3_phot_g_mean_mag'), t.field('edr3_phot_g_mean_flux'))
                 edr3_bp_rp_excess_factor_corr = self.edr3_correct_flux_excess_factor(t.field('edr3_bp_rp'), t.field('edr3_phot_bp_rp_excess_factor'))
@@ -622,7 +620,7 @@ class MADYS(object):
         relax=False
         self.mass_range = kwargs['mass_range'] if 'mass_range' in kwargs else [0.01,1.4]
         self.age_range = kwargs['age_range'] if 'age_range' in kwargs else [1,1000]
-        self.n_steps = kwargs['n_steps'] if 'n_steps' in kwargs else [1000,500]        
+        self.n_steps = kwargs['n_steps'] if 'n_steps' in kwargs else [1000,500]
         verbose = kwargs['verbose'] if 'verbose' in kwargs else True
         self.feh = kwargs['feh'] if 'feh' in kwargs else None
         self.afe = kwargs['afe'] if 'afe' in kwargs else None
@@ -676,6 +674,8 @@ class MADYS(object):
                 if len(self.age_range)!=l0[0]:
                     self.__logger.error('The number of stars is not equal to the number of input ages. Check the length of your input ages')
                     raise ValueError('The number of stars is not equal to the number of input ages.')
+                a_final=self.age_range
+                a_err=np.zeros(l0[0])
             elif len(self.age_range[0])==3:
                 relax=True
                 mask=True
@@ -688,12 +688,14 @@ class MADYS(object):
                 a_final=iso_age[i_age[:,0]]
                 a_min=iso_age[i_age[:,1]]
                 a_max=iso_age[i_age[:,2]]
+#                a_min=np.full(xlen,np.nan)
+#                a_max=np.full(xlen,np.nan)
                 m_err_p=np.full(xlen,np.nan)
                 m_err_m=np.full(xlen,np.nan)
         else:
             a_final=np.full(xlen,np.nan)
             a_err=np.full(xlen,np.nan)
-        
+
         m_final=np.full(xlen,np.nan)
         m_err=np.full(xlen,np.nan)
         l=iso_data.shape
@@ -715,8 +717,9 @@ class MADYS(object):
                     sigma[:,0,w[h]]=((iso_data[:,i00,w[h]]-ph)/phot_err[i,w[h]])**2
                     ii=divmod(np.nanargmin(sigma[:,:,w[h]]), sigma.shape[1])+(w[h],) #builds indices (i1,i2,i3) of closest theor. point
                     if abs(iso_data[ii[0],i00,w[h]]-ph)<0.2: b[h]=True #if the best theor. match is more than 0.2 mag away, discards it
+                if np.sum(b)<0.5: continue
                 w2=w[b]
-                cr=np.sum(sigma[:,:,w2],axis=2)
+                cr=np.sum(sigma[:,:,w2],axis=2) 
                 est,ind=MADYS.min_v(cr)
                 m_final[i]=iso_mass[ind[0]]
                 a_final[i]=iso_age[i00]
@@ -760,7 +763,6 @@ class MADYS(object):
                     sigma[:,:,w[h]]=((iso_data[:,:,w[h]]-ph)/phot_err[i,w[h]])**2
                     ii=divmod(np.nanargmin(sigma[:,:,w[h]]), sigma.shape[1])+(w[h],) #builds indices (i1,i2,i3) of closest theor. point
                     if abs(iso_data[ii]-ph)<0.2: b[h]=True #if the best theor. match is more than 0.2 mag away, discards it           
-                if np.sum(b)<0.5: continue                     
                 w2=w[b]
                 if len(w2)<3: continue #at least 3 filters needed for the fit
                 cr=np.sum(sigma[:,:,w2],axis=2)
@@ -791,21 +793,11 @@ class MADYS(object):
                 m_err_m*=M_sun.value/M_jup.value
 
         if verbose==True:
-            if type(self.GaiaID)==Table: star_names=self.GaiaID['ID']#.value
-            else: star_names=self.GaiaID#.value
+            if type(self.GaiaID)==Table: star_names=self.GaiaID['ID'].value
+            else: star_names=self.GaiaID.value
             filename=os.path.join(self.path,str(self.__sample_name+'_ages_'+model+'.txt'))
             f=open(filename, "w+")
             if 'i_age' in locals():
-                print(star_names)
-                print(type(star_names))
-                print(len(star_names))
-                print(type(star_names[0]))
-                print(type(m_final),len(m_final))
-                print(type(m_err),len(m_err))
-                print(type(a_final),len(a_final))
-                print(type(a_min),len(a_min))
-                print(type(a_max),len(a_max))
-                print(type(self.ebv),len(self.ebv))
                 f.write(tabulate(np.column_stack((star_names,m_final,m_err_m,m_err_p,a_final,a_min,a_max,self.ebv)),
                                  headers=['ID','MASS','MASS_ERROR_M','MASS_ERROR_P','AGE','AGE_MIN','AGE_MAX','E(B-V)'], tablefmt='plain', stralign='right', numalign='right', floatfmt=(None,".2f",".2f",".2f",".2f",".2f",".2f",".3f")))
             else:
@@ -815,6 +807,7 @@ class MADYS(object):
             self.__logger.info('Age determination ended. Results saved in '+filename)
         else:
             self.__logger.info('Age determination ended. Results not saved in any file because "verbose" is set to False.')
+
         logging.shutdown()
 
         if 'i_age' in locals(): return a_final,m_final,a_min,a_max,m_err_m,m_err_p
@@ -949,6 +942,7 @@ class MADYS(object):
         ebv=ebv1
         x_error=col_err
         y_error=mag_err
+        
         label_points = kwargs['label_points'] if 'label_points' in kwargs else True        
         groups = kwargs['groups'] if 'groups' in kwargs else None
         group_names = kwargs['group_names'] if 'group_names' in kwargs else None
@@ -1218,11 +1212,12 @@ class MADYS(object):
             t_ext['ph_qual']=MaskedColumn(t_ext['ph_qual'],dtype=object)
 
         return hstack([t, t_ext])
-
+    
     @staticmethod    
     def fix_edr3(t):
         if t['ra'].mask==False: return t
 
+        print("Fix EDR3")
         ra0=t['dr2_ra'].value[0]
         dec0=t['dr2_dec'].value[0]
         pmra0=t['dr2_pmra'].value[0]
@@ -1231,15 +1226,23 @@ class MADYS(object):
         ra1=ra0+(2016-ep)*pmra0/3.6e+6
         dec1=dec0+(2016-ep)*pmdec0/3.6e+6
 
-        r=np.sqrt((pmra0/1000)**2+(pmdec0/1000))*1.5*(2016-ep)
+        r=np.sqrt((pmra0/1000)**2+(pmdec0/1000)**2)*1.5*(2016-ep)
+        print(pmra0,pmdec0,ep)
+        if np.isnan(r): return t
         r=str(r)+'s'
+        print(r)
         v = Vizier(columns=["*", "+_r"], catalog="I/350/gaiaedr3")
         no_res=False
         try:
             res=v.query_region(SkyCoord(ra=ra1, dec=dec1,unit=(u.deg, u.deg),frame='icrs'),width=r,catalog=["I/350/gaiaedr3"])[0]
-        except IndexError: no_res=True
+            print('aaaaaa',res)
+        except IndexError: 
+            no_res=True
+            l=0
         else:
             l=len(res)
+            print(l)
+            print(res)
             if l>1:
                 no_res=True
                 if np.sum(res['pmRA'].mask)<l:
@@ -1256,7 +1259,7 @@ class MADYS(object):
                     res=res[w]
                     if np.abs(res['Gmag']-t['dr2_phot_g_mean_mag'].value[0])<0.2: no_res=False
         finally:
-            if no_res==False:
+            if (no_res==False) & (l>0):
                 id=str(res['Source'])
                 print(id)
                 qstr="""
@@ -1292,8 +1295,8 @@ class MADYS(object):
                     col=t2.colnames
                     for i in range(len(col)):
                         t[col[i]]=t2[col[i]]
-                    return t
-       
+            return t
+                
     @staticmethod
     def fix_double_entries(t,id_type='DR2'):
         if len(t)<2: return t
@@ -1477,14 +1480,14 @@ class MADYS(object):
         x=np.floor(np.linspace(x0,x1,num=n)).astype(int)
         y=np.floor(np.linspace(y0,y1,num=n)).astype(int)
         I=0
-
+        
         if type(layer)==type(None):
             if ndim==2:
                 d10=np.sqrt((x1-x0)**2+(y1-y0)**2) #distance 
                 w_g,=np.where((x[1:]!=x[:-1]) | (y[1:]!=y[:-1]))
                 w_g=np.insert(w_g+1,0,0)
                 w_f=np.insert(w_g[1:]-w_g[:-1],len(w_g)-1,len(x)-w_g[-1])            
-                w,=np.where((x[w_g]<dim[0]) & (y[w_g]<dim[1]) & (x[w_g]>=0) & (y[w_g]>=0))
+                w,=np.where((x[w_g]<dim[0]) & (y[w_g]<dim[1]))
                 if (len(w)<len(w_g)) & (logger!=None):
                     logger.info('Star '+str(star_id)+' outside the extinction map. Its extinction is an underestimate.')                
                 w2=w_g[w]
@@ -1506,7 +1509,7 @@ class MADYS(object):
                 w_g,=np.where((x[1:]!=x[:-1]) | (y[1:]!=y[:-1]))
                 w_g=np.insert(w_g+1,0,0)
                 w_f=np.insert(w_g[1:]-w_g[:-1],len(w_g)-1,len(x)-w_g[-1])            
-                w,=np.where((x[w_g]<dim[1]) & (y[w_g]<dim[2]) & (x[w_g]>=0) & (y[w_g]>=0))
+                w,=np.where((x[w_g]<dim[1]) & (y[w_g]<dim[2]))
                 if (len(w)<len(w_g)) & (logger!=None):
                     logger.info('Star '+str(star_id)+' outside the extinction map. Its extinction is an underestimate.')                
                 w2=w_g[w]
@@ -1517,7 +1520,7 @@ class MADYS(object):
                 w_g,=np.where((x[1:]!=x[:-1]) | (y[1:]!=y[:-1]) | (z[1:]!=z[:-1]))
                 w_g=np.insert(w_g+1,0,0)
                 w_f=np.insert(w_g[1:]-w_g[:-1],len(w_g)-1,len(x)-w_g[-1])            
-                w,=np.where((x[w_g]<dim[1]) & (y[w_g]<dim[2]) & (z[w_g]<dim[3]) & (x[w_g]>=0) & (y[w_g]>=0) & (z[w_g]>=0))
+                w,=np.where((x[w_g]<dim[1]) & (y[w_g]<dim[2]) & (z[w_g]<dim[3]))
                 if (len(w)<len(w_g)) & (logger!=None):
                     logger.info('Star '+str(star_id)+' outside the extinction map. Its extinction is an underestimate.')                
                 w2=w_g[w]
@@ -1526,11 +1529,12 @@ class MADYS(object):
         return I/n*d10
 
     @staticmethod
-    def interstellar_ext(ra=None,dec=None,l=None,b=None,par=None,d=None,test_time=False,ext_map='leike',color='B-V',error=False,logger=None):
+    def interstellar_ext(ra=None,dec=None,l=None,b=None,par=None,d=None,ext_map='leike',color='B-V',error=False,logger=None):
 
         if (ext_map=='leike') & (error==False): fname='leike_mean_std.h5'
         elif (ext_map=='leike') & (error==True): fname='leike_samples.h5'
         if (ext_map=='stilism'): fname='stilism_feb2019.h5'
+
 
         folder = os.path.dirname(os.path.realpath(__file__))
 
@@ -1563,9 +1567,9 @@ class MADYS(object):
             z=np.arange(-400.,405.,5)    
             data = f['stilism']['cube_datas']
 
-        if type(ra)==type(None) and type(l)==type(None): raise NameError('At least one between RA and l must be supplied!')
-        if type(dec)==type(None) and type(b)==type(None): raise NameError('At least one between dec and b must be supplied!')
-        if type(par)==type(None) and type(d)==type(None): raise NameError('At least one between parallax and distance must be supplied!')
+        if type(ra)==type(None) and type(l)==type(None): raise NameError('One between RA and l must be supplied!')
+        if type(dec)==type(None) and type(b)==type(None): raise NameError('One between dec and b must be supplied!')
+        if type(par)==type(None) and type(d)==type(None): raise NameError('One between parallax and distance must be supplied!')
         if type(ra)!=type(None) and type(l)!=type(None): raise NameError('Only one between RA and l must be supplied!')
         if type(dec)!=type(None) and type(b)!=type(None): raise NameError('Only one between dec and b must be supplied!')
         if type(par)!=type(None) and type(d)!=type(None): raise NameError('Only one between parallax and distance must be supplied!')
@@ -1643,6 +1647,9 @@ class MADYS(object):
             else: py2=py
             if pz<len(z)-1: pz2=(z0-z[pz])/dist+pz
             else: pz2=pz
+            if isinstance(px2,np.ndarray): px2=px2[0]
+            if isinstance(py2,np.ndarray): py2=py2[0]
+            if isinstance(pz2,np.ndarray): pz2=pz2[0]
             if ext_map=='stilism': ebv=dist*MADYS.Wu_line_integrate(data,sun[0],px2,sun[0],py2,sun[1],pz2,star_id=0,logger=logger)/3.16
             elif ext_map=='leike': 
                 if error==False:
@@ -1977,22 +1984,16 @@ class MADYS(object):
         return filters
     
     @staticmethod
-    def load_isochrones(model,filters,**kwargs):
+    def load_isochrones(model,filters,n_steps=[1000,500], **kwargs):
 
         folder = os.path.dirname(os.path.realpath(__file__))
-
-        n_steps = kwargs['n_steps'] if 'n_steps' in kwargs else [1000,500]
 
         add_search_path(folder)
         for x in os.walk(folder):
             add_search_path(x[0])
 
-        mass_range=[0.01,1.4]
-        age_range=[1,1000]
-        exact_age=False
-        
-        if 'age_range' in kwargs: age_range = kwargs['age_range']
-        if 'mass_range' in kwargs: mass_range = kwargs['mass_range']
+        mass_range=kwargs['mass_range'] if 'mass_range' in kwargs else [0.01,1.4]
+        age_range=kwargs['age_range'] if 'age_range' in kwargs else [1,1000]
         B=kwargs['B'] if 'B' in kwargs else 0
         feh=kwargs['feh'] if 'feh' in kwargs else None
         afe=kwargs['afe'] if 'afe' in kwargs else None
@@ -2170,6 +2171,7 @@ class MADYS(object):
 
     @staticmethod
     def info_models(model=None):
+
             folder = os.path.dirname(os.path.realpath(__file__))
 
             paths=[x[0] for x in os.walk(folder)]
