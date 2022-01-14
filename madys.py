@@ -58,15 +58,16 @@ Parameters:
 - save_phot (1): bool, optional. Set to True to create a .csv file with the retrieved photometry. Default: True.
 - ext_map (1,2): string, optional. Extinction map used between 'leike' or 'stilism'. Default: 'leike'.
 - ebv (1,2): float or numpy array, optional. If set, uses the i-th element of the array as E(B-V) for the i-th star. Default: not set, computes E(B-V) through the map instead.
-- max_tmass_q (1): worse 2MASS photometric flag ('ph_qual') still considered reliable. Possible values, ordered by decreasing quality: 'A','B','C','D','E','F','U','X'. For a given choice, excludes all measurements with a lower quality flag. Default: 'A'.
-- max_wise_q (1): worse ALLWISE photometric flag ('ph_qual2') still considered reliable. Possible values, ordered by decreasing quality: 'A','B','C','U','Z','X'. For a given choice, excludes all measurements with a lower quality flag. Default: 'A'.
+- max_tmass_q (1): worst 2MASS photometric flag ('ph_qual') still considered reliable. Possible values, ordered by decreasing quality: 'A','B','C','D','E','F','U','X'. For a given choice, excludes all measurements with a lower quality flag. Default: 'A'.
+- max_wise_q (1): worst ALLWISE photometric flag ('ph_qual2') still considered reliable. Possible values, ordered by decreasing quality: 'A','B','C','U','Z','X'. For a given choice, excludes all measurements with a lower quality flag. Default: 'A'.
 
 Attributes:
-- file: corresponing to either file (1) or mock_file (2).
+- file: corresponding to either file (1) or mock_file (2).
 - path: working path, where all inputs and outputs are present.
 - log_file: name of the log_file. Open it for details on the process outcome.
-- phot_table: Table containing all retrieved data.
-- abs_mag: absolute magnitudes in the required filters.
+- phot_table (1): Table containing all retrieved data.
+- abs_phot: absolute magnitudes in the required filters.
+- abs_phot_err: errors on absolute magnitudes in the required filters.
 - filters: set of filters, given either by filters of Gaia DR2+EDR3 + 2MASS (1) or by column names (2) 
 
 Methods:
@@ -558,7 +559,7 @@ class MADYS(object):
                 t_ext=Table([edr3_gmag_corr, edr3_gflux_corr, edr3_bp_rp_excess_factor_corr, edr3_g_mag_error, edr3_bp_mag_error, edr3_rp_mag_error, dr2_bp_rp_excess_factor_corr, dr2_g_mag_error, dr2_bp_mag_error, dr2_rp_mag_error],
                     names=['edr3_gmag_corr', 'edr3_gflux_corr','edr3_phot_bp_rp_excess_factor_corr', 'edr3_phot_g_mean_mag_error', 'edr3_phot_bp_mean_mag_error', 'edr3_phot_rp_mean_mag_error', 'dr2_phot_bp_rp_excess_factor_corr', 'dr2_g_mag_error', 'dr2_bp_mag_error', 'dr2_rp_mag_error'],
                     units=["mag", "'electron'.s**-1", "", "mag", "mag", "mag", "", "mag", "mag", "mag"],
-                    descriptions=['EDR3 G-band mean mag corrected as per Riello et al. (2020)', 'EDR3 G-band mean flux corrected as per Riello et al. (2020)', 'EDR3 BP/RP excess factor corrected as per Riello et al. (2020)','EDR3 Error on G-band mean mag', 'EDR3 Error on BP-band mean mag', 'EDR3 Error on RP-band mean mag', 'DR2 BP/RP excess factor corrected', 'DR2 Error on G-band mean mag', 'DR2 Error on BP-band mean mag', 'DR2 Error on RP-band mean mag'])
+                    descriptions=['EDR3 G-band mean mag corrected as per Riello et al. (2021)', 'EDR3 G-band mean flux corrected as per Riello et al. (2021)', 'EDR3 BP/RP excess factor corrected as per Riello et al. (2021)','EDR3 Error on G-band mean mag', 'EDR3 Error on BP-band mean mag', 'EDR3 Error on RP-band mean mag', 'DR2 BP/RP excess factor corrected as per Squicciarini et al. (2021)', 'DR2 Error on G-band mean mag', 'DR2 Error on BP-band mean mag', 'DR2 Error on RP-band mean mag'])
                 data.append(hstack([self.ID[i], t, t_ext]))
         with warnings.catch_warnings():
             warnings.simplefilter('ignore')
