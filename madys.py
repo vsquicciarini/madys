@@ -1,6 +1,4 @@
 import sys
-import copy
-import warnings
 from astropy.utils.exceptions import AstropyWarning
 import logging
 import numpy as np
@@ -8,7 +6,7 @@ from pathlib import Path
 import os
 from evolution import *
 from scipy.interpolate import interp1d
-from astropy.constants import M_jup,M_sun
+from astropy.constants import M_jup,M_sun,R_jup,R_sun
 import time
 from astropy.coordinates import Angle, SkyCoord, ICRS, Galactic, FK4, FK5, Latitude, Longitude,Galactocentric, galactocentric_frame_defaults
 from astropy import units as u
@@ -794,8 +792,12 @@ class MADYS(object):
                 m_err_m*=M_sun.value/M_jup.value
 
         if verbose==True:
-            if type(self.GaiaID)==Table: star_names=self.GaiaID['ID'].value
-            else: star_names=self.GaiaID.value
+            try:
+                if type(self.GaiaID)==Table: star_names=self.GaiaID['ID'].value
+                else: star_names=self.GaiaID.value
+            except:
+                if type(self.GaiaID)==Table: star_names=self.GaiaID['ID']
+                else: star_names=self.GaiaID
             filename=os.path.join(self.path,str(self.__sample_name+'_ages_'+model+'.txt'))
             f=open(filename, "w+")
             if 'i_age' in locals():
@@ -1218,7 +1220,6 @@ class MADYS(object):
     def fix_edr3(t):
         if t['ra'].mask==False: return t
 
-        print("Fix EDR3")
         ra0=t['dr2_ra'].value[0]
         dec0=t['dr2_dec'].value[0]
         pmra0=t['dr2_pmra'].value[0]
@@ -1228,22 +1229,17 @@ class MADYS(object):
         dec1=dec0+(2016-ep)*pmdec0/3.6e+6
 
         r=np.sqrt((pmra0/1000)**2+(pmdec0/1000)**2)*1.5*(2016-ep)
-        print(pmra0,pmdec0,ep)
         if np.isnan(r): return t
         r=str(r)+'s'
-        print(r)
         v = Vizier(columns=["*", "+_r"], catalog="I/350/gaiaedr3")
         no_res=False
         try:
             res=v.query_region(SkyCoord(ra=ra1, dec=dec1,unit=(u.deg, u.deg),frame='icrs'),width=r,catalog=["I/350/gaiaedr3"])[0]
-            print('aaaaaa',res)
         except IndexError: 
             no_res=True
             l=0
         else:
             l=len(res)
-            print(l)
-            print(res)
             if l>1:
                 no_res=True
                 if np.sum(res['pmRA'].mask)<l:
@@ -1255,14 +1251,12 @@ class MADYS(object):
                     res=res[w]
                     if np.abs(res['Gmag']-t['dr2_phot_g_mean_mag'].value[0])<0.2: no_res=False
                 elif np.sum(res['Plx'].mask)<l:
-                    print(res.colnames)
                     w=np.argmin(np.abs(res['Plx']-t['dr2_parallax'].value[0]))
                     res=res[w]
                     if np.abs(res['Gmag']-t['dr2_phot_g_mean_mag'].value[0])<0.2: no_res=False
         finally:
             if (no_res==False) & (l>0):
                 id=str(res['Source'])
-                print(id)
                 qstr="""
                 select all
                 edr3.designation as edr3_id,
@@ -1535,7 +1529,6 @@ class MADYS(object):
         if (ext_map=='leike') & (error==False): fname='leike_mean_std.h5'
         elif (ext_map=='leike') & (error==True): fname='leike_samples.h5'
         if (ext_map=='stilism'): fname='stilism_feb2019.h5'
-
 
         folder = os.path.dirname(os.path.realpath(__file__))
 
@@ -1812,7 +1805,7 @@ class MADYS(object):
                 else: s='p'
                 feh1="{:.2f}".format(abs(feh0))            
                 model2=model+'_'+s+feh1
-            else: model2=model+'_p0.00'
+            else: model2=model+'_m0.01'
             if type(v_vcrit)!=type(None):
                 i=np.argmin(abs(vcrit_range-v_vcrit))
                 v_vcrit0=vcrit_range[i]
@@ -1891,7 +1884,8 @@ class MADYS(object):
                  'R_sl2':'Rsloan','Z_sl':'Zsloan','M_sl':'Msloan',
                  'Ymag':'B_Y','Jmag':'B_J','Hmag':'B_H','Kmag':'B_Ks','H2mag':'D_H2','H3mag':'D_H3',
                  'H4mag':'D_H4','J2mag':'D_J2','J3mag':'D_J3','K1mag':'D_K1','K2mag':'D_K2',
-                 'Y2mag':'D_Y2','Y3mag':'D_Y3'}            
+                 'Y2mag':'D_Y2','Y3mag':'D_Y3',
+                 'Teff':'Teff','logL':'logL','logg':'logg','radius':'radius'}
         elif model=='ames_cond':
             dic={'G':'G','Gbp':'G_BP','Grp':'G_BP','J':'J','H':'H','K':'K',
                  'W1':'W1_W10','W2':'W2_W10','W3':'W3_W10','W4':'W4_W10','U':'U','B':'B',
@@ -1900,7 +1894,8 @@ class MADYS(object):
                  'R_sl2':'Rsloan','Z_sl':'Zsloan','M_sl':'Msloan',
                  'Ymag':'B_Y','Jmag':'B_J','Hmag':'B_H','Kmag':'B_Ks','H2mag':'D_H2','H3mag':'D_H3',
                  'H4mag':'D_H4','J2mag':'D_J2','J3mag':'D_J3','K1mag':'D_K1','K2mag':'D_K2',
-                 'Y2mag':'D_Y2','Y3mag':'D_Y3'}
+                 'Y2mag':'D_Y2','Y3mag':'D_Y3',
+                 'Teff':'Teff','logL':'logL','logg':'logg','radius':'radius'}
         elif model=='ames_dusty':
             dic={'G':'G','Gbp':'G_BP','Grp':'G_BP','J':'J','H':'H','K':'K',
                  'W1':'W1_W10','W2':'W2_W10','W3':'W3_W10','W4':'W4_W10','U':'U','B':'B',
@@ -1909,64 +1904,82 @@ class MADYS(object):
                  'R_sl2':'Rsloan','Z_sl':'Zsloan','M_sl':'Msloan',
                  'Ymag':'B_Y','Jmag':'B_J','Hmag':'B_H','Kmag':'B_Ks','H2mag':'D_H2','H3mag':'D_H3',
                  'H4mag':'D_H4','J2mag':'D_J2','J3mag':'D_J3','K1mag':'D_K1','K2mag':'D_K2',
-                 'Y2mag':'D_Y2','Y3mag':'D_Y3'}
+                 'Y2mag':'D_Y2','Y3mag':'D_Y3',
+                 'Teff':'Teff','logL':'logL','logg':'logg','radius':'radius'}
         elif model=='nextgen':
             dic={'G':'G2018','Gbp':'G2018_BP','Grp':'G2018_RP','J':'J','H':'H','K':'K',
                  'W1':'W1_W10','W2':'W2_W10','W3':'W3_W10','W4':'W4_W10',
                  'gmag':'g_p1','rmag':'r_p1','imag':'i_p1','zmag':'z_p1','ymag':'y_p1',
                  'Ymag':'B_Y','Jmag':'B_J','Hmag':'B_H','Kmag':'B_Ks','H2mag':'D_H2','H3mag':'D_H3',
                  'H4mag':'D_H4','J2mag':'D_J2','J3mag':'D_J3','K1mag':'D_K1','K2mag':'D_K2',
-                 'Y2mag':'D_Y2','Y3mag':'D_Y3'}            
+                 'Y2mag':'D_Y2','Y3mag':'D_Y3',
+                 'Teff':'Teff','logL':'logL','logg':'logg','radius':'radius'}
         elif model=='mist':
             dic={'G':'Gaia_G_EDR3','Gbp':'Gaia_BP_EDR3','Grp':'Gaia_RP_EDR3',
                  'J':'2MASS_J','H':'2MASS_H','K':'2MASS_Ks',
                  'W1':'WISE_W1','W2':'WISE_W2','W3':'WISE_W3','W4':'WISE_W4',
                  'U':'Bessell_U','B':'Bessell_B','V':'Bessell_V','R':'Bessell_R','I':'Bessell_I',
                  'Kp':'Kepler_Kp','KD51':'Kepler_D51','Hp':'Hipparcos_Hp',
-                 'B_tycho':'Tycho_B','V_tycho':'Tycho_V','TESS':'TESS'}            
+                 'B_tycho':'Tycho_B','V_tycho':'Tycho_V','TESS':'TESS',
+                 'Teff':'Teff','logL':'log_L','logg':'log_g','radius':'radius'}
         elif model=='parsec':
             dic={'G':'Gmag','Gbp':'G_BPmag','Grp':'G_RPmag',                 
                  'J':'Jmag','H':'Hmag','K':'Ksmag','Spitzer_3.6':'IRAC_3.6mag',
                  'Spitzer_4.5':'IRAC_4.5mag','Spitzer_5.8':'IRAC_5.8mag','Spitzer_8.0':'IRAC_8.0mag',
                  'Spitzer_24':'MIPS_24mag','Spitzer_70':'MIPS_70mag','Spitzer_160':'MIPS_160mag',
-                 'W1':'W1mag','W2':'W2mag','W3':'W3mag','W4':'W4mag'} 
+                 'W1':'W1mag','W2':'W2mag','W3':'W3mag','W4':'W4mag',
+                 'Teff':'Teff','logL':'logL','logg':'logg','radius':'radius'}
         elif model=='spots':
             dic={'G':'G_mag','Gbp':'BP_mag','Grp':'RP_mag',                 
                  'J':'J_mag','H':'H_mag','K':'K_mag',
                  'B':'B_mag','V':'V_mag','R':'Rc_mag','I':'Ic_mag',
-                 'W1':'W1_mag', 'W2':'nan', 'W3':'nan', 'W4':'nan'} 
+                 'W1':'W1_mag', 'W2':'nan', 'W3':'nan', 'W4':'nan',
+                 'Teff':'Teff','logL':'log(L/Lsun)','logg':'log(g)','radius':'radius'}
         elif model=='dartmouth':
             dic={'B': 'jc_B','V': 'jc_V','R': 'jc_R','I': 'jc_I',
                  'G':'gaia_G','Gbp':'gaia_BP','Grp':'gaia_RP',                 
                  'U':'U','B':'B','V':'V','R':'R','I':'I',
-                 'J':'2mass_J','H':'2mass_H','K':'2mass_K'} 
+                 'J':'2mass_J','H':'2mass_H','K':'2mass_K',
+                 'Teff':'Teff','logL':'log(L)','logg':'log(g)','radius':'radius'}     
         elif model=='starevol':
             dic={'U':'M_U','B':'M_B','V':'M_V','R':'M_R','I':'M_I',
-                 'J':'M_J','H':'M_H','K':'M_K','G':'M_G','Gbp':'M_Gbp','Grp':'M_Grp'}
+                 'J':'M_J','H':'M_H','K':'M_K','G':'M_G','Gbp':'M_Gbp','Grp':'M_Grp',
+                 'Teff':'Teff','logL':'logL','logg':'logg','radius':'R'}
         elif model=='bhac15':
             dic={'G':'G','Gbp':'G_BP','Grp':'G_RP','J':'Mj','H':'Mh','K':'Mk',
                  'gmag':'g_p1','rmag':'r_p1','imag':'i_p1',
                  'zmag':'z_p1','ymag':'y_p1',
                  'Ymag':'B_Y','Jmag':'B_J','Hmag':'B_H','Kmag':'B_Ks','H2mag':'D_H2','H3mag':'D_H3',
                  'H4mag':'D_H4','J2mag':'D_J2','J3mag':'D_J3','K1mag':'D_K1','K2mag':'D_K2',
-                 'Y2mag':'D_Y2','Y3mag':'D_Y3'}            
+                 'Y2mag':'D_Y2','Y3mag':'D_Y3',            
+                 'Teff':'Teff','logL':'L/Ls','logg':'g','radius':'radius'}
         elif model=='atmo2020_ceq':
             dic={'MKO_Y':'MKO_Y','MKO_J':'MKO_J','MKO_H':'MKO_H','MKO_K':'MKO_K','MKO_L':'MKO_Lp','MKO_M':'MKO_Mp',
                  'W1':'W1','W2':'W2','W3':'W3','W4':'W4',
-                 'IRAC_CH1':'IRAC_CH1','IRAC_CH2':'IRAC_CH2'}
+                 'IRAC_CH1':'IRAC_CH1','IRAC_CH2':'IRAC_CH2',
+                 'Teff':'Teff','logL':'Luminosity','logg':'Gravity','radius':'Radius'}
         elif model=='atmo2020_neq_s':
             dic={'MKO_Y':'MKO_Y','MKO_J':'MKO_J','MKO_H':'MKO_H','MKO_K':'MKO_K','MKO_L':'MKO_Lp','MKO_M':'MKO_Mp',
                  'W1':'W1','W2':'W2','W3':'W3','W4':'W4',
-                 'IRAC_CH1':'IRAC_CH1','IRAC_CH2':'IRAC_CH2'}
+                 'IRAC_CH1':'IRAC_CH1','IRAC_CH2':'IRAC_CH2',
+                 'Teff':'Teff','logL':'Luminosity','logg':'Gravity','radius':'Radius'}
         elif model=='atmo2020_neq_w':
             dic={'MKO_Y':'MKO_Y','MKO_J':'MKO_J','MKO_H':'MKO_H','MKO_K':'MKO_K','MKO_L':'MKO_Lp','MKO_M':'MKO_Mp',
                  'W1':'W1','W2':'W2','W3':'W3','W4':'W4',
-                 'IRAC_CH1':'IRAC_CH1','IRAC_CH2':'IRAC_CH2'}
+                 'IRAC_CH1':'IRAC_CH1','IRAC_CH2':'IRAC_CH2',
+                 'Teff':'Teff','logL':'Luminosity','logg':'Gravity','radius':'Radius'}
         elif model=='geneva':
-            dic={'lum':'logL', 't_eff':'logTe','V':'Vmag','U-B':'U-B','B-V':'B-V',
-                 'B':'Bmag','U':'Umag', 'R':'nan', 'i':'nan'}
-
-        return dic[filt]
+            dic={'V':'Vmag','U-B':'U-B','B-V':'B-V',
+                 'B':'Bmag','U':'Umag', 'R':'nan', 'i':'nan',
+                 'Teff':'Teff','logL':'logL','logg':'logg','radius':'Rpol'}
+        elif model=='sonora_bobcat':
+            dic={'J':'J','H':'H','K':'Ks','W1':'W1',
+                'W2':'W2','W3':'W3','W4':'W4',
+                 'Teff':'Teff','logL':'logL','logg':'logg','radius':'radius'}
+            
+        try:
+            return dic[filt]
+        except KeyError: return 'nan'
     
     @staticmethod
     def fix_filters(filters,model,mode='collapse'):
@@ -2010,13 +2023,15 @@ class MADYS(object):
             panstarrs=np.array(['gmag','rmag','imag','zmag','ymag'])
             sloan=np.array(['V_sl','R_sl','I_sl','K_sl','R_sl2','Z_sl','M_sl'])
             sphere=np.array(['Ymag','Jmag','Hmag','Kmag','H2mag','H3mag','H4mag','J2mag','J3mag','K1mag','K2mag','Y2mag','Y3mag'])
+            hr=np.array(['radius','logg','logL','Teff'])
             if len(np.intersect1d(gaia,filters))>0: surveys.append('gaia')
             if len(np.intersect1d(tmass,filters))>0: surveys.append('2mass')
             if len(np.intersect1d(wise,filters))>0: surveys.append('wise')
             if len(np.intersect1d(johnson,filters))>0: surveys.append('johnson')
+            if len(np.intersect1d(panstarrs,filters))>0: surveys.append('panstarrs')
             if len(np.intersect1d(sloan,filters))>0: surveys.append('sloan')
             if len(np.intersect1d(sphere,filters))>0: surveys.append('sphere')
-
+            if len(np.intersect1d(hr,filters))>0: surveys.append('hr')
             return surveys
 
 
@@ -2056,6 +2071,7 @@ class MADYS(object):
                     case=4
             else: raise TypeError('Only scalar, list or numpy arrays are valid inputs for the keyword "age_range".')
 
+                
         iso_f=np.full(([n1,n2,nf]), np.nan) #final matrix    
         found=np.zeros(nf,dtype=bool)
 #        c=0
@@ -2139,6 +2155,9 @@ class MADYS(object):
         mnew=M_jup.value/M_sun.value*mnew
         if n2==1: anew=np.array([anew])        
         fnew=np.array(fnew)
+        if 'radius' in fnew:
+            w=MADYS.where_v(['radius'],fnew)
+            iso_f[:,:,w]*=R_jup.value/R_sun.value            
         fnew=MADYS.fix_filters(fnew,model,mode='replace')
 
         return mnew,anew,fnew,iso_f
@@ -2307,3 +2326,4 @@ class MADYS(object):
             if found==False: 
                 mess='The inserted model does not exist. Check the spelling and try again. Available models: '+','.join(f_mods)
                 raise ValueError(mess)
+

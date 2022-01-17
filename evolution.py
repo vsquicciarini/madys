@@ -185,11 +185,11 @@ def _read_model_PHOENIX_websim(path, fname, instrument):
     data.age  *= 1000
     data.mass *= cst.M_sun / cst.M_jup
     if unit == 'Gm':
-        # data.radius /= cst.R_jup.to(units.Gm)
-        pass
+        data.radius /= cst.R_jup.to(units.Gm)
+        #pass
     elif unit == 'Gcm':
-        #data.radius /= cst.R_jup.to(units.Gm*100)
-        pass
+        data.radius /= cst.R_jup.to(units.Gm/100)
+        #pass
     else:
         pass
         
@@ -410,7 +410,7 @@ def _read_model_MIST(path, fname, instrument, max_phase=2): #VS21
     values=np.array(cols[3:]) #exclude ages, initial mass and star_mass
     ages=data2[w_cut[1:]-1,w_a]        
     masses=np.logspace(np.log10(mass_range[0]),np.log10(mass_range[1]),n_m)    
-    dat=np.full((n_m, len(ages), len(values)), np.nan)
+    dat=np.full((n_m, len(ages), len(values)+1), np.nan)
 
     #interpolate across the grid to fill dat
     for i in range(len(ages)):
@@ -427,6 +427,17 @@ def _read_model_MIST(path, fname, instrument, max_phase=2): #VS21
     masses=masses*cst.M_sun.value / cst.M_jup.value #M_sun -> M_Jup
     ages=10**(ages-6) #log10(age) -> Myr
 
+    w_T,=np.where(values=='log_Teff')
+    dat[:,:,w_T]=10**dat[:,:,w_T]
+    values[w_T]='Teff'
+
+    #creates a column for radii [R_jup]
+    cv=np.log10(cst.M_jup.value/cst.M_sun.value)-2*np.log10(cst.R_jup.value/cst.R_sun.value)
+    w_g,=np.where(values=='log_g')
+    for i in range(len(ages)):
+        rad=np.sqrt(masses*10**(4.44+cv-dat[:,i,w_g].ravel()))
+        dat[:,i,-1]=rad
+    values=np.concatenate([values,['radius']])
                 
     return masses, ages, values, dat
 
@@ -495,7 +506,7 @@ def _read_model_PARSEC(path, fname, instrument, max_phase=3): #VS21
     values=np.array(cols[2:]) #exclude ages and metallicity
     ages=data2[w_cut[1:]-1,w_a]        
     masses=np.logspace(np.log10(mass_range[0]),np.log10(mass_range[1]),n_m)    
-    dat=np.full((n_m, len(ages), len(values)), np.nan)
+    dat=np.full((n_m, len(ages), len(values)+1), np.nan)
     
     #interpolate across the grid to fill dat
     for i in range(len(ages)):
@@ -511,6 +522,18 @@ def _read_model_PARSEC(path, fname, instrument, max_phase=3): #VS21
         
     masses=masses*cst.M_sun.value / cst.M_jup.value #converts into M_Jup
     ages=10**(ages-6) #converts into Myr
+
+    w_T,=np.where(values=='logTe')
+    dat[:,:,w_T]=10**dat[:,:,w_T]
+    values[w_T]='Teff'
+
+    #creates a column for radii [R_jup]
+    cv=np.log10(cst.M_jup.value/cst.M_sun.value)-2*np.log10(cst.R_jup.value/cst.R_sun.value)
+    w_g,=np.where(values=='logg')
+    for i in range(len(ages)):
+        rad=np.sqrt(masses*10**(4.44+cv-dat[:,i,w_g].ravel()))
+        dat[:,i,-1]=rad
+    values=np.concatenate([values,['radius']])
 
     return masses, ages, values, dat
 
@@ -666,10 +689,13 @@ def _read_model_starevol(path, fname, instrument): #VS21
     data2=data2[w,:]
 
     values=np.array(cols[1:]) #exclude masses
-    
-            
-    
-    #riprendere da qua: fare un ciclo con tutti i file
+
+    w_T,=np.where(np.array(cols)=='logTeff')
+    data2[:,w_T]=10**data2[:,w_T]
+    values[w_T-1]='Teff'
+    w_R,=np.where(np.array(cols)=='R')
+    data2[:,w_R]*=cst.R_sun.value/cst.R_jup.value    
+                
     #output values
     ages=[]
     n_m=int(1.1*len(w))
@@ -692,6 +718,8 @@ def _read_model_starevol(path, fname, instrument): #VS21
             w,=np.where((data2[1:,0]-data2[:-1,0]>0)) #to avoid repeated mass entries
             w=np.insert(w+1,0,0)
             data2=data2[w,:]            
+            data2[:,w_T]=10**data2[:,w_T]
+            data2[:,w_R]*=cst.R_sun.value/cst.R_jup.value    
         ma=data2[:,0].reshape(len(data2))
         for j in range(len(values)):
             y=data2[:,j+1]
@@ -700,7 +728,6 @@ def _read_model_starevol(path, fname, instrument): #VS21
         
     masses=masses*cst.M_sun.value / cst.M_jup.value #converts into M_Jup
     ages=10**(np.array(ages)-6) #converts into Myr
-
 
     return masses, ages, values, dat
 
@@ -769,6 +796,8 @@ def _read_model_atmo2020(path, fname, instrument): #VS21
     data.columns=cols
     data.mass = data.mass.astype(float) * cst.M_sun / cst.M_jup
     data.age = data.age.astype(float) * 1000
+    data['Radius']=data['Radius'].astype(float)*cst.R_sun / cst.R_jup
+    
     masses, ages, values, dat = _reshape_data(data)
               
     return masses, ages, values, dat
@@ -839,16 +868,22 @@ def _read_model_SPOTS(path, fname, instrument): #VS21
     data = pd.read_csv(io.StringIO(lines), sep='\s+', header=None)
     data=data.replace(-99,np.nan)
 
-    c=0
-    while c<len(cols):
-        if cols[c]=='log(Teff)':
-            cols[c]=cols[c].replace('log(Teff)','Teff')
-            break
-        c+=1
 
     # rename columns
     data.columns = cols    
-    data=df_column_switch(data,'Fspot','Teff')
+
+    data['log(Teff)']=10**data['log(Teff)']
+    data['log(R/Rsun)']=10**data['log(R/Rsun)']*cst.R_sun / cst.R_jup
+
+    cols=np.array(cols)
+    w,=np.where(np.array(cols)=='log(Teff)')
+    cols[w]='Teff'
+    w,=np.where(np.array(cols)=='log(R/Rsun)')
+    cols[w]='radius'
+
+    data.columns = cols    
+
+#    data=df_column_switch(data,'Fspot','Teff')
     
     # unit conversion
     data.age  = 10**(data.age-6)
@@ -940,15 +975,29 @@ def _read_model_Dartmouth(path, fname, instrument): #VS21
         all_data.append(data)
         
     data=pd.concat(all_data)
-    data.columns=cols
+
+    # rename columns
+    data.columns = cols    
+
+    data['log(Teff)']=10**data['log(Teff)'].astype(float)
+    data['log(R)']=10**data['log(R)'].astype(float)*cst.R_sun / cst.R_jup
+
+    cols=np.array(cols)
+    w,=np.where(np.array(cols)=='log(Teff)')
+    cols[w]='Teff'
+    w,=np.where(np.array(cols)=='log(R)')
+    cols[w]='radius'
+
+    data.columns = cols    
+  
     data.mass = data.mass.astype(float) * cst.M_sun / cst.M_jup
     masses, ages, values, dat = _reshape_data(data)
         
     return masses, ages, values, dat    
 
-def _read_model_Ekstroem(path, fname, instrument, v_vcrit=0.0):
+def _read_model_geneva(path, fname, instrument, v_vcrit=0.0):
     '''
-    (Private) Read the Dartmouth models
+    (Private) Read the Geneva models
 
     Parameters
     ----------
@@ -1020,14 +1069,41 @@ def _read_model_Ekstroem(path, fname, instrument, v_vcrit=0.0):
         cols.extend(['Bmag','Umag'])
     cols[2]='mass'
         
+    cols=np.array(cols)
+    w_T,=np.where(cols=='logTe')
+    cols[w_T]='Teff'    
     data.columns=cols
     data.mass = data.mass.astype(float) * cst.M_sun / cst.M_jup
+    data['Rpol'] = data['Rpol'].astype(float) / cst.R_sun.to(units.cm).value * cst.R_sun / cst.R_jup
+    data['Teff'] = 10**data['Teff'].astype(float)
        
     # reshape in final format
     masses, ages, values, dat = _reshape_data(data,start_col=5)
         
     return masses, ages, values, dat
 
+def _read_model_sonora_bobcat(path, fname, instrument):
+    data = pd.read_csv(path / fname, sep=',', comment='!')
+    m=np.unique(data['mass'])
+    a=np.unique(data['age'])
+    val=np.array(data.columns[2:])
+    
+    n_m=len(m)
+    n_a=len(a)
+    n_v=len(val)
+
+    dat=np.zeros([n_m,n_a,n_v])
+    for i in range(n_m):
+        for j in range(n_a):
+            w,=np.where((data['mass']==m[i]) & (data['age']==a[j]))
+            if len(w)==1:
+                for k in range(n_v):
+                    dat[i,j,k]=data[val[k]][w].values
+                
+    a=a*1e-6
+    data['radius']*= cst.R_sun.value/cst.R_jup.value
+    return m,a,val,dat
+    
 
 def _reshape_data(dataframe,start_col=2):
     '''
@@ -1417,6 +1493,12 @@ models = {
         {'instrument': 'sphere',    'name': 'ames_dusty',                 'file': 'model.AMES-dusty.M-0.0.SPHERE.Vega.txt',    'function': _read_model_PHOENIX_websim},
         {'instrument': 'sphere',    'name': 'nextgen',               'file': 'model.NextGen.M-0.0.SPHERE.Vega.txt',       'function': _read_model_PHOENIX_websim},
 
+        {'instrument': 'hr',      'name': 'ames_cond',                'file': 'model.AMES-Cond-2000.M-0.0.GAIA.Vega.txt',  'function': _read_model_PHOENIX_websim},
+        {'instrument': 'hr',      'name': 'ames_dusty',               'file': 'model.AMES-dusty.M-0.0.GAIA.Vega.txt',      'function': _read_model_PHOENIX_websim},
+        {'instrument': 'hr',      'name': 'bt_nextgen',               'file': 'model.BT-NextGen.M-0.0.GAIA.Vega.txt',      'function': _read_model_PHOENIX_websim},
+        {'instrument': 'hr',      'name': 'bt_settl',                 'file': 'model.BT-Settl.M-0.0.GAIA.Vega.txt',        'function': _read_model_PHOENIX_websim},
+        {'instrument': 'hr',      'name': 'nextgen',                  'file': 'model.NextGen.M-0.0.GAIA.Vega.txt',         'function': _read_model_PHOENIX_websim},
+
         {'instrument': 'sloan',     'name': 'bt_settl',              'file': 'model.BT-Settl.M-0.0.SLOAN.Vega.txt',       'function': _read_model_PHOENIX_websim},
         {'instrument': 'johnson',   'name': 'bt_settl',              'file': 'model.BT-Settl.M-0.0.JOHNSON.Vega.txt',     'function': _read_model_PHOENIX_websim},
         
@@ -1426,6 +1508,7 @@ models = {
         {'instrument': 'hipparcos', 'name': 'mist_m0.25_p0.0_p0.0',  'file': 'MIST_v1.2_feh_m0.25_afe_p0.0_vvcrit0.0_UBVRIplus.iso.cmd.txt',  'function': _read_model_MIST},
         {'instrument': 'tycho',     'name': 'mist_m0.25_p0.0_p0.0',  'file': 'MIST_v1.2_feh_m0.25_afe_p0.0_vvcrit0.0_UBVRIplus.iso.cmd.txt',  'function': _read_model_MIST},
         {'instrument': 'wise',      'name': 'mist_m0.25_p0.0_p0.0',  'file': 'MIST_v1.2_feh_m0.25_afe_p0.0_vvcrit0.0_WISE.iso.cmd.txt',       'function': _read_model_MIST},
+        {'instrument': 'hr',        'name': 'mist_m0.25_p0.0_p0.0',  'file': 'MIST_v1.2_feh_m0.25_afe_p0.0_vvcrit0.0_UBVRIplus.iso.cmd.txt',  'function': _read_model_MIST},
 
         {'instrument': 'bessell',   'name': 'mist_m0.25_p0.0_p0.4',  'file': 'MIST_v1.2_feh_m0.25_afe_p0.0_vvcrit0.4_UBVRIplus.iso.cmd.txt',  'function': _read_model_MIST},
         {'instrument': 'gaia',      'name': 'mist_m0.25_p0.0_p0.4',  'file': 'MIST_v1.2_feh_m0.25_afe_p0.0_vvcrit0.4_UBVRIplus.iso.cmd.txt',  'function': _read_model_MIST},
@@ -1433,6 +1516,7 @@ models = {
         {'instrument': 'hipparcos', 'name': 'mist_m0.25_p0.0_p0.4',  'file': 'MIST_v1.2_feh_m0.25_afe_p0.0_vvcrit0.4_UBVRIplus.iso.cmd.txt',  'function': _read_model_MIST},
         {'instrument': 'tycho',     'name': 'mist_m0.25_p0.0_p0.4',  'file': 'MIST_v1.2_feh_m0.25_afe_p0.0_vvcrit0.4_UBVRIplus.iso.cmd.txt',  'function': _read_model_MIST},
         {'instrument': 'wise',      'name': 'mist_m0.25_p0.0_p0.4',  'file': 'MIST_v1.2_feh_m0.25_afe_p0.0_vvcrit0.4_WISE.iso.cmd.txt',       'function': _read_model_MIST},
+        {'instrument': 'hr',        'name': 'mist_m0.25_p0.0_p0.4',  'file': 'MIST_v1.2_feh_m0.25_afe_p0.0_vvcrit0.4_UBVRIplus.iso.cmd.txt',  'function': _read_model_MIST},
 
         {'instrument': 'bessell',   'name': 'mist_m0.50_p0.0_p0.0',  'file': 'MIST_v1.2_feh_m0.50_afe_p0.0_vvcrit0.0_UBVRIplus.iso.cmd.txt',  'function': _read_model_MIST},
         {'instrument': 'gaia',      'name': 'mist_m0.50_p0.0_p0.0',  'file': 'MIST_v1.2_feh_m0.50_afe_p0.0_vvcrit0.0_UBVRIplus.iso.cmd.txt',  'function': _read_model_MIST},
@@ -1440,6 +1524,7 @@ models = {
         {'instrument': 'hipparcos', 'name': 'mist_m0.50_p0.0_p0.0',  'file': 'MIST_v1.2_feh_m0.50_afe_p0.0_vvcrit0.0_UBVRIplus.iso.cmd.txt',  'function': _read_model_MIST},
         {'instrument': 'tycho',     'name': 'mist_m0.50_p0.0_p0.0',  'file': 'MIST_v1.2_feh_m0.50_afe_p0.0_vvcrit0.0_UBVRIplus.iso.cmd.txt',  'function': _read_model_MIST},
         {'instrument': 'wise',      'name': 'mist_m0.50_p0.0_p0.0',  'file': 'MIST_v1.2_feh_m0.50_afe_p0.0_vvcrit0.0_WISE.iso.cmd.txt',       'function': _read_model_MIST},
+        {'instrument': 'hr',        'name': 'mist_m0.50_p0.0_p0.0',  'file': 'MIST_v1.2_feh_m0.50_afe_p0.0_vvcrit0.0_UBVRIplus.iso.cmd.txt',  'function': _read_model_MIST},
 
         {'instrument': 'bessell',   'name': 'mist_m0.50_p0.0_p0.4',  'file': 'MIST_v1.2_feh_m0.50_afe_p0.0_vvcrit0.4_UBVRIplus.iso.cmd.txt',  'function': _read_model_MIST},
         {'instrument': 'gaia',      'name': 'mist_m0.50_p0.0_p0.4',  'file': 'MIST_v1.2_feh_m0.50_afe_p0.0_vvcrit0.4_UBVRIplus.iso.cmd.txt',  'function': _read_model_MIST},
@@ -1447,6 +1532,7 @@ models = {
         {'instrument': 'hipparcos', 'name': 'mist_m0.50_p0.0_p0.4',  'file': 'MIST_v1.2_feh_m0.50_afe_p0.0_vvcrit0.4_UBVRIplus.iso.cmd.txt',  'function': _read_model_MIST},
         {'instrument': 'tycho',     'name': 'mist_m0.50_p0.0_p0.4',  'file': 'MIST_v1.2_feh_m0.50_afe_p0.0_vvcrit0.4_UBVRIplus.iso.cmd.txt',  'function': _read_model_MIST},
         {'instrument': 'wise',      'name': 'mist_m0.50_p0.0_p0.4',  'file': 'MIST_v1.2_feh_m0.50_afe_p0.0_vvcrit0.4_WISE.iso.cmd.txt',       'function': _read_model_MIST},
+        {'instrument': 'hr',        'name': 'mist_m0.50_p0.0_p0.4',  'file': 'MIST_v1.2_feh_m0.50_afe_p0.0_vvcrit0.4_UBVRIplus.iso.cmd.txt',  'function': _read_model_MIST},
 
         {'instrument': 'bessell',   'name': 'mist_m0.75_p0.0_p0.0',  'file': 'MIST_v1.2_feh_m0.75_afe_p0.0_vvcrit0.0_UBVRIplus.iso.cmd.txt',  'function': _read_model_MIST},
         {'instrument': 'gaia',      'name': 'mist_m0.75_p0.0_p0.0',  'file': 'MIST_v1.2_feh_m0.75_afe_p0.0_vvcrit0.0_UBVRIplus.iso.cmd.txt',  'function': _read_model_MIST},
@@ -1454,6 +1540,7 @@ models = {
         {'instrument': 'hipparcos', 'name': 'mist_m0.75_p0.0_p0.0',  'file': 'MIST_v1.2_feh_m0.75_afe_p0.0_vvcrit0.0_UBVRIplus.iso.cmd.txt',  'function': _read_model_MIST},
         {'instrument': 'tycho',     'name': 'mist_m0.75_p0.0_p0.0',  'file': 'MIST_v1.2_feh_m0.75_afe_p0.0_vvcrit0.0_UBVRIplus.iso.cmd.txt',  'function': _read_model_MIST},
         {'instrument': 'wise',      'name': 'mist_m0.75_p0.0_p0.0',  'file': 'MIST_v1.2_feh_m0.75_afe_p0.0_vvcrit0.0_WISE.iso.cmd.txt',       'function': _read_model_MIST},
+        {'instrument': 'hr',        'name': 'mist_m0.75_p0.0_p0.0',  'file': 'MIST_v1.2_feh_m0.75_afe_p0.0_vvcrit0.0_UBVRIplus.iso.cmd.txt',  'function': _read_model_MIST},
 
         {'instrument': 'bessell',   'name': 'mist_m0.75_p0.0_p0.4',  'file': 'MIST_v1.2_feh_m0.75_afe_p0.0_vvcrit0.4_UBVRIplus.iso.cmd.txt',  'function': _read_model_MIST},
         {'instrument': 'gaia',      'name': 'mist_m0.75_p0.0_p0.4',  'file': 'MIST_v1.2_feh_m0.75_afe_p0.0_vvcrit0.4_UBVRIplus.iso.cmd.txt',  'function': _read_model_MIST},
@@ -1461,6 +1548,7 @@ models = {
         {'instrument': 'hipparcos', 'name': 'mist_m0.75_p0.0_p0.4',  'file': 'MIST_v1.2_feh_m0.75_afe_p0.0_vvcrit0.4_UBVRIplus.iso.cmd.txt',  'function': _read_model_MIST},
         {'instrument': 'tycho',     'name': 'mist_m0.75_p0.0_p0.4',  'file': 'MIST_v1.2_feh_m0.75_afe_p0.0_vvcrit0.4_UBVRIplus.iso.cmd.txt',  'function': _read_model_MIST},
         {'instrument': 'wise',      'name': 'mist_m0.75_p0.0_p0.4',  'file': 'MIST_v1.2_feh_m0.75_afe_p0.0_vvcrit0.4_WISE.iso.cmd.txt',       'function': _read_model_MIST},
+        {'instrument': 'hr',        'name': 'mist_m0.75_p0.0_p0.4',  'file': 'MIST_v1.2_feh_m0.75_afe_p0.0_vvcrit0.4_UBVRIplus.iso.cmd.txt',  'function': _read_model_MIST},
 
         {'instrument': 'bessell',   'name': 'mist_m1.00_p0.0_p0.0',  'file': 'MIST_v1.2_feh_m1.00_afe_p0.0_vvcrit0.0_UBVRIplus.iso.cmd.txt',  'function': _read_model_MIST},
         {'instrument': 'gaia',      'name': 'mist_m1.00_p0.0_p0.0',  'file': 'MIST_v1.2_feh_m1.00_afe_p0.0_vvcrit0.0_UBVRIplus.iso.cmd.txt',  'function': _read_model_MIST},
@@ -1468,6 +1556,7 @@ models = {
         {'instrument': 'hipparcos', 'name': 'mist_m1.00_p0.0_p0.0',  'file': 'MIST_v1.2_feh_m1.00_afe_p0.0_vvcrit0.0_UBVRIplus.iso.cmd.txt',  'function': _read_model_MIST},
         {'instrument': 'tycho',     'name': 'mist_m1.00_p0.0_p0.0',  'file': 'MIST_v1.2_feh_m1.00_afe_p0.0_vvcrit0.0_UBVRIplus.iso.cmd.txt',  'function': _read_model_MIST},
         {'instrument': 'wise',      'name': 'mist_m1.00_p0.0_p0.0',  'file': 'MIST_v1.2_feh_m1.00_afe_p0.0_vvcrit0.0_WISE.iso.cmd.txt',       'function': _read_model_MIST},
+        {'instrument': 'hr',        'name': 'mist_m1.00_p0.0_p0.0',  'file': 'MIST_v1.2_feh_m1.00_afe_p0.0_vvcrit0.0_UBVRIplus.iso.cmd.txt',  'function': _read_model_MIST},
 
         {'instrument': 'bessell',   'name': 'mist_m1.00_p0.0_p0.4',  'file': 'MIST_v1.2_feh_m1.00_afe_p0.0_vvcrit0.4_UBVRIplus.iso.cmd.txt',  'function': _read_model_MIST},
         {'instrument': 'gaia',      'name': 'mist_m1.00_p0.0_p0.4',  'file': 'MIST_v1.2_feh_m1.00_afe_p0.0_vvcrit0.4_UBVRIplus.iso.cmd.txt',  'function': _read_model_MIST},
@@ -1475,6 +1564,7 @@ models = {
         {'instrument': 'hipparcos', 'name': 'mist_m1.00_p0.0_p0.4',  'file': 'MIST_v1.2_feh_m1.00_afe_p0.0_vvcrit0.4_UBVRIplus.iso.cmd.txt',  'function': _read_model_MIST},
         {'instrument': 'tycho',     'name': 'mist_m1.00_p0.0_p0.4',  'file': 'MIST_v1.2_feh_m1.00_afe_p0.0_vvcrit0.4_UBVRIplus.iso.cmd.txt',  'function': _read_model_MIST},
         {'instrument': 'wise',      'name': 'mist_m1.00_p0.0_p0.4',  'file': 'MIST_v1.2_feh_m1.00_afe_p0.0_vvcrit0.4_WISE.iso.cmd.txt',       'function': _read_model_MIST},
+        {'instrument': 'hr',        'name': 'mist_m1.00_p0.0_p0.4',  'file': 'MIST_v1.2_feh_m1.00_afe_p0.0_vvcrit0.4_UBVRIplus.iso.cmd.txt',  'function': _read_model_MIST},
 
         {'instrument': 'bessell',   'name': 'mist_p0.00_p0.0_p0.0',  'file': 'MIST_v1.2_feh_p0.00_afe_p0.0_vvcrit0.0_UBVRIplus.iso.cmd.txt',  'function': _read_model_MIST},
         {'instrument': 'gaia',      'name': 'mist_p0.00_p0.0_p0.0',  'file': 'MIST_v1.2_feh_p0.00_afe_p0.0_vvcrit0.0_UBVRIplus.iso.cmd.txt',  'function': _read_model_MIST},
@@ -1482,6 +1572,7 @@ models = {
         {'instrument': 'hipparcos', 'name': 'mist_p0.00_p0.0_p0.0',  'file': 'MIST_v1.2_feh_p0.00_afe_p0.0_vvcrit0.0_UBVRIplus.iso.cmd.txt',  'function': _read_model_MIST},
         {'instrument': 'tycho',     'name': 'mist_p0.00_p0.0_p0.0',  'file': 'MIST_v1.2_feh_p0.00_afe_p0.0_vvcrit0.0_UBVRIplus.iso.cmd.txt',  'function': _read_model_MIST},
         {'instrument': 'wise',      'name': 'mist_p0.00_p0.0_p0.0',  'file': 'MIST_v1.2_feh_p0.00_afe_p0.0_vvcrit0.0_WISE.iso.cmd.txt',       'function': _read_model_MIST},
+        {'instrument': 'hr',        'name': 'mist_p0.00_p0.0_p0.0',  'file': 'MIST_v1.2_feh_p0.00_afe_p0.0_vvcrit0.0_UBVRIplus.iso.cmd.txt',  'function': _read_model_MIST},
 
         {'instrument': 'bessell',   'name': 'mist_p0.00_p0.0_p0.4',   'file': 'MIST_v1.2_feh_p0.00_afe_p0.0_vvcrit0.4_UBVRIplus.iso.cmd.txt',  'function': _read_model_MIST},
         {'instrument': 'gaia',      'name': 'mist_p0.00_p0.0_p0.4',   'file': 'MIST_v1.2_feh_p0.00_afe_p0.0_vvcrit0.4_UBVRIplus.iso.cmd.txt',  'function': _read_model_MIST},
@@ -1489,6 +1580,7 @@ models = {
         {'instrument': 'hipparcos', 'name': 'mist_p0.00_p0.0_p0.4',   'file': 'MIST_v1.2_feh_p0.00_afe_p0.0_vvcrit0.4_UBVRIplus.iso.cmd.txt',  'function': _read_model_MIST},
         {'instrument': 'tycho',     'name': 'mist_p0.00_p0.0_p0.4',   'file': 'MIST_v1.2_feh_p0.00_afe_p0.0_vvcrit0.4_UBVRIplus.iso.cmd.txt',  'function': _read_model_MIST},
         {'instrument': 'wise',      'name': 'mist_p0.00_p0.0_p0.4',   'file': 'MIST_v1.2_feh_p0.00_afe_p0.0_vvcrit0.4_WISE.iso.cmd.txt',       'function': _read_model_MIST},
+        {'instrument': 'hr',        'name': 'mist_p0.00_p0.0_p0.4',   'file': 'MIST_v1.2_feh_p0.00_afe_p0.0_vvcrit0.4_UBVRIplus.iso.cmd.txt',  'function': _read_model_MIST},
 
         {'instrument': 'bessell',   'name': 'mist_p0.25_p0.0_p0.0',   'file': 'MIST_v1.2_feh_p0.25_afe_p0.0_vvcrit0.0_UBVRIplus.iso.cmd.txt',  'function': _read_model_MIST},
         {'instrument': 'gaia',      'name': 'mist_p0.25_p0.0_p0.0',   'file': 'MIST_v1.2_feh_p0.25_afe_p0.0_vvcrit0.0_UBVRIplus.iso.cmd.txt',  'function': _read_model_MIST},
@@ -1496,6 +1588,7 @@ models = {
         {'instrument': 'hipparcos', 'name': 'mist_p0.25_p0.0_p0.0',   'file': 'MIST_v1.2_feh_p0.25_afe_p0.0_vvcrit0.0_UBVRIplus.iso.cmd.txt',  'function': _read_model_MIST},
         {'instrument': 'tycho',     'name': 'mist_p0.25_p0.0_p0.0',   'file': 'MIST_v1.2_feh_p0.25_afe_p0.0_vvcrit0.0_UBVRIplus.iso.cmd.txt',  'function': _read_model_MIST},
         {'instrument': 'wise',      'name': 'mist_p0.25_p0.0_p0.0',   'file': 'MIST_v1.2_feh_p0.25_afe_p0.0_vvcrit0.0_WISE.iso.cmd.txt',       'function': _read_model_MIST},
+        {'instrument': 'hr',        'name': 'mist_p0.25_p0.0_p0.0',   'file': 'MIST_v1.2_feh_p0.25_afe_p0.0_vvcrit0.0_UBVRIplus.iso.cmd.txt',  'function': _read_model_MIST},
 
         {'instrument': 'bessell',   'name': 'mist_p0.25_p0.0_p0.4',   'file': 'MIST_v1.2_feh_p0.25_afe_p0.0_vvcrit0.4_UBVRIplus.iso.cmd.txt',  'function': _read_model_MIST},
         {'instrument': 'gaia',      'name': 'mist_p0.25_p0.0_p0.4',   'file': 'MIST_v1.2_feh_p0.25_afe_p0.0_vvcrit0.4_UBVRIplus.iso.cmd.txt',  'function': _read_model_MIST},
@@ -1503,6 +1596,7 @@ models = {
         {'instrument': 'hipparcos', 'name': 'mist_p0.25_p0.0_p0.4',   'file': 'MIST_v1.2_feh_p0.25_afe_p0.0_vvcrit0.4_UBVRIplus.iso.cmd.txt',  'function': _read_model_MIST},
         {'instrument': 'tycho',     'name': 'mist_p0.25_p0.0_p0.4',   'file': 'MIST_v1.2_feh_p0.25_afe_p0.0_vvcrit0.4_UBVRIplus.iso.cmd.txt',  'function': _read_model_MIST},
         {'instrument': 'wise',      'name': 'mist_p0.25_p0.0_p0.4',   'file': 'MIST_v1.2_feh_p0.25_afe_p0.0_vvcrit0.4_WISE.iso.cmd.txt',       'function': _read_model_MIST},
+        {'instrument': 'hr',        'name': 'mist_p0.25_p0.0_p0.4',   'file': 'MIST_v1.2_feh_p0.25_afe_p0.0_vvcrit0.4_UBVRIplus.iso.cmd.txt',  'function': _read_model_MIST},
 
         {'instrument': 'bessell',   'name': 'mist_p0.50_p0.0_p0.0',   'file': 'MIST_v1.2_feh_p0.50_afe_p0.0_vvcrit0.0_UBVRIplus.iso.cmd.txt',  'function': _read_model_MIST},
         {'instrument': 'gaia',      'name': 'mist_p0.50_p0.0_p0.0',   'file': 'MIST_v1.2_feh_p0.50_afe_p0.0_vvcrit0.0_UBVRIplus.iso.cmd.txt',  'function': _read_model_MIST},
@@ -1510,6 +1604,7 @@ models = {
         {'instrument': 'hipparcos', 'name': 'mist_p0.50_p0.0_p0.0',   'file': 'MIST_v1.2_feh_p0.50_afe_p0.0_vvcrit0.0_UBVRIplus.iso.cmd.txt',  'function': _read_model_MIST},
         {'instrument': 'tycho',     'name': 'mist_p0.50_p0.0_p0.0',   'file': 'MIST_v1.2_feh_p0.50_afe_p0.0_vvcrit0.0_UBVRIplus.iso.cmd.txt',  'function': _read_model_MIST},
         {'instrument': 'wise',      'name': 'mist_p0.50_p0.0_p0.0',   'file': 'MIST_v1.2_feh_p0.50_afe_p0.0_vvcrit0.0_WISE.iso.cmd.txt',       'function': _read_model_MIST},
+        {'instrument': 'hr',        'name': 'mist_p0.50_p0.0_p0.0',   'file': 'MIST_v1.2_feh_p0.50_afe_p0.0_vvcrit0.0_UBVRIplus.iso.cmd.txt',  'function': _read_model_MIST},
 
         {'instrument': 'bessell',   'name': 'mist_p0.50_p0.0_p0.4',   'file': 'MIST_v1.2_feh_p0.50_afe_p0.0_vvcrit0.4_UBVRIplus.iso.cmd.txt',  'function': _read_model_MIST},
         {'instrument': 'gaia',      'name': 'mist_p0.50_p0.0_p0.4',   'file': 'MIST_v1.2_feh_p0.50_afe_p0.0_vvcrit0.4_UBVRIplus.iso.cmd.txt',  'function': _read_model_MIST},
@@ -1517,6 +1612,7 @@ models = {
         {'instrument': 'hipparcos', 'name': 'mist_p0.50_p0.0_p0.4',   'file': 'MIST_v1.2_feh_p0.50_afe_p0.0_vvcrit0.4_UBVRIplus.iso.cmd.txt',  'function': _read_model_MIST},
         {'instrument': 'tycho',     'name': 'mist_p0.50_p0.0_p0.4',   'file': 'MIST_v1.2_feh_p0.50_afe_p0.0_vvcrit0.4_UBVRIplus.iso.cmd.txt',  'function': _read_model_MIST},
         {'instrument': 'wise',      'name': 'mist_p0.50_p0.0_p0.4',   'file': 'MIST_v1.2_feh_p0.50_afe_p0.0_vvcrit0.4_WISE.iso.cmd.txt',       'function': _read_model_MIST},
+        {'instrument': 'hr',        'name': 'mist_p0.50_p0.0_p0.4',   'file': 'MIST_v1.2_feh_p0.50_afe_p0.0_vvcrit0.4_UBVRIplus.iso.cmd.txt',  'function': _read_model_MIST},
 
         {'instrument': 'bessell',   'name': 'mist_p0.75_p0.0_p0.0',   'file': 'MIST_v1.2_feh_p0.75_afe_p0.0_vvcrit0.0_UBVRIplus.iso.cmd.txt',  'function': _read_model_MIST},
         {'instrument': 'gaia',      'name': 'mist_p0.75_p0.0_p0.0',   'file': 'MIST_v1.2_feh_p0.75_afe_p0.0_vvcrit0.0_UBVRIplus.iso.cmd.txt',  'function': _read_model_MIST},
@@ -1524,6 +1620,7 @@ models = {
         {'instrument': 'hipparcos', 'name': 'mist_p0.75_p0.0_p0.0',   'file': 'MIST_v1.2_feh_p0.75_afe_p0.0_vvcrit0.0_UBVRIplus.iso.cmd.txt',  'function': _read_model_MIST},
         {'instrument': 'tycho',     'name': 'mist_p0.75_p0.0_p0.0',   'file': 'MIST_v1.2_feh_p0.75_afe_p0.0_vvcrit0.0_UBVRIplus.iso.cmd.txt',  'function': _read_model_MIST},
         {'instrument': 'wise',      'name': 'mist_p0.75_p0.0_p0.0',   'file': 'MIST_v1.2_feh_p0.75_afe_p0.0_vvcrit0.0_WISE.iso.cmd.txt',       'function': _read_model_MIST},
+        {'instrument': 'hr',        'name': 'mist_p0.75_p0.0_p0.0',   'file': 'MIST_v1.2_feh_p0.75_afe_p0.0_vvcrit0.0_UBVRIplus.iso.cmd.txt',  'function': _read_model_MIST},
 
         {'instrument': 'bessell',   'name': 'mist_p0.75_p0.0_p0.4',   'file': 'MIST_v1.2_feh_p0.75_afe_p0.0_vvcrit0.4_UBVRIplus.iso.cmd.txt',  'function': _read_model_MIST},
         {'instrument': 'gaia',      'name': 'mist_p0.75_p0.0_p0.4',   'file': 'MIST_v1.2_feh_p0.75_afe_p0.0_vvcrit0.4_UBVRIplus.iso.cmd.txt',  'function': _read_model_MIST},
@@ -1531,6 +1628,7 @@ models = {
         {'instrument': 'hipparcos', 'name': 'mist_p0.75_p0.0_p0.4',   'file': 'MIST_v1.2_feh_p0.75_afe_p0.0_vvcrit0.4_UBVRIplus.iso.cmd.txt',  'function': _read_model_MIST},
         {'instrument': 'tycho',     'name': 'mist_p0.75_p0.0_p0.4',   'file': 'MIST_v1.2_feh_p0.75_afe_p0.0_vvcrit0.4_UBVRIplus.iso.cmd.txt',  'function': _read_model_MIST},
         {'instrument': 'wise',      'name': 'mist_p0.75_p0.0_p0.4',   'file': 'MIST_v1.2_feh_p0.75_afe_p0.0_vvcrit0.4_WISE.iso.cmd.txt',       'function': _read_model_MIST},
+        {'instrument': 'hr',        'name': 'mist_p0.75_p0.0_p0.4',   'file': 'MIST_v1.2_feh_p0.75_afe_p0.0_vvcrit0.4_UBVRIplus.iso.cmd.txt',  'function': _read_model_MIST},
 
         {'instrument': 'bessell',   'name': 'mist_p1.00_p0.0_p0.0',   'file': 'MIST_v1.2_feh_p1.00_afe_p0.0_vvcrit0.0_UBVRIplus.iso.cmd.txt',  'function': _read_model_MIST},
         {'instrument': 'gaia',      'name': 'mist_p1.00_p0.0_p0.0',   'file': 'MIST_v1.2_feh_p1.00_afe_p0.0_vvcrit0.0_UBVRIplus.iso.cmd.txt',  'function': _read_model_MIST},
@@ -1538,6 +1636,7 @@ models = {
         {'instrument': 'hipparcos', 'name': 'mist_p1.00_p0.0_p0.0',   'file': 'MIST_v1.2_feh_p1.00_afe_p0.0_vvcrit0.0_UBVRIplus.iso.cmd.txt',  'function': _read_model_MIST},
         {'instrument': 'tycho',     'name': 'mist_p1.00_p0.0_p0.0',   'file': 'MIST_v1.2_feh_p1.00_afe_p0.0_vvcrit0.0_UBVRIplus.iso.cmd.txt',  'function': _read_model_MIST},
         {'instrument': 'wise',      'name': 'mist_p1.00_p0.0_p0.0',   'file': 'MIST_v1.2_feh_p1.00_afe_p0.0_vvcrit0.0_WISE.iso.cmd.txt',       'function': _read_model_MIST},
+        {'instrument': 'hr',        'name': 'mist_p1.00_p0.0_p0.0',   'file': 'MIST_v1.2_feh_p1.00_afe_p0.0_vvcrit0.0_UBVRIplus.iso.cmd.txt',  'function': _read_model_MIST},
 
         {'instrument': 'bessell',   'name': 'mist_p1.00_p0.0_p0.4',   'file': 'MIST_v1.2_feh_p1.00_afe_p0.0_vvcrit0.4_UBVRIplus.iso.cmd.txt',  'function': _read_model_MIST},
         {'instrument': 'gaia',      'name': 'mist_p1.00_p0.0_p0.4',   'file': 'MIST_v1.2_feh_p1.00_afe_p0.0_vvcrit0.4_UBVRIplus.iso.cmd.txt',  'function': _read_model_MIST},
@@ -1545,6 +1644,7 @@ models = {
         {'instrument': 'hipparcos', 'name': 'mist_p1.00_p0.0_p0.4',   'file': 'MIST_v1.2_feh_p1.00_afe_p0.0_vvcrit0.4_UBVRIplus.iso.cmd.txt',  'function': _read_model_MIST},
         {'instrument': 'tycho',     'name': 'mist_p1.00_p0.0_p0.4',   'file': 'MIST_v1.2_feh_p1.00_afe_p0.0_vvcrit0.4_UBVRIplus.iso.cmd.txt',  'function': _read_model_MIST},
         {'instrument': 'wise',      'name': 'mist_p1.00_p0.0_p0.4',   'file': 'MIST_v1.2_feh_p1.00_afe_p0.0_vvcrit0.4_WISE.iso.cmd.txt',       'function': _read_model_MIST},
+        {'instrument': 'hr',        'name': 'mist_p1.00_p0.0_p0.4',   'file': 'MIST_v1.2_feh_p1.00_afe_p0.0_vvcrit0.4_UBVRIplus.iso.cmd.txt',  'function': _read_model_MIST},
 
         {'instrument': '2mass',     'name': 'parsec_p0.00',           'file': '2MASS_WISE_feh_p0.00.txt',                                      'function': _read_model_PARSEC},
         {'instrument': 'wise',      'name': 'parsec_p0.00',           'file': '2MASS_WISE_feh_p0.00.txt',                                      'function': _read_model_PARSEC},
@@ -1552,30 +1652,37 @@ models = {
         {'instrument': 'bessell',   'name': 'parsec_p0.00',           'file': 'Bessell_feh_p0.00.txt',                                         'function': _read_model_PARSEC},
         {'instrument': 'panstarrs', 'name': 'parsec_p0.00',           'file': 'PANSTARRS_feh_p0.00.txt',                                       'function': _read_model_PARSEC},
         {'instrument': 'skymapper', 'name': 'parsec_p0.00',           'file': 'SkyMapper_feh_p0.00.txt',                                       'function': _read_model_PARSEC},
+        {'instrument': 'hr',        'name': 'parsec_p0.00',           'file': 'GAIA_EDR3_feh_p0.00.txt',                                       'function': _read_model_PARSEC},
 
         {'instrument': '2mass',     'name': 'parsec_p0.25',           'file': '2MASS_WISE_feh_p0.25.txt',                                      'function': _read_model_PARSEC},
         {'instrument': 'wise',      'name': 'parsec_p0.25',           'file': '2MASS_WISE_feh_p0.25.txt',                                      'function': _read_model_PARSEC},
         {'instrument': 'gaia',      'name': 'parsec_p0.25',           'file': 'GAIA_EDR3_feh_p0.25.txt',                                       'function': _read_model_PARSEC},
+        {'instrument': 'hr',        'name': 'parsec_p0.25',           'file': 'GAIA_EDR3_feh_p0.25.txt',                                       'function': _read_model_PARSEC},
 
         {'instrument': '2mass',     'name': 'parsec_p0.50',           'file': '2MASS_WISE_feh_p0.50.txt',                                      'function': _read_model_PARSEC},
         {'instrument': 'wise',      'name': 'parsec_p0.50',           'file': '2MASS_WISE_feh_p0.50.txt',                                      'function': _read_model_PARSEC},
         {'instrument': 'gaia',      'name': 'parsec_p0.50',           'file': 'GAIA_EDR3_feh_p0.50.txt',                                       'function': _read_model_PARSEC},
+        {'instrument': 'hr',        'name': 'parsec_p0.50',           'file': 'GAIA_EDR3_feh_p0.50.txt',                                       'function': _read_model_PARSEC},
 
         {'instrument': '2mass',     'name': 'parsec_p0.75',           'file': '2MASS_WISE_feh_p0.75.txt',                                      'function': _read_model_PARSEC},
         {'instrument': 'wise',      'name': 'parsec_p0.75',           'file': '2MASS_WISE_feh_p0.75.txt',                                      'function': _read_model_PARSEC},
         {'instrument': 'gaia',      'name': 'parsec_p0.75',           'file': 'GAIA_EDR3_feh_p0.75.txt',                                       'function': _read_model_PARSEC},
+        {'instrument': 'hr',        'name': 'parsec_p0.75',           'file': 'GAIA_EDR3_feh_p0.75.txt',                                       'function': _read_model_PARSEC},
 
         {'instrument': '2mass',     'name': 'parsec_p1.00',           'file': '2MASS_WISE_feh_p1.00.txt',                                      'function': _read_model_PARSEC},
         {'instrument': 'wise',      'name': 'parsec_p1.00',           'file': '2MASS_WISE_feh_p1.00.txt',                                      'function': _read_model_PARSEC},
         {'instrument': 'gaia',      'name': 'parsec_p1.00',           'file': 'GAIA_EDR3_feh_p1.00.txt',                                       'function': _read_model_PARSEC},
+        {'instrument': 'hr',        'name': 'parsec_p1.00',           'file': 'GAIA_EDR3_feh_p1.00.txt',                                       'function': _read_model_PARSEC},
 
         {'instrument': '2mass',     'name': 'parsec_m0.25',           'file': '2MASS_WISE_feh_m0.25.txt',                                      'function': _read_model_PARSEC},
         {'instrument': 'wise',      'name': 'parsec_m0.25',           'file': '2MASS_WISE_feh_m0.25.txt',                                      'function': _read_model_PARSEC},
         {'instrument': 'gaia',      'name': 'parsec_m0.25',           'file': 'GAIA_EDR3_feh_m0.25.txt',                                       'function': _read_model_PARSEC},
+        {'instrument': 'hr',        'name': 'parsec_m0.25',           'file': 'GAIA_EDR3_feh_m0.25.txt',                                       'function': _read_model_PARSEC},
 
         {'instrument': '2mass',     'name': 'parsec_m0.50',           'file': '2MASS_WISE_feh_m0.50.txt',                                      'function': _read_model_PARSEC},
         {'instrument': 'wise',      'name': 'parsec_m0.50',           'file': '2MASS_WISE_feh_m0.50.txt',                                      'function': _read_model_PARSEC},
         {'instrument': 'gaia',      'name': 'parsec_m0.50',           'file': 'GAIA_EDR3_feh_m0.50.txt',                                       'function': _read_model_PARSEC},
+        {'instrument': 'hr',        'name': 'parsec_m0.50',           'file': 'GAIA_EDR3_feh_m0.50.txt',                                       'function': _read_model_PARSEC},
 
         {'instrument': '2mass',     'name': 'parsec_m0.75',           'file': '2MASS_WISE_feh_m0.75.txt',                                      'function': _read_model_PARSEC},
         {'instrument': 'wise',      'name': 'parsec_m0.75',           'file': '2MASS_WISE_feh_m0.75.txt',                                      'function': _read_model_PARSEC},
@@ -1584,102 +1691,133 @@ models = {
         {'instrument': '2mass',     'name': 'parsec_m1.00',           'file': '2MASS_WISE_feh_m1.00.txt',                                      'function': _read_model_PARSEC},
         {'instrument': 'wise',      'name': 'parsec_m1.00',           'file': '2MASS_WISE_feh_m1.00.txt',                                      'function': _read_model_PARSEC},
         {'instrument': 'gaia',      'name': 'parsec_m1.00',           'file': 'GAIA_EDR3_feh_m1.00.txt',                                       'function': _read_model_PARSEC},
+        {'instrument': 'hr',        'name': 'parsec_m1.00',           'file': 'GAIA_EDR3_feh_m1.00.txt',                                       'function': _read_model_PARSEC},
 
         {'instrument': '2mass',     'name': 'bhac15',                 'file': 'BHAC15_iso.2mass.txt',                                          'function': _read_model_BHAC15},
         {'instrument': 'gaia',      'name': 'bhac15',                 'file': 'BHAC15_iso.GAIA.txt',                                           'function': _read_model_BHAC15},
         {'instrument': 'sphere',    'name': 'bhac15',                 'file': 'BHAC15_iso.SPHERE.txt',                                         'function': _read_model_BHAC15},
         {'instrument': 'panstarrs', 'name': 'bhac15',                 'file': 'BHAC15_iso.panstar.txt',                                        'function': _read_model_BHAC15},
+        {'instrument': 'jwst',      'name': 'bhac15',                 'file': 'BHAC15_iso.JWST.txt',                                           'function': _read_model_BHAC15},
+        {'instrument': 'hr',        'name': 'bhac15',                 'file': 'BHAC15_iso.GAIA.txt',                                           'function': _read_model_BHAC15},
 
         {'instrument': 'gaia',      'name': 'starevol_m0.83_p0.0',       'file': 'Isochr_Z0.0020_Vini0.00_t06.000.dat',                           'function': _read_model_starevol},
         {'instrument': '2mass',     'name': 'starevol_m0.83_p0.0',       'file': 'Isochr_Z0.0020_Vini0.00_t06.000.dat',                           'function': _read_model_starevol},
         {'instrument': 'bessell',   'name': 'starevol_m0.83_p0.0',       'file': 'Isochr_Z0.0020_Vini0.00_t06.000.dat',                           'function': _read_model_starevol},
+        {'instrument': 'hr',        'name': 'starevol_m0.83_p0.0',       'file': 'Isochr_Z0.0020_Vini0.00_t06.000.dat',                           'function': _read_model_starevol},
         {'instrument': 'gaia',      'name': 'starevol_m0.83_p0.2',       'file': 'Isochr_Z0.0020_Vini0.20_t06.000.dat',                           'function': _read_model_starevol},
         {'instrument': '2mass',     'name': 'starevol_m0.83_p0.2',       'file': 'Isochr_Z0.0020_Vini0.20_t06.000.dat',                           'function': _read_model_starevol},
         {'instrument': 'bessell',   'name': 'starevol_m0.83_p0.2',       'file': 'Isochr_Z0.0020_Vini0.20_t06.000.dat',                           'function': _read_model_starevol},
+        {'instrument': 'hr',        'name': 'starevol_m0.83_p0.2',       'file': 'Isochr_Z0.0020_Vini0.20_t06.000.dat',                           'function': _read_model_starevol},
         {'instrument': 'gaia',      'name': 'starevol_m0.83_p0.4',       'file': 'Isochr_Z0.0020_Vini0.40_t06.000.dat',                           'function': _read_model_starevol},
         {'instrument': '2mass',     'name': 'starevol_m0.83_p0.4',       'file': 'Isochr_Z0.0020_Vini0.40_t06.000.dat',                           'function': _read_model_starevol},
         {'instrument': 'bessell',   'name': 'starevol_m0.83_p0.4',       'file': 'Isochr_Z0.0020_Vini0.40_t06.000.dat',                           'function': _read_model_starevol},
+        {'instrument': 'hr',        'name': 'starevol_m0.83_p0.4',       'file': 'Isochr_Z0.0020_Vini0.40_t06.000.dat',                           'function': _read_model_starevol},
         {'instrument': 'gaia',      'name': 'starevol_m0.83_p0.6',       'file': 'Isochr_Z0.0020_Vini0.60_t06.000.dat',                           'function': _read_model_starevol},
         {'instrument': '2mass',     'name': 'starevol_m0.83_p0.6',       'file': 'Isochr_Z0.0020_Vini0.60_t06.000.dat',                           'function': _read_model_starevol},
         {'instrument': 'bessell',   'name': 'starevol_m0.83_p0.6',       'file': 'Isochr_Z0.0020_Vini0.60_t06.000.dat',                           'function': _read_model_starevol},
+        {'instrument': 'hr',        'name': 'starevol_m0.83_p0.6',       'file': 'Isochr_Z0.0020_Vini0.60_t06.000.dat',                           'function': _read_model_starevol},
 
         {'instrument': 'gaia',      'name': 'starevol_m0.35_p0.0',       'file': 'Isochr_Z0.0060_Vini0.00_t06.000.dat',                           'function': _read_model_starevol},
         {'instrument': '2mass',     'name': 'starevol_m0.35_p0.0',       'file': 'Isochr_Z0.0060_Vini0.00_t06.000.dat',                           'function': _read_model_starevol},
         {'instrument': 'bessell',   'name': 'starevol_m0.35_p0.0',       'file': 'Isochr_Z0.0060_Vini0.00_t06.000.dat',                           'function': _read_model_starevol},
+        {'instrument': 'hr',        'name': 'starevol_m0.35_p0.0',       'file': 'Isochr_Z0.0060_Vini0.00_t06.000.dat',                           'function': _read_model_starevol},
         {'instrument': 'gaia',      'name': 'starevol_m0.35_p0.2',       'file': 'Isochr_Z0.0060_Vini0.20_t06.000.dat',                           'function': _read_model_starevol},
         {'instrument': '2mass',     'name': 'starevol_m0.35_p0.2',       'file': 'Isochr_Z0.0060_Vini0.20_t06.000.dat',                           'function': _read_model_starevol},
         {'instrument': 'bessell',   'name': 'starevol_m0.35_p0.2',       'file': 'Isochr_Z0.0060_Vini0.20_t06.000.dat',                           'function': _read_model_starevol},
+        {'instrument': 'hr',        'name': 'starevol_m0.35_p0.2',       'file': 'Isochr_Z0.0060_Vini0.20_t06.000.dat',                           'function': _read_model_starevol},
         {'instrument': 'gaia',      'name': 'starevol_m0.35_p0.4',       'file': 'Isochr_Z0.0060_Vini0.40_t06.000.dat',                           'function': _read_model_starevol},
         {'instrument': '2mass',     'name': 'starevol_m0.35_p0.4',       'file': 'Isochr_Z0.0060_Vini0.40_t06.000.dat',                           'function': _read_model_starevol},
         {'instrument': 'bessell',   'name': 'starevol_m0.35_p0.4',       'file': 'Isochr_Z0.0060_Vini0.40_t06.000.dat',                           'function': _read_model_starevol},
+        {'instrument': 'hr',        'name': 'starevol_m0.35_p0.4',       'file': 'Isochr_Z0.0060_Vini0.40_t06.000.dat',                           'function': _read_model_starevol},
         {'instrument': 'gaia',      'name': 'starevol_m0.35_p0.6',       'file': 'Isochr_Z0.0060_Vini0.60_t06.000.dat',                           'function': _read_model_starevol},
         {'instrument': '2mass',     'name': 'starevol_m0.35_p0.6',       'file': 'Isochr_Z0.0060_Vini0.60_t06.000.dat',                           'function': _read_model_starevol},
         {'instrument': 'bessell',   'name': 'starevol_m0.35_p0.6',       'file': 'Isochr_Z0.0060_Vini0.60_t06.000.dat',                           'function': _read_model_starevol},
+        {'instrument': 'hr',        'name': 'starevol_m0.35_p0.6',       'file': 'Isochr_Z0.0060_Vini0.60_t06.000.dat',                           'function': _read_model_starevol},
 
         {'instrument': 'gaia',      'name': 'starevol_m0.22_p0.0',       'file': 'Isochr_Z0.0080_Vini0.00_t06.000.dat',                           'function': _read_model_starevol},
         {'instrument': '2mass',     'name': 'starevol_m0.22_p0.0',       'file': 'Isochr_Z0.0080_Vini0.00_t06.000.dat',                           'function': _read_model_starevol},
         {'instrument': 'bessell',   'name': 'starevol_m0.22_p0.0',       'file': 'Isochr_Z0.0080_Vini0.00_t06.000.dat',                           'function': _read_model_starevol},
+        {'instrument': 'hr',        'name': 'starevol_m0.22_p0.0',       'file': 'Isochr_Z0.0080_Vini0.00_t06.000.dat',                           'function': _read_model_starevol},
         {'instrument': 'gaia',      'name': 'starevol_m0.22_p0.2',       'file': 'Isochr_Z0.0080_Vini0.20_t06.000.dat',                           'function': _read_model_starevol},
         {'instrument': '2mass',     'name': 'starevol_m0.22_p0.2',       'file': 'Isochr_Z0.0080_Vini0.20_t06.000.dat',                           'function': _read_model_starevol},
         {'instrument': 'bessell',   'name': 'starevol_m0.22_p0.2',       'file': 'Isochr_Z0.0080_Vini0.20_t06.000.dat',                           'function': _read_model_starevol},
+        {'instrument': 'hr',        'name': 'starevol_m0.22_p0.2',       'file': 'Isochr_Z0.0080_Vini0.20_t06.000.dat',                           'function': _read_model_starevol},
         {'instrument': 'gaia',      'name': 'starevol_m0.22_p0.4',       'file': 'Isochr_Z0.0080_Vini0.40_t06.000.dat',                           'function': _read_model_starevol},
         {'instrument': '2mass',     'name': 'starevol_m0.22_p0.4',       'file': 'Isochr_Z0.0080_Vini0.40_t06.000.dat',                           'function': _read_model_starevol},
         {'instrument': 'bessell',   'name': 'starevol_m0.22_p0.4',       'file': 'Isochr_Z0.0080_Vini0.40_t06.000.dat',                           'function': _read_model_starevol},
+        {'instrument': 'hr',        'name': 'starevol_m0.22_p0.4',       'file': 'Isochr_Z0.0080_Vini0.40_t06.000.dat',                           'function': _read_model_starevol},
         {'instrument': 'gaia',      'name': 'starevol_m0.22_p0.6',       'file': 'Isochr_Z0.0080_Vini0.60_t06.000.dat',                           'function': _read_model_starevol},
         {'instrument': '2mass',     'name': 'starevol_m0.22_p0.6',       'file': 'Isochr_Z0.0080_Vini0.60_t06.000.dat',                           'function': _read_model_starevol},
         {'instrument': 'bessell',   'name': 'starevol_m0.22_p0.6',       'file': 'Isochr_Z0.0080_Vini0.60_t06.000.dat',                           'function': _read_model_starevol},
+        {'instrument': 'hr',        'name': 'starevol_m0.22_p0.6',       'file': 'Isochr_Z0.0080_Vini0.60_t06.000.dat',                           'function': _read_model_starevol},
 
         {'instrument': 'gaia',      'name': 'starevol_m0.13_p0.0',       'file': 'Isochr_Z0.0100_Vini0.00_t06.000.dat',                           'function': _read_model_starevol},
         {'instrument': '2mass',     'name': 'starevol_m0.13_p0.0',       'file': 'Isochr_Z0.0100_Vini0.00_t06.000.dat',                           'function': _read_model_starevol},
         {'instrument': 'bessell',   'name': 'starevol_m0.13_p0.0',       'file': 'Isochr_Z0.0100_Vini0.00_t06.000.dat',                           'function': _read_model_starevol},
+        {'instrument': 'hr',        'name': 'starevol_m0.13_p0.0',       'file': 'Isochr_Z0.0100_Vini0.00_t06.000.dat',                           'function': _read_model_starevol},
         {'instrument': 'gaia',      'name': 'starevol_m0.13_p0.2',       'file': 'Isochr_Z0.0100_Vini0.20_t06.000.dat',                           'function': _read_model_starevol},
         {'instrument': '2mass',     'name': 'starevol_m0.13_p0.2',       'file': 'Isochr_Z0.0100_Vini0.20_t06.000.dat',                           'function': _read_model_starevol},
         {'instrument': 'bessell',   'name': 'starevol_m0.13_p0.2',       'file': 'Isochr_Z0.0100_Vini0.20_t06.000.dat',                           'function': _read_model_starevol},
+        {'instrument': 'hr',        'name': 'starevol_m0.13_p0.2',       'file': 'Isochr_Z0.0100_Vini0.20_t06.000.dat',                           'function': _read_model_starevol},
         {'instrument': 'gaia',      'name': 'starevol_m0.13_p0.4',       'file': 'Isochr_Z0.0100_Vini0.40_t06.000.dat',                           'function': _read_model_starevol},
         {'instrument': '2mass',     'name': 'starevol_m0.13_p0.4',       'file': 'Isochr_Z0.0100_Vini0.40_t06.000.dat',                           'function': _read_model_starevol},
         {'instrument': 'bessell',   'name': 'starevol_m0.13_p0.4',       'file': 'Isochr_Z0.0100_Vini0.40_t06.000.dat',                           'function': _read_model_starevol},
+        {'instrument': 'hr',        'name': 'starevol_m0.13_p0.4',       'file': 'Isochr_Z0.0100_Vini0.40_t06.000.dat',                           'function': _read_model_starevol},
         {'instrument': 'gaia',      'name': 'starevol_m0.13_p0.6',       'file': 'Isochr_Z0.0100_Vini0.60_t06.000.dat',                           'function': _read_model_starevol},
         {'instrument': '2mass',     'name': 'starevol_m0.13_p0.6',       'file': 'Isochr_Z0.0100_Vini0.60_t06.000.dat',                           'function': _read_model_starevol},
         {'instrument': 'bessell',   'name': 'starevol_m0.13_p0.6',       'file': 'Isochr_Z0.0100_Vini0.60_t06.000.dat',                           'function': _read_model_starevol},
+        {'instrument': 'hr',        'name': 'starevol_m0.13_p0.6',       'file': 'Isochr_Z0.0100_Vini0.60_t06.000.dat',                           'function': _read_model_starevol},
 
         {'instrument': 'gaia',      'name': 'starevol_m0.01_p0.0',       'file': 'Isochr_Z0.0130_Vini0.00_t06.000.dat',                           'function': _read_model_starevol},
         {'instrument': '2mass',     'name': 'starevol_m0.01_p0.0',       'file': 'Isochr_Z0.0130_Vini0.00_t06.000.dat',                           'function': _read_model_starevol},
         {'instrument': 'bessell',   'name': 'starevol_m0.01_p0.0',       'file': 'Isochr_Z0.0130_Vini0.00_t06.000.dat',                           'function': _read_model_starevol},
+        {'instrument': 'hr',        'name': 'starevol_m0.01_p0.0',       'file': 'Isochr_Z0.0130_Vini0.00_t06.000.dat',                           'function': _read_model_starevol},
         {'instrument': 'gaia',      'name': 'starevol_m0.01_p0.2',       'file': 'Isochr_Z0.0130_Vini0.20_t06.000.dat',                           'function': _read_model_starevol},
         {'instrument': '2mass',     'name': 'starevol_m0.01_p0.2',       'file': 'Isochr_Z0.0130_Vini0.20_t06.000.dat',                           'function': _read_model_starevol},
         {'instrument': 'bessell',   'name': 'starevol_m0.01_p0.2',       'file': 'Isochr_Z0.0130_Vini0.20_t06.000.dat',                           'function': _read_model_starevol},
+        {'instrument': 'hr',        'name': 'starevol_m0.01_p0.2',       'file': 'Isochr_Z0.0130_Vini0.20_t06.000.dat',                           'function': _read_model_starevol},
         {'instrument': 'gaia',      'name': 'starevol_m0.01_p0.4',       'file': 'Isochr_Z0.0130_Vini0.40_t06.000.dat',                           'function': _read_model_starevol},
         {'instrument': '2mass',     'name': 'starevol_m0.01_p0.4',       'file': 'Isochr_Z0.0130_Vini0.40_t06.000.dat',                           'function': _read_model_starevol},
         {'instrument': 'bessell',   'name': 'starevol_m0.01_p0.4',       'file': 'Isochr_Z0.0130_Vini0.40_t06.000.dat',                           'function': _read_model_starevol},
+        {'instrument': 'hr',        'name': 'starevol_m0.01_p0.4',       'file': 'Isochr_Z0.0130_Vini0.40_t06.000.dat',                           'function': _read_model_starevol},
         {'instrument': 'gaia',      'name': 'starevol_m0.01_p0.6',       'file': 'Isochr_Z0.0130_Vini0.60_t06.000.dat',                           'function': _read_model_starevol},
         {'instrument': '2mass',     'name': 'starevol_m0.01_p0.6',       'file': 'Isochr_Z0.0130_Vini0.60_t06.000.dat',                           'function': _read_model_starevol},
         {'instrument': 'bessell',   'name': 'starevol_m0.01_p0.6',       'file': 'Isochr_Z0.0130_Vini0.60_t06.000.dat',                           'function': _read_model_starevol},
+        {'instrument': 'hr',        'name': 'starevol_m0.01_p0.6',       'file': 'Isochr_Z0.0130_Vini0.60_t06.000.dat',                           'function': _read_model_starevol},
 
         {'instrument': 'gaia',      'name': 'starevol_p0.15_p0.0',       'file': 'Isochr_Z0.0190_Vini0.00_t06.000.dat',                           'function': _read_model_starevol},
         {'instrument': '2mass',     'name': 'starevol_p0.15_p0.0',       'file': 'Isochr_Z0.0190_Vini0.00_t06.000.dat',                           'function': _read_model_starevol},
         {'instrument': 'bessell',   'name': 'starevol_p0.15_p0.0',       'file': 'Isochr_Z0.0190_Vini0.00_t06.000.dat',                           'function': _read_model_starevol},
+        {'instrument': 'hr',        'name': 'starevol_p0.15_p0.0',       'file': 'Isochr_Z0.0190_Vini0.00_t06.000.dat',                           'function': _read_model_starevol},
         {'instrument': 'gaia',      'name': 'starevol_p0.15_p0.2',       'file': 'Isochr_Z0.0190_Vini0.20_t06.000.dat',                           'function': _read_model_starevol},
         {'instrument': '2mass',     'name': 'starevol_p0.15_p0.2',       'file': 'Isochr_Z0.0190_Vini0.20_t06.000.dat',                           'function': _read_model_starevol},
         {'instrument': 'bessell',   'name': 'starevol_p0.15_p0.2',       'file': 'Isochr_Z0.0190_Vini0.20_t06.000.dat',                           'function': _read_model_starevol},
+        {'instrument': 'hr',        'name': 'starevol_p0.15_p0.2',       'file': 'Isochr_Z0.0190_Vini0.20_t06.000.dat',                           'function': _read_model_starevol},
         {'instrument': 'gaia',      'name': 'starevol_p0.15_p0.4',       'file': 'Isochr_Z0.0190_Vini0.40_t06.000.dat',                           'function': _read_model_starevol},
         {'instrument': '2mass',     'name': 'starevol_p0.15_p0.4',       'file': 'Isochr_Z0.0190_Vini0.40_t06.000.dat',                           'function': _read_model_starevol},
         {'instrument': 'bessell',   'name': 'starevol_p0.15_p0.4',       'file': 'Isochr_Z0.0190_Vini0.40_t06.000.dat',                           'function': _read_model_starevol},
+        {'instrument': 'hr',        'name': 'starevol_p0.15_p0.4',       'file': 'Isochr_Z0.0190_Vini0.40_t06.000.dat',                           'function': _read_model_starevol},
         {'instrument': 'gaia',      'name': 'starevol_p0.15_p0.6',       'file': 'Isochr_Z0.0190_Vini0.60_t06.000.dat',                           'function': _read_model_starevol},
         {'instrument': '2mass',     'name': 'starevol_p0.15_p0.6',       'file': 'Isochr_Z0.0190_Vini0.60_t06.000.dat',                           'function': _read_model_starevol},
         {'instrument': 'bessell',   'name': 'starevol_p0.15_p0.6',       'file': 'Isochr_Z0.0190_Vini0.60_t06.000.dat',                           'function': _read_model_starevol},
+        {'instrument': 'hr',        'name': 'starevol_p0.15_p0.6',       'file': 'Isochr_Z0.0190_Vini0.60_t06.000.dat',                           'function': _read_model_starevol},
 
         {'instrument': 'gaia',      'name': 'starevol_p0.29_p0.0',       'file': 'Isochr_Z0.0260_Vini0.00_t06.000.dat',                           'function': _read_model_starevol},
         {'instrument': '2mass',     'name': 'starevol_p0.29_p0.0',       'file': 'Isochr_Z0.0260_Vini0.00_t06.000.dat',                           'function': _read_model_starevol},
         {'instrument': 'bessell',   'name': 'starevol_p0.29_p0.0',       'file': 'Isochr_Z0.0260_Vini0.00_t06.000.dat',                           'function': _read_model_starevol},
+        {'instrument': 'hr',        'name': 'starevol_p0.29_p0.0',       'file': 'Isochr_Z0.0260_Vini0.00_t06.000.dat',                           'function': _read_model_starevol},
         {'instrument': 'gaia',      'name': 'starevol_p0.29_p0.2',       'file': 'Isochr_Z0.0260_Vini0.20_t06.000.dat',                           'function': _read_model_starevol},
         {'instrument': '2mass',     'name': 'starevol_p0.29_p0.2',       'file': 'Isochr_Z0.0260_Vini0.20_t06.000.dat',                           'function': _read_model_starevol},
         {'instrument': 'bessell',   'name': 'starevol_p0.29_p0.2',       'file': 'Isochr_Z0.0260_Vini0.20_t06.000.dat',                           'function': _read_model_starevol},
+        {'instrument': 'hr',        'name': 'starevol_p0.29_p0.2',       'file': 'Isochr_Z0.0260_Vini0.20_t06.000.dat',                           'function': _read_model_starevol},
         {'instrument': 'gaia',      'name': 'starevol_p0.29_p0.4',       'file': 'Isochr_Z0.0260_Vini0.40_t06.000.dat',                           'function': _read_model_starevol},
         {'instrument': '2mass',     'name': 'starevol_p0.29_p0.4',       'file': 'Isochr_Z0.0260_Vini0.40_t06.000.dat',                           'function': _read_model_starevol},
         {'instrument': 'bessell',   'name': 'starevol_p0.29_p0.4',       'file': 'Isochr_Z0.0260_Vini0.40_t06.000.dat',                           'function': _read_model_starevol},
+        {'instrument': 'hr',        'name': 'starevol_p0.29_p0.4',       'file': 'Isochr_Z0.0260_Vini0.40_t06.000.dat',                           'function': _read_model_starevol},
         {'instrument': 'gaia',      'name': 'starevol_p0.29_p0.6',       'file': 'Isochr_Z0.0260_Vini0.60_t06.000.dat',                           'function': _read_model_starevol},
         {'instrument': '2mass',     'name': 'starevol_p0.29_p0.6',       'file': 'Isochr_Z0.0260_Vini0.60_t06.000.dat',                           'function': _read_model_starevol},
         {'instrument': 'bessell',   'name': 'starevol_p0.29_p0.6',       'file': 'Isochr_Z0.0260_Vini0.60_t06.000.dat',                           'function': _read_model_starevol},
+        {'instrument': 'hr',        'name': 'starevol_p0.29_p0.6',       'file': 'Isochr_Z0.0260_Vini0.60_t06.000.dat',                           'function': _read_model_starevol},
 
         {'instrument': 'wise',      'name': 'atmo2020_neq_s',         'file': '0.0005_ATMO_NEQ_strong_vega.txt',                               'function': _read_model_atmo2020},
         {'instrument': 'wise',      'name': 'atmo2020_neq_w',         'file': '0.0005_ATMO_NEQ_weak_vega.txt',                                 'function': _read_model_atmo2020},
@@ -1687,41 +1825,56 @@ models = {
 
         {'instrument': 'gaia',      'name': 'spots_p0.00',            'file': 'f000_all_filters.isoc',                                         'function': _read_model_SPOTS},
         {'instrument': '2mass',     'name': 'spots_p0.00',            'file': 'f000_all_filters.isoc',                                         'function': _read_model_SPOTS},
+        {'instrument': 'hr',        'name': 'spots_p0.00',            'file': 'f000_all_filters.isoc',                                         'function': _read_model_SPOTS},
         {'instrument': 'gaia',      'name': 'spots_p0.17',            'file': 'f017_all_filters.isoc',                                         'function': _read_model_SPOTS},
         {'instrument': '2mass',     'name': 'spots_p0.17',            'file': 'f017_all_filters.isoc',                                         'function': _read_model_SPOTS},
+        {'instrument': 'hr',        'name': 'spots_p0.17',            'file': 'f017_all_filters.isoc',                                         'function': _read_model_SPOTS},
         {'instrument': 'gaia',      'name': 'spots_p0.34',            'file': 'f034_all_filters.isoc',                                         'function': _read_model_SPOTS},
         {'instrument': '2mass',     'name': 'spots_p0.34',            'file': 'f034_all_filters.isoc',                                         'function': _read_model_SPOTS},
+        {'instrument': 'hr',        'name': 'spots_p0.34',            'file': 'f034_all_filters.isoc',                                         'function': _read_model_SPOTS},
         {'instrument': 'gaia',      'name': 'spots_p0.51',            'file': 'f051_all_filters.isoc',                                         'function': _read_model_SPOTS},
         {'instrument': '2mass',     'name': 'spots_p0.51',            'file': 'f051_all_filters.isoc',                                         'function': _read_model_SPOTS},
+        {'instrument': 'hr',        'name': 'spots_p0.51',            'file': 'f051_all_filters.isoc',                                         'function': _read_model_SPOTS},
         {'instrument': 'gaia',      'name': 'spots_p0.68',            'file': 'f068_all_filters.isoc',                                         'function': _read_model_SPOTS},
         {'instrument': '2mass',     'name': 'spots_p0.68',            'file': 'f068_all_filters.isoc',                                         'function': _read_model_SPOTS},
+        {'instrument': 'hr',        'name': 'spots_p0.68',            'file': 'f068_all_filters.isoc',                                         'function': _read_model_SPOTS},
         {'instrument': 'gaia',      'name': 'spots_p0.85',            'file': 'f085_all_filters.isoc',                                         'function': _read_model_SPOTS},
         {'instrument': '2mass',     'name': 'spots_p0.85',            'file': 'f085_all_filters.isoc',                                         'function': _read_model_SPOTS},
+        {'instrument': 'hr',        'name': 'spots_p0.85',            'file': 'f085_all_filters.isoc',                                         'function': _read_model_SPOTS},
 
         {'instrument': 'johnson',   'name': 'dartmouth_p0.00_p0.0_nomag',  'file': 'dmestar_00001.0myr_z+0.00_a+0.00_gas07_mrc.JC2MASSGaia',   'function': _read_model_Dartmouth},
         {'instrument': 'gaia',      'name': 'dartmouth_p0.00_p0.0_nomag',  'file': 'dmestar_00001.0myr_z+0.00_a+0.00_gas07_mrc.JC2MASSGaia',   'function': _read_model_Dartmouth},
         {'instrument': '2mass',     'name': 'dartmouth_p0.00_p0.0_nomag',  'file': 'dmestar_00001.0myr_z+0.00_a+0.00_gas07_mrc.JC2MASSGaia',   'function': _read_model_Dartmouth},
+        {'instrument': 'hr',        'name': 'dartmouth_p0.00_p0.0_nomag',  'file': 'dmestar_00001.0myr_z+0.00_a+0.00_gas07_mrc.JC2MASSGaia',   'function': _read_model_Dartmouth},
 
         {'instrument': 'johnson',   'name': 'dartmouth_p0.00_p0.0_mag',  'file': 'dmestar_00001.0myr_z+0.00_a+0.00_gas07_mrc_magBeq.JC2MASSGaia',   'function': _read_model_Dartmouth},
         {'instrument': 'gaia',      'name': 'dartmouth_p0.00_p0.0_mag',  'file': 'dmestar_00001.0myr_z+0.00_a+0.00_gas07_mrc_magBeq.JC2MASSGaia',   'function': _read_model_Dartmouth},
         {'instrument': '2mass',     'name': 'dartmouth_p0.00_p0.0_mag',  'file': 'dmestar_00001.0myr_z+0.00_a+0.00_gas07_mrc_magBeq.JC2MASSGaia',   'function': _read_model_Dartmouth},
+        {'instrument': 'hr',        'name': 'dartmouth_p0.00_p0.0_mag',  'file': 'dmestar_00001.0myr_z+0.00_a+0.00_gas07_mrc_magBeq.JC2MASSGaia',   'function': _read_model_Dartmouth},
 
-        {'instrument': 'mko',       'name': 'atmo2020_ceq',              'file': '0.001_ATMO_CEQ_vega.txt',                       'function': _read_model_atmo2020},
-        {'instrument': 'mko',       'name': 'atmo2020_neq_strong',       'file': '0.001_ATMO_NEQ_strong_vega.txt',                'function': _read_model_atmo2020},
-        {'instrument': 'mko',       'name': 'atmo2020_neq_weak',         'file': '0.001_ATMO_NEQ_weak_vega.txt',                  'function': _read_model_atmo2020},
-        {'instrument': 'irac',      'name': 'atmo2020_ceq',              'file': '0.001_ATMO_CEQ_vega.txt',                       'function': _read_model_atmo2020},
-        {'instrument': 'irac',      'name': 'atmo2020_neq_strong',       'file': '0.001_ATMO_NEQ_strong_vega.txt',                'function': _read_model_atmo2020},
-        {'instrument': 'irac',      'name': 'atmo2020_neq_weak',         'file': '0.001_ATMO_NEQ_weak_vega.txt',                  'function': _read_model_atmo2020},
-        {'instrument': 'wise',      'name': 'atmo2020_ceq',              'file': '0.001_ATMO_CEQ_vega.txt',                       'function': _read_model_atmo2020},
-        {'instrument': 'wise',      'name': 'atmo2020_neq_strong',       'file': '0.001_ATMO_NEQ_strong_vega.txt',                'function': _read_model_atmo2020},
-        {'instrument': 'wise',      'name': 'atmo2020_neq_weak',         'file': '0.001_ATMO_NEQ_weak_vega.txt',                  'function': _read_model_atmo2020},
+        {'instrument': 'mko',       'name': 'atmo2020_ceq',            'file': '0.001_ATMO_CEQ_vega.txt',                       'function': _read_model_atmo2020},
+        {'instrument': 'mko',       'name': 'atmo2020_neq_s',          'file': '0.001_ATMO_NEQ_strong_vega.txt',                'function': _read_model_atmo2020},
+        {'instrument': 'mko',       'name': 'atmo2020_neq_w',          'file': '0.001_ATMO_NEQ_weak_vega.txt',                  'function': _read_model_atmo2020},
+        {'instrument': 'irac',      'name': 'atmo2020_ceq',            'file': '0.001_ATMO_CEQ_vega.txt',                       'function': _read_model_atmo2020},
+        {'instrument': 'irac',      'name': 'atmo2020_neq_s',          'file': '0.001_ATMO_NEQ_strong_vega.txt',                'function': _read_model_atmo2020},
+        {'instrument': 'irac',      'name': 'atmo2020_neq_w',          'file': '0.001_ATMO_NEQ_weak_vega.txt',                  'function': _read_model_atmo2020},
+        {'instrument': 'wise',      'name': 'atmo2020_ceq',            'file': '0.001_ATMO_CEQ_vega.txt',                       'function': _read_model_atmo2020},
+        {'instrument': 'wise',      'name': 'atmo2020_neq_s',          'file': '0.001_ATMO_NEQ_strong_vega.txt',                'function': _read_model_atmo2020},
+        {'instrument': 'wise',      'name': 'atmo2020_neq_w',          'file': '0.001_ATMO_NEQ_weak_vega.txt',                  'function': _read_model_atmo2020},
+        {'instrument': 'hr',        'name': 'atmo2020_ceq',            'file': '0.001_ATMO_CEQ_vega.txt',                       'function': _read_model_atmo2020},
+        {'instrument': 'hr',        'name': 'atmo2020_neq_s',          'file': '0.001_ATMO_NEQ_strong_vega.txt',                'function': _read_model_atmo2020},
+        {'instrument': 'hr',        'name': 'atmo2020_neq_w',          'file': '0.001_ATMO_NEQ_weak_vega.txt',                  'function': _read_model_atmo2020},
 
-        {'instrument': 'johnson',   'name': 'ekstroem_p0.00_rot',        'file': 'iso_p0.00.dat',                                 'function': _read_model_Ekstroem},
-        {'instrument': 'johnson',   'name': 'ekstroem_p0.00_norot',      'file': 'iso_p0.00.dat',                                 'function': _read_model_Ekstroem},
-        {'instrument': 'hr',        'name': 'ekstroem_p0.00_rot',        'file': 'iso_p0.00.dat',                                 'function': _read_model_Ekstroem},
-        {'instrument': 'hr',        'name': 'ekstroem_p0.00_norot',      'file': 'iso_p0.00.dat',                                 'function': _read_model_Ekstroem},
-        {'instrument': 'hr',        'name': 'ekstroem_m1.50_rot',        'file': 'iso_m1.50.dat',                                 'function': _read_model_Ekstroem},
-        {'instrument': 'hr',        'name': 'ekstroem_m1.50_norot',      'file': 'iso_m1.50.dat',                                 'function': _read_model_Ekstroem}
+        {'instrument': 'johnson',   'name': 'geneva_p0.00_rot',        'file': 'iso_p0.00.dat',                                 'function': _read_model_geneva},
+        {'instrument': 'johnson',   'name': 'geneva_p0.00_norot',      'file': 'iso_p0.00.dat',                                 'function': _read_model_geneva},
+        {'instrument': 'hr',        'name': 'geneva_p0.00_rot',        'file': 'iso_p0.00.dat',                                 'function': _read_model_geneva},
+        {'instrument': 'hr',        'name': 'geneva_p0.00_norot',      'file': 'iso_p0.00.dat',                                 'function': _read_model_geneva},
+        {'instrument': 'hr',        'name': 'geneva_m1.50_rot',        'file': 'iso_m1.50.dat',                                 'function': _read_model_geneva},
+        {'instrument': 'hr',        'name': 'geneva_m1.50_norot',      'file': 'iso_m1.50.dat',                                 'function': _read_model_geneva},
+
+        {'instrument': '2mass',     'name': 'sonora_bobcat',             'file': 'sonora_2mass.csv',                              'function': _read_model_sonora_bobcat},
+        {'instrument': 'wise',      'name': 'sonora_bobcat',             'file': 'sonora_wise.csv',                               'function': _read_model_sonora_bobcat},
+        {'instrument': 'hr',        'name': 'sonora_bobcat',             'file': 'sonora_2mass.csv',                              'function': _read_model_sonora_bobcat}
 
     ],
     'data': {}
