@@ -1,4 +1,6 @@
 import sys
+import copy
+import warnings
 from astropy.utils.exceptions import AstropyWarning
 import logging
 import numpy as np
@@ -34,7 +36,7 @@ Tool for age and mass determination of young stellar and substellar objects. Giv
 - it retrieves and cross-matches photometry from Gaia and 2MASS
 - corrects for interstellar extinction
 - assesses the quality of each photometric measurement
-- uses reliable photometric data to derive ages and masses of individual stars.
+- uses reliable photometric data to derive ages and masses (and optionally, other physical parameters too) of individual stars.
 MADYS allows a selection of one among 13 theoretical models, many of which with several tunable parameters (metallicity, rotational velocity, etc).
 Check the provided manual for additional details on general working, customizable settings and allowed inputs.
 
@@ -83,25 +85,49 @@ Estimates age and mass of individual stars by comparison with isochrone grids.
     - n_steps: list, optional. Number of (mass, age) steps of the interpolated grid. Default: [1000,500].
     - verbose: bool, optional. Set to True to save the results in a file. Default: True.
     - feh: float, optional. Selects [Fe/H] of the isochrone set. Default: None (=0.00, solar metallicity).
+    - he: float, optional. Selects helium fraction Y of the isochrone set. Default: None (=solar Y).    
     - afe: float, optional. Selects alpha enhancement [a/Fe] of the isochrone set. Default: None (=0.00).
     - v_vcrit: float, optional. Selects rotational velocity of the isochrone set. Default: None (=0.00, non-rotating).
     - fspot: float, optional. Selects fraction of stellar surface covered by star spots. Default: None (=0.00).
     - B: int, optional. Set to 1 to turn on the magnetic field (only for Dartmouth models). Default: 0.
     - ph_cut: float, optional. Maximum  allowed photometric uncertainty [mag]. Default: 0.2.
     - m_unit: string, optional. Unit of measurement of the resulting mass. Choose either 'm_sun' or 'm_jup'. Default: 'm_sun'.
+    - phys_param: bool, optional. Set to True to estimate, in addition to mass and age, also radius, effective temperature, surface gravity and luminosity. Default: False.
     Output:
+    - dic: a dictionary containing the following keys:
         (case 1: if age_range is a list or a 1D numpy array)
-    - a_final: numpy array. Final age estimates, one element per star [Myr]
-    - m_final: numpy array. Final mass estimates, one element per star [M_sun or M_jup]
-    - a_err: numpy array. Error on age estimates, one element per star [Myr]
-    - m_err: numpy array. Error on mass estimates, one element per star [M_sun or M_jup]
-        (case 2: if age_range is a 2D numpy array)
-    - a_final: numpy array. Final age estimates, one element per star [Myr]
-    - m_final: numpy array. Final mass estimates, one element per star [M_sun or M_jup]
-    - a_min: numpy array. Minimum age given by the user [Myr]
-    - a_max: numpy array. Maximum age given by the user [Myr]
-    - m_err_m: numpy array. Mass estimate corresponding to the a_min [M_sun or M_jup]
-    - m_err_p: numpy array. Mass estimate corresponding to the a_max [M_sun or M_jup]
+        - ages: numpy array. Final age estimates [Myr].
+        - masses: numpy array. Final mass estimates [M_sun or M_jup].
+        - ages_err: numpy array. Error on age estimates [Myr].
+        - masses_err: numpy array. Error on mass estimates [M_sun or M_jup].
+        - ebv: numpy array. Adopted/computed E(B-V), one element per star [mag].
+        - radii: numpy array. Final radius estimates [R_sun or R_jup]. Only returnedif phys_param=True.
+        - radii_err: numpy array. Final radius estimates [R_sun or R_jup]. Only returnedif phys_param=True.
+        - logg: numpy array. Final surface gravity estimates [log10([cm s-2])]. Only returnedif phys_param=True.
+        - logg_err: numpy array. Error on surface gravity estimates [log10([cm s-2])]. Only returnedif phys_param=True.
+        - logL: numpy array. Final luminosity estimates [log10([L_sun])]. Only returnedif phys_param=True.
+        - logL_err: numpy array. Error on luminosity estimates [log10([L_sun])]. Only returnedif phys_param=True.
+        - Teff: numpy array. Final effective temperature estimates [K]. Only returnedif phys_param=True.
+        - Teff_err: numpy array. Error on effective temperature estimates [K]. Only returnedif phys_param=True.
+       (case 2: if age_range is a 2D numpy array)
+        - ages: numpy array. Final age estimates [Myr].
+        - masses: numpy array. Final mass estimates [M_sun or M_jup].
+        - ages_min: numpy array. Minimum age given by the user [Myr].
+        - ages_max: numpy array. Maximum age given by the user [Myr].
+        - masses_err_m: numpy array. Difference between 'masses' and masses computed at age=a_min [M_sun or M_jup].
+        - masses_err_p: numpy array. Difference between masses computed at age=a_max and 'masses' [M_sun or M_jup].
+        - radii: numpy array. Final radius estimates [R_sun or R_jup]. Only returnedif phys_param=True.
+        - logg: numpy array. Final surface gravity estimates [log10([cm s-2])]. Only returnedif phys_param=True.
+        - logL: numpy array. Final luminosity estimates [log10([L_sun])]. Only returnedif phys_param=True.
+        - Teff: numpy array. Final effective temperature estimates [K]. Only returnedif phys_param=True.
+        - radii_err_m: numpy array. Difference between 'radii' and radii computed at age=a_min [R_sun or R_jup].
+        - radii_err_p: numpy array. Difference between radii computed at age=a_max and 'radii' [R_sun or R_jup].
+        - logg_err_m: numpy array. Difference between 'logg' and logg computed at age=a_min.
+        - logg_err_p: numpy array. Difference between logg computed at age=a_max and 'logg'.
+        - logL_err_m: numpy array. Difference between 'logL' and logL computed at age=a_min.
+        - logL_err_p: numpy array. Difference between logL computed at age=a_max and 'logL'.
+        - Teff_err_m: numpy array. Difference between 'Teff' and Teff computed at age=a_min [K].
+        - Teff_err_p: numpy array. Difference between Teff computed at age=a_max and 'Teff' [K].
     
 2) CMD
 Draws a color-magnitude diagram (CMD) containing both the measured photometry and a set of theoretical isochrones.
@@ -121,6 +147,7 @@ Draws a color-magnitude diagram (CMD) containing both the measured photometry an
     - v_vcrit: float, optional. Selects rotational velocity of the isochrone set. Default: None (=0.00, non-rotating).
     - fspot: float, optional. Selects fraction of stellar surface covered by star spots. Default: None (=0.00).
     - B: int, optional. Set to 1 to turn on the magnetic field (only for Dartmouth models). Default: 0.
+    - he: float, optional. Selects helium fraction Y of the isochrone set. Default: None (=solar Y).    
     - ids: list or numpy array of integers, optional. Array of indices, selects the subset of input data to be drawn.
     - plot_ages: numpy array or bool, optional. It can be either:
             - a numpy array containing the ages (in Myr) of the isochrones to be plotted;
@@ -628,10 +655,24 @@ class MADYS(object):
         self.B = kwargs['B'] if 'B' in kwargs else 0
         self.ph_cut = kwargs['ph_cut'] if 'ph_cut' in kwargs else 0.2
         m_unit=kwargs['m_unit'] if 'm_unit' in kwargs else 'm_sun'
+        phys_param=kwargs['phys_param'] if 'phys_param' in kwargs else False
         
         self.__logger.info('Starting age determination...')
-        iso_mass,iso_age,iso_filt,iso_data=MADYS.load_isochrones(model,self.filters,**kwargs)        
+        filt=np.concatenate([self.filters,['logg','Teff','logL','radius']]) if phys_param else self.filters
+            
+        iso_mass,iso_age,iso_filt,iso_data=MADYS.load_isochrones(model,filt,logger=self.__logger,**kwargs)        
         self.__logger.info('Isochrones for model '+model+' correctly loaded')
+        
+        if phys_param:
+            phys_filt=['logg','Teff','logL','radius']
+            w_p=MADYS.where_v(phys_filt,iso_filt)
+            w_d=MADYS.complement_v(w_p,len(iso_filt))
+            iso_filt=np.delete(iso_filt,w_p)
+            phys_data=iso_data[:,:,w_p]
+            iso_data=iso_data[:,:,w_d]
+            self.__logger.info('Estimation of physical parameters (radius, Teff, log(L), log(g))? Yes')
+        else: self.__logger.info('Estimation of physical parameters (radius, Teff, log(L), log(g))? No')
+        
         mass_range_str=["%.2f" % s for s in self.mass_range]
         try:
             age_range_str=["%s" % s for s in self.age_range]
@@ -640,6 +681,8 @@ class MADYS(object):
         self.__logger.info('Input parameters for the model: mass range = ['+','.join(mass_range_str)+'] M_sun; age range = ['+','.join(age_range_str)+'] Myr')
         if self.feh==None: self.__logger.info('Metallicity: solar (use MADYS.info_models('+model+') for details).')
         else: self.__logger.info('Metallicity: [Fe/H]='+str(self.feh)+' (use MADYS.info_models('+model+') for details).')
+        if self.he==None: self.__logger.info('Helium content: solar (use MADYS.info_models('+model+') for details).')
+        else: self.__logger.info('Helium content: Y='+str(self.he)+' (use MADYS.info_models('+model+') for details).')
         if self.afe==None: self.__logger.info('Alpha enhancement: [a/Fe]=0.00')
         else: self.__logger.info('Alpha enhancement: [a/Fe]='+str(self.afe))
         if self.v_vcrit==None: self.__logger.info('Rotational velocity: 0.00 (non-rotating model).')
@@ -691,22 +734,43 @@ class MADYS(object):
 #                a_max=np.full(xlen,np.nan)
                 m_err_p=np.full(xlen,np.nan)
                 m_err_m=np.full(xlen,np.nan)
+                if phys_param:
+                    radius_err_p=np.full(xlen,np.nan)
+                    radius_err_m=np.full(xlen,np.nan)
+                    logL_err_p=np.full(xlen,np.nan)
+                    logL_err_m=np.full(xlen,np.nan)
+                    logg_err_p=np.full(xlen,np.nan)
+                    logg_err_m=np.full(xlen,np.nan)
+                    Teff_err_p=np.full(xlen,np.nan)
+                    Teff_err_m=np.full(xlen,np.nan)
         else:
             a_final=np.full(xlen,np.nan)
             a_err=np.full(xlen,np.nan)
 
         m_final=np.full(xlen,np.nan)
         m_err=np.full(xlen,np.nan)
+        if phys_param:
+            radius_fit=np.full(xlen,np.nan)
+            logL_fit=np.full(xlen,np.nan)
+            logg_fit=np.full(xlen,np.nan)
+            Teff_fit=np.full(xlen,np.nan)
+            radius_err=np.full(xlen,np.nan)
+            logL_err=np.full(xlen,np.nan)
+            logg_err=np.full(xlen,np.nan)
+            Teff_err=np.full(xlen,np.nan)
+            
         l=iso_data.shape
         sigma=np.full(([l[0],l[1],ylen]),np.nan)
         
-        if l[1]==1: relax=True #if just one age is provided, no need for strict conditions on photometry
+        if l[1]==1: relax=True #if just one age is provided, no need for strict conditions on photometry            
         
         if relax:
             sigma=np.full(([l[0],1,ylen]),np.nan)
             for i in range(xlen):
                 w,=np.where(MADYS.is_phot_good(phot[i,:],phot_err[i,:],max_phot_err=self.ph_cut))
-                if len(w)==0: continue
+                if len(w)==0: 
+                    self.__logger.info('All magnitudes for star '+str(i)+' have an error beyond the maximum allowed threshold ('+str(self.ph_cut)+' mag): age and mass determinations was not possible.')
+                    continue
                 if 'i_age' in locals(): i00=i_age[i,0]
                 elif mask: i00=i
                 else: i00=0
@@ -716,12 +780,19 @@ class MADYS(object):
                     sigma[:,0,w[h]]=((iso_data[:,i00,w[h]]-ph)/phot_err[i,w[h]])**2
                     ii=divmod(np.nanargmin(sigma[:,:,w[h]]), sigma.shape[1])+(w[h],) #builds indices (i1,i2,i3) of closest theor. point
                     if abs(iso_data[ii[0],i00,w[h]]-ph)<0.2: b[h]=True #if the best theor. match is more than 0.2 mag away, discards it
-                if np.sum(b)<0.5: continue
+                if np.sum(b)<0.5: 
+                    self.__logger.info('All magnitudes for star '+str(i)+' are more than 0.2 mag away from their best theoretical match. Check age and mass range of the theoretical grid, or change the model if the current one does not cover the expected age/mass range for this star.')
+                    continue
                 w2=w[b]
                 cr=np.sum(sigma[:,:,w2],axis=2) 
                 est,ind=MADYS.min_v(cr)
                 m_final[i]=iso_mass[ind[0]]
                 a_final[i]=iso_age[i00]
+                if phys_param:
+                    logg_fit[i]=phys_data[ind[0],i00,0]
+                    Teff_fit[i]=phys_data[ind[0],i00,1]
+                    logL_fit[i]=phys_data[ind[0],i00,2]
+                    radius_fit[i]=phys_data[ind[0],i00,3]
                 if 'i_age' in locals():
                     for h in range(len(w2)):
                         ph=phot[i,w2[h]]
@@ -730,6 +801,11 @@ class MADYS(object):
                     est1,ind1=MADYS.min_v(cr1)
                     m_f1=iso_mass[ind1[0]]
                     a_min[i]=iso_age[i_age[i,1]]
+                    if phys_param:
+                        logg_err_m[i]=logg_fit[i]-phys_data[ind1[0],i_age[i,1],0]
+                        Teff_err_m[i]=Teff_fit[i]-phys_data[ind1[0],i_age[i,1],1]
+                        logL_err_m[i]=logL_fit[i]-phys_data[ind1[0],i_age[i,1],2]
+                        radius_err_m[i]=radius_fit[i]-phys_data[ind1[0],i_age[i,1],3]
                     for h in range(len(w2)):
                         ph=phot[i,w2[h]]
                         sigma[:,0,w2[h]]=((iso_data[:,i_age[i,2],w2[h]]-ph)/phot_err[i,w2[h]])**2
@@ -738,24 +814,53 @@ class MADYS(object):
                     m_f2=iso_mass[ind1[0]]
                     a_max[i]=iso_age[i_age[i,2]]
                     m_err_m[i]=m_final[i]-m_f1
-                    m_err_p[i]=m_f2-m_final[i]                    
+                    m_err_p[i]=m_f2-m_final[i]
+                    if phys_param:
+                        logg_err_p[i]=-logg_fit[i]+phys_data[ind1[0],i_age[i,2],0]
+                        Teff_err_p[i]=-Teff_fit[i]+phys_data[ind1[0],i_age[i,2],1]
+                        logL_err_p[i]=-logL_fit[i]+phys_data[ind1[0],i_age[i,2],2]
+                        radius_err_p[i]=-radius_fit[i]+phys_data[ind1[0],i_age[i,2],3]
                 else:
                     m_f1=np.zeros(20)
                     a_f1=np.zeros(20)
-                    for j in range(20):
-                        phot1=phot+phot_err*np.random.normal(size=(xlen,ylen))
-                        for h in range(len(w2)):
-                            sigma[:,0,w2[h]]=((iso_data[:,i00,w2[h]]-phot1[i,w2[h]])/phot_err[i,w2[h]])**2
-                        cr1=np.sum(sigma[:,:,w2],axis=2)
-                        est1,ind1=MADYS.min_v(cr1)
-                        m_f1[j]=iso_mass[ind1[0]]
-                        a_f1[j]=iso_age[i00]
+                    if phys_param:
+                        logg_f1=np.zeros(20)
+                        Teff_f1=np.zeros(20)
+                        logL_f1=np.zeros(20)
+                        radius_f1=np.zeros(20)
+                        for j in range(20):
+                            phot1=phot+phot_err*np.random.normal(size=(xlen,ylen))
+                            for h in range(len(w2)):
+                                sigma[:,0,w2[h]]=((iso_data[:,i00,w2[h]]-phot1[i,w2[h]])/phot_err[i,w2[h]])**2
+                            cr1=np.sum(sigma[:,:,w2],axis=2)
+                            est1,ind1=MADYS.min_v(cr1)
+                            m_f1[j]=iso_mass[ind1[0]]
+                            a_f1[j]=iso_age[i00]
+                            logg_f1[j]=phys_data[ind1[0],i00,0]
+                            Teff_f1[j]=phys_data[ind1[0],i00,1]
+                            logL_f1[j]=phys_data[ind1[0],i00,2]
+                            radius_f1[j]=phys_data[ind1[0],i00,3]
+                        logg_err[i]=np.std(logg_f1,ddof=1)
+                        Teff_err[i]=np.std(Teff_f1,ddof=1)
+                        logL_err[i]=np.std(logL_f1,ddof=1)
+                        radius_err[i]=np.std(radius_f1,ddof=1)
+                    else:
+                        for j in range(20):
+                            phot1=phot+phot_err*np.random.normal(size=(xlen,ylen))
+                            for h in range(len(w2)):
+                                sigma[:,0,w2[h]]=((iso_data[:,i00,w2[h]]-phot1[i,w2[h]])/phot_err[i,w2[h]])**2
+                            cr1=np.sum(sigma[:,:,w2],axis=2)
+                            est1,ind1=MADYS.min_v(cr1)
+                            m_f1[j]=iso_mass[ind1[0]]
+                            a_f1[j]=iso_age[i00]
                     m_err[i]=np.std(m_f1,ddof=1)
-                    a_err[i]=np.std(a_f1,ddof=1)            
+                    a_err[i]=np.std(a_f1,ddof=1)
         else:
             for i in range(xlen):
                 w,=np.where(MADYS.is_phot_good(phot[i,:],phot_err[i,:],max_phot_err=self.ph_cut))
-                if len(w)==0: continue
+                if len(w)==0: 
+                    self.__logger.info('All magnitudes for star '+str(i)+' have an error beyond the maximum allowed threshold ('+str(self.ph_cut)+' mag): age and mass determinations was not possible.')
+                    continue
                 b=np.zeros(len(w),dtype=bool)
                 for h in range(len(w)):
                     ph=phot[i,w[h]]
@@ -763,7 +868,12 @@ class MADYS(object):
                     ii=divmod(np.nanargmin(sigma[:,:,w[h]]), sigma.shape[1])+(w[h],) #builds indices (i1,i2,i3) of closest theor. point
                     if abs(iso_data[ii]-ph)<0.2: b[h]=True #if the best theor. match is more than 0.2 mag away, discards it           
                 w2=w[b]
-                if len(w2)<3: continue #at least 3 filters needed for the fit
+                if len(w2)<3:
+                    if np.sum(b)==0:
+                        self.__logger.info('All magnitudes for star '+str(i)+' are more than 0.2 mag away from their best theoretical match. Check age and mass range of the theoretical grid, or change the model if the current one does not cover the expected age/mass range for this star.')
+                    else:
+                        self.__logger.info('Less than three good filters for star '+str(i)+': use a less strict error threshold, or consider adopting an age range to have at least a mass estimate.')
+                    continue #at least 3 filters needed for the fit
                 cr=np.sum(sigma[:,:,w2],axis=2)
                 est,ind=MADYS.min_v(cr)
                 crit1=np.sort([sigma[ind+(w2[j],)] for j in range(len(w2))])
@@ -773,31 +883,59 @@ class MADYS(object):
                     a_final[i]=iso_age[ind[1]]
                     m_f1=np.zeros(20)
                     a_f1=np.zeros(20)
-                    for j in range(20):
-                        phot1=phot+phot_err*np.random.normal(size=(xlen,ylen))
-                        for h in range(len(w2)):
-                            sigma[:,:,w2[h]]=((iso_data[:,:,w2[h]]-phot1[i,w2[h]])/phot_err[i,w2[h]])**2
-                        cr1=np.sum(sigma[:,:,w2],axis=2)
-                        est1,ind1=MADYS.min_v(cr1)
-                        m_f1[j]=iso_mass[ind1[0]]
-                        a_f1[j]=iso_age[ind1[1]]
+                    if phys_param:
+                        logg_fit[i]=phys_data[ind[0],ind[1],0]
+                        Teff_fit[i]=phys_data[ind[0],ind[1],1]
+                        logL_fit[i]=phys_data[ind[0],ind[1],2]
+                        radius_fit[i]=phys_data[ind[0],ind[1],3]
+                        logg_f1=np.zeros(20)
+                        Teff_f1=np.zeros(20)
+                        logL_f1=np.zeros(20)
+                        radius_f1=np.zeros(20)
+                        for j in range(20):
+                            phot1=phot+phot_err*np.random.normal(size=(xlen,ylen))
+                            for h in range(len(w2)):
+                                sigma[:,:,w2[h]]=((iso_data[:,:,w2[h]]-phot1[i,w2[h]])/phot_err[i,w2[h]])**2
+                            cr1=np.sum(sigma[:,:,w2],axis=2)
+                            est1,ind1=MADYS.min_v(cr1)
+                            m_f1[j]=iso_mass[ind1[0]]
+                            a_f1[j]=iso_age[ind1[1]]
+                            logg_f1[j]=phys_data[ind1[0],ind1[1],0]
+                            Teff_f1[j]=phys_data[ind1[0],ind1[1],1]
+                            logL_f1[j]=phys_data[ind1[0],ind1[1],2]
+                            radius_f1[j]=phys_data[ind1[0],ind1[1],3]
+                        logg_err[i]=np.std(logg_f1,ddof=1)
+                        Teff_err[i]=np.std(Teff_f1,ddof=1)
+                        logL_err[i]=np.std(logL_f1,ddof=1)
+                        radius_err[i]=np.std(radius_f1,ddof=1)
+                    else:
+                        for j in range(20):
+                            phot1=phot+phot_err*np.random.normal(size=(xlen,ylen))
+                            for h in range(len(w2)):
+                                sigma[:,:,w2[h]]=((iso_data[:,:,w2[h]]-phot1[i,w2[h]])/phot_err[i,w2[h]])**2
+                            cr1=np.sum(sigma[:,:,w2],axis=2)
+                            est1,ind1=MADYS.min_v(cr1)
+                            m_f1[j]=iso_mass[ind1[0]]
+                            a_f1[j]=iso_age[ind1[1]]
                     m_err[i]=np.std(m_f1,ddof=1)
                     a_err[i]=np.std(a_f1,ddof=1)
                 
-        if m_unit=='m_jup':
+        if m_unit.lower()=='m_jup':
             m_final*=M_sun.value/M_jup.value
             m_err*=M_sun.value/M_jup.value
             if 'i_age' in locals():
                 m_err_p*=M_sun.value/M_jup.value
                 m_err_m*=M_sun.value/M_jup.value
+            if phys_param:
+                radius_fit*=R_sun.value/R_jup.value
+                radius_err*=R_sun.value/R_jup.value
+                if 'i_age' in locals():
+                    radius_err_p*=R_sun.value/R_jup.value
+                    radius_err_m*=R_sun.value/R_jup.value                
 
         if verbose==True:
-            try:
-                if type(self.GaiaID)==Table: star_names=self.GaiaID['ID'].value
-                else: star_names=self.GaiaID.value
-            except:
-                if type(self.GaiaID)==Table: star_names=self.GaiaID['ID']
-                else: star_names=self.GaiaID
+            if type(self.GaiaID)==Table: star_names=self.GaiaID['ID'].value
+            else: star_names=self.GaiaID.value
             filename=os.path.join(self.path,str(self.__sample_name+'_ages_'+model+'.txt'))
             f=open(filename, "w+")
             if 'i_age' in locals():
@@ -813,8 +951,34 @@ class MADYS(object):
 
         logging.shutdown()
 
-        if 'i_age' in locals(): return a_final,m_final,a_min,a_max,m_err_m,m_err_p
-        else: return a_final,m_final,a_err,m_err
+        if 'i_age' in locals(): 
+            if phys_param:
+                dic={'ages':a_final, 'ages_min':a_min, 'ages_max':a_min,
+                     'masses':m_final, 'masses_err_m':m_err_m, 'masses_err_p': m_err_p,
+                     'ebv':self.ebv,
+                     'radii':radius_fit, 'radii_err_m': radius_err_m, 'radii_err_p': radius_err_p,
+                     'logg':logg_fit, 'logg_err_m': logg_err_m, 'logg_err_p': logg_err_p,
+                     'logL':logL_fit, 'logL_err_m': logL_err_m, 'logL_err_p': logL_err_p,
+                     'Teff':Teff_fit, 'Teff_err_m': Teff_err_m, 'Teff_err_p': Teff_err_p}
+            else:
+                dic={'ages':a_final, 'ages_min':a_min, 'ages_max':a_min,
+                     'masses':m_final, 'masses_err_m':m_err_m, 'masses_err_p': m_err_p,
+                     'ebv':self.ebv}
+        else:
+            if phys_param:
+                dic={'ages':a_final, 'ages_err':a_err,
+                     'masses':m_final, 'masses_err':m_err,
+                     'ebv':self.ebv,
+                     'radii':radius_fit, 'radii_err': radius_err,
+                     'logg':logg_fit, 'logg_err': logg_err,
+                     'logL':logL_fit, 'logL_err': logL_err,
+                     'Teff':Teff_fit, 'Teff_err': Teff_err}
+            else:
+                dic={'ages':a_final, 'ages_err':a_err,
+                     'masses':m_final, 'masses_err':m_err,
+                     'ebv':self.ebv}            
+        
+        return dic
                 
     @staticmethod
     def axis_range(col_name,col_phot,stick_to_points=False):
@@ -905,7 +1069,7 @@ class MADYS(object):
             m1,=np.where(self.filters==filter_model(model,mag))
             mag_data,mag_err=self.abs_phot[:,m1],self.abs_phot_err[:,m1]
             
-        iso=MADYS.load_isochrones(model,self.filters,**kwargs)
+        iso=MADYS.load_isochrones(model,self.filters,logger=self.__logger,**kwargs)
 
         col_data=col_data.ravel()
         mag_data=mag_data.ravel()
@@ -1749,7 +1913,7 @@ class MADYS(object):
         return gs
 
     @staticmethod
-    def model_name(model,feh=None,afe=None,v_vcrit=None,fspot=None,B=0):
+    def model_name(model,feh=None,afe=None,v_vcrit=None,fspot=None,B=0,he=None):
 #        param={'model':model,'feh':0.0,'afe':0.0,'v_vcrit':0.0,'fspot':0.0,'B':0}
         if model=='bt_settl': model2=model
         elif model=='mist':
@@ -1850,26 +2014,21 @@ class MADYS(object):
             else: 
                 model2+='_mag'
 #                param['B']=1  
-        elif model=='geneva':
-            feh_range=np.array([-1.5,0.0])
-            vcrit_range=np.array([0.0,0.4])
+        elif model=='yapsi':
+            feh_range=np.array([-1.44,-0.94,-0.44,0.06,0.36])
+            he_range=np.array([0.25,0.28,0.31,0.34,0.37])
+            mod_vals=np.array([['X0p749455_Z0p000545','X0p719477_Z0p000523','X0p689499_Z0p000501','X0p659520_Z0p000480','X0p629542_Z0p000458'],
+                             ['X0p748279_Z0p001721','X0p718348_Z0p001652','X0p688417_Z0p001583','X0p658485_Z0p001515','X0p628554_Z0p001446'],
+                             ['X0p744584_Z0p005416','X0p714801_Z0p005199','X0p685018_Z0p004982','X0p655234_Z0p004766','X0p625451_Z0p004549'],
+                             ['X0p733138_Z0p016862','X0p703812_Z0p016188','X0p674487_Z0p015513','X0p645161_Z0p014839','X0p615836_Z0p014164'],
+                             ['X0p717092_Z0p032908','X0p688408_Z0p031592','X0p659725_Z0p030275','X0p631041_Z0p028959','X0p602357_Z0p027643']])    
             if type(feh)!=type(None):
                 i=np.argmin(abs(feh_range-feh))
-                feh0=feh_range[i]
-#                param['feh']=feh0
-                if feh0<0: s='m'
-                else: s='p'
-                feh1="{:.2f}".format(abs(feh0))            
-                model2=model+'_'+s+feh1
-            else: model2=model+'_p0.00'
-            if type(v_vcrit)!=type(None):
-                i=np.argmin(abs(vcrit_range-v_vcrit))
-                v_vcrit0=vcrit_range[i]
-#                param['v_vcrit']=v_vcrit0
-                if v_vcrit0<0.01: s='norot'
-                else: s='rot'
-                model2+='_'+s
-            else: model2+='_norot'
+            else: i=3
+            if type(he)!=type(None):
+                j=np.argmin(abs(he_range-he))
+            else: j=1
+            model2='yapsi_'+mod_vals[i,j]            
         else: model2=model
 #        return model2,param
         return model2
@@ -1969,13 +2128,15 @@ class MADYS(object):
                  'IRAC_CH1':'IRAC_CH1','IRAC_CH2':'IRAC_CH2',
                  'Teff':'Teff','logL':'Luminosity','logg':'Gravity','radius':'Radius'}
         elif model=='geneva':
-            dic={'V':'Vmag','U-B':'U-B','B-V':'B-V',
-                 'B':'Bmag','U':'Umag', 'R':'nan', 'i':'nan',
-                 'Teff':'Teff','logL':'logL','logg':'logg','radius':'Rpol'}
+            dic={'V':'V','U':'U','B':'B','R':'R','I':'I',
+                 'J':'J', 'H':'H', 'K':'K','G':'G','Gbp':'Gbp','Grp':'Grp',
+                 'Teff':'Teff','logL':'logL','logg':'g_pol','radius':'r_pol'}
         elif model=='sonora_bobcat':
             dic={'J':'J','H':'H','K':'Ks','W1':'W1',
                 'W2':'W2','W3':'W3','W4':'W4',
                  'Teff':'Teff','logL':'logL','logg':'logg','radius':'radius'}
+        elif model=='yapsi':
+            dic={'Teff':'Teff','logL':'log(L/Lsun)','logg':'log_g','radius':'radius'}
             
         try:
             return dic[filt]
@@ -1983,7 +2144,7 @@ class MADYS(object):
     
     @staticmethod
     def fix_filters(filters,model,mode='collapse'):
-        mod2=['bt_settl','starevol','spots','dartmouth','ames_cond','ames_dusty','bt_nextgen','nextgen','bhac15']
+        mod2=['bt_settl','starevol','spots','dartmouth','ames_cond','ames_dusty','bt_nextgen','nextgen','bhac15','geneva']
         mod3=['mist','parsec']        
         if mode=='collapse':
             filters=np.where(filters=='G2','G', filters)
@@ -2006,6 +2167,8 @@ class MADYS(object):
         for x in os.walk(folder):
             add_search_path(x[0])
 
+        logger=kwargs['logger'] if 'logger' in kwargs else None
+
         mass_range=kwargs['mass_range'] if 'mass_range' in kwargs else [0.01,1.4]
         age_range=kwargs['age_range'] if 'age_range' in kwargs else [1,1000]
         B=kwargs['B'] if 'B' in kwargs else 0
@@ -2013,6 +2176,7 @@ class MADYS(object):
         afe=kwargs['afe'] if 'afe' in kwargs else None
         v_vcrit=kwargs['v_vcrit'] if 'v_vcrit' in kwargs else None
         fspot=kwargs['fspot'] if 'fspot' in kwargs else None
+        he=kwargs['he'] if 'he' in kwargs else None
 
         def filters_to_surveys(filters):    
             surveys=[]
@@ -2035,7 +2199,7 @@ class MADYS(object):
             return surveys
 
 
-        model_code=MADYS.model_name(model,feh=feh,afe=afe,v_vcrit=v_vcrit,fspot=fspot,B=B)
+        model_code=MADYS.model_name(model,feh=feh,afe=afe,v_vcrit=v_vcrit,fspot=fspot,B=B,he=he)
     #    model_code,param=model_name(model,feh=feh,afe=afe,v_vcrit=v_vcrit,fspot=fspot,B=B)
     #    param['mass_range']=mass_range
     #    param['age_range']=age_range
@@ -2082,6 +2246,10 @@ class MADYS(object):
                 try:
                     masses, ages, v0, data0 = model_data(surveys[i],model_code)
                 except ValueError: #if the survey is not found for the isochrone set, its filters are set to NaN
+                    print(surveys[i],model_code)
+                    sys.exit()
+                    if logger!=None:
+                        logger.info('Survey '+surveys[i]+' not found for model '+model+'. Setting all related filters to nan.')
                     continue
                 iso=np.full([n1,len(ages),len(fnew)],np.nan)
                 for j in range(len(fnew)):
@@ -2120,6 +2288,8 @@ class MADYS(object):
                 try:
                     masses, ages, v0, data0 = model_data(surveys[i],model_code)
                 except ValueError: #if the survey is not found for the isochrone set, its filters are set to NaN
+                    if logger!=None:
+                        logger.info('Survey '+surveys[i]+' not found for model '+model+'. Setting all related filters to nan.')
                     continue
                 iso=np.full([n1,len(ages),len(fnew)],np.nan)
                 for j in range(len(fnew)):
@@ -2213,7 +2383,8 @@ class MADYS(object):
                          'atmo2020_neq_s':'atmo','atmo2020_neq_w':'atmo','bhac 15':'bhac15',
                          'ames dusty':'dusty','ames_dusty':'dusty',
                          'ames cond':'cond','ames_cond':'cond', 
-                         'bt_settl':'settl','bt-settl':'settl','bt settl':'settl'                         
+                         'bt_settl':'settl','bt-settl':'settl','bt settl':'settl',
+                         'sonora bobcat':'sonora', 'sonora_bobcat':'sonora'
                         }
                     try: 
                         return dic[model]
@@ -2240,6 +2411,8 @@ class MADYS(object):
                             elif 'spots' in str.lower(path): f_mods.append('spots')
                             elif 'dartmouth' in str.lower(path): f_mods.append('dartmouth')
                             elif 'geneva' in str.lower(path): f_mods.append('geneva')
+                            elif 'sonora' in str.lower(path): f_mods.append('sonora_bobcat')
+                            elif 'yapsi' in str.lower(path): f_mods.append('yapsi')
                             continue
                         else: found=True
                     with open(info) as f:
@@ -2321,9 +2494,12 @@ class MADYS(object):
                         print("CALL IT AS: 'dartmouth'")
                     elif 'geneva' in str.lower(path):
                         print("CALL IT AS: 'geneva'")                    
+                    elif 'sonora' in str.lower(path):
+                        print("CALL IT AS: 'sonora_bobcat'")                    
+                    elif 'yapsi' in str.lower(path):
+                        print("CALL IT AS: 'yapsi'")                    
 
                     print('--------------------------------------------------------------------------------------')
             if found==False: 
                 mess='The inserted model does not exist. Check the spelling and try again. Available models: '+','.join(f_mods)
                 raise ValueError(mess)
-

@@ -995,9 +995,9 @@ def _read_model_Dartmouth(path, fname, instrument): #VS21
         
     return masses, ages, values, dat    
 
-def _read_model_geneva(path, fname, instrument, v_vcrit=0.0):
+def _read_model_geneva_2012(path, fname, instrument, v_vcrit=0.0): #VS21
     '''
-    (Private) Read the Geneva models
+    (Private) Read the Geneva models (2012 version)
 
     Parameters
     ----------
@@ -1082,7 +1082,144 @@ def _read_model_geneva(path, fname, instrument, v_vcrit=0.0):
         
     return masses, ages, values, dat
 
-def _read_model_sonora_bobcat(path, fname, instrument):
+def _read_model_geneva(path, fname, instrument): #VS21
+    '''
+    (Private) Read the Geneva models
+
+    Parameters
+    ----------
+    path : str
+        Full path to the directory containing the model files
+
+    fname : str
+        Full model file name
+
+    instrument : str
+        Name of the instrument (or observatory) for the file
+    
+    Returns
+    -------
+    masses : vector
+        Numpy vector with unique masses, in MJup
+
+    ages : vector
+        Numpy vector with unique ages, in Myr
+
+    values : array
+        Array with names of parameters
+
+    data : array
+        Numpy data array, interpolated to have consistent masses for all ages
+    '''
+
+    # read column headers and number of values
+    p_cols = re.compile('\s*#*\s*M_ini\s+(Z_ini.+)')
+    p_age = re.compile('.+t(.+).dat')
+    
+    # get column names
+    cols  = ['mass']
+    file = open(path / fname, 'r')
+    line = file.readline()
+    while len(cols) == 1:
+        m = p_cols.match(line)
+        if (m is not None):
+            names = m.group(1)
+            cols.extend(names.split())
+        line = file.readline()         #reads next line
+    file.close()        
+
+    cols=np.array(cols)
+    iso_list=os.listdir(path)
+    n_a=len(iso_list)
+                
+    ages=np.zeros(n_a)
+    
+    for i in range(len(iso_list)):
+        a = p_age.match(iso_list[i])
+        ages[i]=10**(float(a.group(1))-6)
+        data=pd.read_csv(path / iso_list[i],delim_whitespace=True,header=None,comment='#')
+        aa=np.array(data[0])
+        w,=np.where(aa[:-1]!=aa[1:])
+        w=np.concatenate([w,[len(aa)-1]])
+        data=data.iloc[w,:] #slicing
+        data.columns = cols
+        
+        if i==0:
+            #output values
+            n_m=int(1.1*len(data))
+            mass_range=[np.min(data['mass']),np.max(data['mass'])]
+            masses=np.logspace(np.log10(mass_range[0]),np.log10(mass_range[1]),n_m)
+            dat=np.full((n_m, n_a, len(cols)-1), np.nan)
+                
+        data2=data.to_numpy(dtype=float)
+        ma=data['mass'].to_numpy(dtype=float).ravel()
+        for j in range(1,len(cols)):
+            y=data2[:,j]
+            f = interp.interp1d(ma, y, bounds_error=False, fill_value=np.nan)
+            dat[:,i,j-1]=f(masses) 
+
+    w,=np.where(cols=='logTe_c')
+    cols[w]='Teff'
+    dat[:,:,w-1]=10**dat[:,:,w-1]
+    w,=np.where(cols=='r_pol')
+    dat[:,:,w-1]/=cst.R_jup.to(units.cm).value    
+
+    sub=['MV', 'U-B', 'B-V', 'V-K', 'V-R', 'V-I', 'J-K', 'H-K', 'G-V', 'Gbp-V', 'Grp-V']
+    w=np.zeros(11,dtype=np.int16)
+    for i in range(11):
+        wt,=np.where(cols==sub[i])
+        w[i]=wt[0]
+    
+    cols[w]=['V', 'U', 'B', 'K', 'R', 'I', 'J', 'H', 'G', 'Gbp', 'Grp']
+    w-=1
+
+    dat[:,:,w[2]]+=dat[:,:,w[0]] #B
+    dat[:,:,w[1]]+=dat[:,:,w[2]] #U
+    dat[:,:,w[3]]=-dat[:,:,w[3]]+dat[:,:,w[0]] #K
+    dat[:,:,w[4]]=-dat[:,:,w[4]]+dat[:,:,w[0]] #R
+    dat[:,:,w[5]]=-dat[:,:,w[5]]+dat[:,:,w[0]] #I
+    dat[:,:,w[6]]+=dat[:,:,w[3]] #J
+    dat[:,:,w[7]]+=dat[:,:,w[3]] #H
+    dat[:,:,w[8]]+=dat[:,:,w[0]] #G
+    dat[:,:,w[9]]+=dat[:,:,w[0]] #Gbp
+    dat[:,:,w[10]]+=dat[:,:,w[0]] #Grp
+    
+    masses *= cst.M_sun.value / cst.M_jup.value
+
+    values=np.array(cols[1:])
+        
+    return masses, ages, values, dat    
+
+def _read_model_sonora_bobcat(path, fname, instrument): #VS21
+    '''
+    (Private) Read the Sonora Bobcat models
+
+    Parameters
+    ----------
+    path : str
+        Full path to the directory containing the model files
+
+    fname : str
+        Full model file name
+
+    instrument : str
+        Name of the instrument (or observatory) for the file
+    
+    Returns
+    -------
+    masses : vector
+        Numpy vector with unique masses, in MJup
+
+    ages : vector
+        Numpy vector with unique ages, in Myr
+
+    values : array
+        Array with names of parameters
+
+    data : array
+        Numpy data array, interpolated to have consistent masses for all ages
+    '''
+
     data = pd.read_csv(path / fname, sep=',', comment='!')
     m=np.unique(data['mass'])
     a=np.unique(data['age'])
@@ -1091,6 +1228,9 @@ def _read_model_sonora_bobcat(path, fname, instrument):
     n_m=len(m)
     n_a=len(a)
     n_v=len(val)
+
+#    data['radius']*= cst.R_sun.value/cst.R_jup.value
+    data['logL']-= 33+np.log10(3.827) #Sun luminosity [erg] in log scale
 
     dat=np.zeros([n_m,n_a,n_v])
     for i in range(n_m):
@@ -1101,9 +1241,118 @@ def _read_model_sonora_bobcat(path, fname, instrument):
                     dat[i,j,k]=data[val[k]][w].values
                 
     a=a*1e-6
-    data['radius']*= cst.R_sun.value/cst.R_jup.value
+
     return m,a,val,dat
     
+def _read_model_yapsi(path, fname, instrument):
+    '''
+    (Private) Read the YAPSI models
+
+    Parameters
+    ----------
+    path : str
+        Full path to the directory containing the model files
+
+    fname : str
+        Full model file name
+
+    instrument : str
+        Name of the instrument (or observatory) for the file
+
+    Returns
+    -------
+    masses : vector
+        Numpy vector with unique masses, in MJup
+
+    ages : vector
+        Numpy vector with unique ages, in Myr
+
+    values : array
+        Array with names of parameters
+
+    data : array
+        Numpy data array, interpolated to have consistent masses for all ages
+    '''
+
+    # read column headers and number of values
+    p_cols = re.compile('\s*#*(Model_no.+)')
+
+    # get column names
+    cols  = []
+    file = open(path / fname, 'r')    
+    line = file.readline()
+    while len(cols) == 0:
+        m = p_cols.match(line)
+        if (m is not None):
+            names = m.group(1)
+            cols.extend(names.split())
+        line = file.readline()         #reads next line
+    file.close()
+    cols=np.array(cols)
+    if 'log' in cols:
+        w,=np.where(cols=='log')
+        cols[w]='log_g'
+        cols=np.delete(cols,w+1)
+
+    iso_list=os.listdir(path)    
+    all_data=[] #stores all data    
+    
+    p_age = re.compile('\s*#*\s*DESCRIPTION.+:\s+M=([0-9]+.+[0-9]+);*\s*\[Fe/H\]=([pm]*[0-9]+);*\s*')
+    n_m=len(iso_list)
+    masses=np.zeros(n_m)
+    for i in range(n_m):
+        #recovers age
+        file = open(path / iso_list[i], 'r')
+        line = file.readline()
+        found = 0
+        while found==0:
+            m = p_age.match(line)
+            if (m is not None):
+                masses[i] = float(m.group(1))
+                z=float(m.group(2).replace('p0','+0.').replace('m0','-0.'))
+                found=1
+            line = file.readline()
+        file.close()    
+        data=pd.read_csv(path / iso_list[i],delim_whitespace=True,header=None,comment='#')
+        data.columns = cols    
+        
+        if i==0:
+            #output values
+            n_a=int(1.1*len(data))
+            age_range=[np.max([np.min(data['Age(Gyr)']),0.0005]),np.min([np.max(data['Age(Gyr)']),15])] #set min, max age to 0.5 Myr, 15 Gyr
+            ages=np.logspace(np.log10(age_range[0]),np.log10(age_range[1]),n_a)
+            com,ind1,ind2=np.intersect1d(['Age(Gyr)','Model_no','Shells'], cols, return_indices=True)
+            cols1=np.delete(cols,ind2,0)
+            dat=np.full((n_m, n_a, len(cols1)), np.nan)
+        
+        try:
+            data2=data.to_numpy(dtype=float)
+        except ValueError:
+            for kk in range(len(cols)):
+                tp=type(data[cols[kk]][0])
+                if tp==str:
+                    w=np.flatnonzero(np.core.defchararray.find(np.array(data[cols[kk]],dtype=str),'-31')!=-1)
+                    for jj in range(len(w)):
+                        data.loc[w[jj], cols[kk]]=data.loc[w[jj], cols[kk]].replace('-31','E-1')
+            data2=data.to_numpy(dtype=float)                                
+        aa=data['Age(Gyr)'].to_numpy(dtype=float).ravel()
+        data2=np.delete(data2,ind2,1)
+        for j in range(len(cols1)):
+            y=data2[:,j]
+            f = interp.interp1d(aa, y, bounds_error=False, fill_value=np.nan)
+            dat[i,:,j]=f(ages)
+    
+    ages*=1000
+    masses*=cst.M_sun.value / cst.M_jup.value    
+    w_R,=np.where(cols1=='log(R/Rsun)')
+    cols1[w_R]='radius'
+    dat[:,:,w_R]=10**dat[:,:,w_R]*cst.R_sun.value / cst.R_jup.value  
+    w_T,=np.where(cols1=='log(Teff)')
+    cols1[w_T]='Teff'
+    dat[:,:,w_T]=10**dat[:,:,w_T]
+    values=cols1
+        
+    return masses, ages, values, dat    
 
 def _reshape_data(dataframe,start_col=2):
     '''
@@ -1865,16 +2114,40 @@ models = {
         {'instrument': 'hr',        'name': 'atmo2020_neq_s',          'file': '0.001_ATMO_NEQ_strong_vega.txt',                'function': _read_model_atmo2020},
         {'instrument': 'hr',        'name': 'atmo2020_neq_w',          'file': '0.001_ATMO_NEQ_weak_vega.txt',                  'function': _read_model_atmo2020},
 
-        {'instrument': 'johnson',   'name': 'geneva_p0.00_rot',        'file': 'iso_p0.00.dat',                                 'function': _read_model_geneva},
-        {'instrument': 'johnson',   'name': 'geneva_p0.00_norot',      'file': 'iso_p0.00.dat',                                 'function': _read_model_geneva},
-        {'instrument': 'hr',        'name': 'geneva_p0.00_rot',        'file': 'iso_p0.00.dat',                                 'function': _read_model_geneva},
-        {'instrument': 'hr',        'name': 'geneva_p0.00_norot',      'file': 'iso_p0.00.dat',                                 'function': _read_model_geneva},
-        {'instrument': 'hr',        'name': 'geneva_m1.50_rot',        'file': 'iso_m1.50.dat',                                 'function': _read_model_geneva},
-        {'instrument': 'hr',        'name': 'geneva_m1.50_norot',      'file': 'iso_m1.50.dat',                                 'function': _read_model_geneva},
+        {'instrument': 'johnson',   'name': 'geneva',                  'file': 'Isochr_Z0.0140_Vini0.00_t05.000.dat',           'function': _read_model_geneva},
+        {'instrument': 'gaia',      'name': 'geneva',                  'file': 'Isochr_Z0.0140_Vini0.00_t05.000.dat',           'function': _read_model_geneva},
+        {'instrument': '2mass',     'name': 'geneva',                  'file': 'Isochr_Z0.0140_Vini0.00_t05.000.dat',           'function': _read_model_geneva},
+        {'instrument': 'hr',        'name': 'geneva',                  'file': 'Isochr_Z0.0140_Vini0.00_t05.000.dat',           'function': _read_model_geneva},
 
         {'instrument': '2mass',     'name': 'sonora_bobcat',             'file': 'sonora_2mass.csv',                              'function': _read_model_sonora_bobcat},
         {'instrument': 'wise',      'name': 'sonora_bobcat',             'file': 'sonora_wise.csv',                               'function': _read_model_sonora_bobcat},
-        {'instrument': 'hr',        'name': 'sonora_bobcat',             'file': 'sonora_2mass.csv',                              'function': _read_model_sonora_bobcat}
+        {'instrument': 'hr',        'name': 'sonora_bobcat',             'file': 'sonora_2mass.csv',                              'function': _read_model_sonora_bobcat},
+
+        {'instrument': 'hr',        'name': 'yapsi_x0p749455_z0p000545', 'file': 'M0p15_X0p749455_Z0p000545_A1p91804.trk',        'function': _read_model_yapsi},
+        {'instrument': 'hr',        'name': 'yapsi_x0p719477_z0p000523', 'file': 'M0p15_X0p719477_Z0p000523_A1p91804.trk',        'function': _read_model_yapsi},
+        {'instrument': 'hr',        'name': 'yapsi_x0p689499_z0p000501', 'file': 'M0p15_X0p689499_Z0p000501_A1p91804.trk',        'function': _read_model_yapsi},
+        {'instrument': 'hr',        'name': 'yapsi_x0p659520_z0p000480', 'file': 'M0p15_X0p659520_Z0p000480_A1p91804.trk',        'function': _read_model_yapsi},
+        {'instrument': 'hr',        'name': 'yapsi_x0p629542_z0p000458', 'file': 'M0p15_X0p629542_Z0p000458_A1p91804.trk',        'function': _read_model_yapsi},
+        {'instrument': 'hr',        'name': 'yapsi_x0p748279_z0p001721', 'file': 'M0p15_X0p748279_Z0p001721_A1p91804.trk',        'function': _read_model_yapsi},
+        {'instrument': 'hr',        'name': 'yapsi_x0p718348_z0p001652', 'file': 'M0p15_X0p718348_Z0p001652_A1p91804.trk',        'function': _read_model_yapsi},
+        {'instrument': 'hr',        'name': 'yapsi_x0p688417_z0p001583', 'file': 'M0p15_X0p688417_Z0p001583_A1p91804.trk',        'function': _read_model_yapsi},
+        {'instrument': 'hr',        'name': 'yapsi_x0p658485_z0p001515', 'file': 'M0p15_X0p658485_Z0p001515_A1p91804.trk',        'function': _read_model_yapsi},
+        {'instrument': 'hr',        'name': 'yapsi_x0p628554_z0p001446', 'file': 'M0p15_X0p628554_Z0p001446_A1p91804.trk',        'function': _read_model_yapsi},
+        {'instrument': 'hr',        'name': 'yapsi_x0p744584_z0p005416', 'file': 'M0p15_X0p744584_Z0p005416_A1p91804.trk',        'function': _read_model_yapsi},
+        {'instrument': 'hr',        'name': 'yapsi_x0p714801_z0p005199', 'file': 'M0p15_X0p714801_Z0p005199_A1p91804.trk',        'function': _read_model_yapsi},
+        {'instrument': 'hr',        'name': 'yapsi_x0p685018_z0p004982', 'file': 'M0p15_X0p685018_Z0p004982_A1p91804.trk',        'function': _read_model_yapsi},
+        {'instrument': 'hr',        'name': 'yapsi_x0p655234_z0p004766', 'file': 'M0p15_X0p655234_Z0p004766_A1p91804.trk',        'function': _read_model_yapsi},
+        {'instrument': 'hr',        'name': 'yapsi_x0p625451_z0p004549', 'file': 'M0p15_X0p625451_Z0p004549_A1p91804.trk',        'function': _read_model_yapsi},
+        {'instrument': 'hr',        'name': 'yapsi_x0p733138_z0p016862', 'file': 'M0p15_X0p733138_Z0p016862_A1p91804.trk',        'function': _read_model_yapsi},
+        {'instrument': 'hr',        'name': 'yapsi_x0p703812_z0p016188', 'file': 'M0p15_X0p703812_Z0p016188_A1p91804.trk',        'function': _read_model_yapsi},
+        {'instrument': 'hr',        'name': 'yapsi_x0p674487_z0p015513', 'file': 'M0p15_X0p674487_Z0p015513_A1p91804.trk',        'function': _read_model_yapsi},
+        {'instrument': 'hr',        'name': 'yapsi_x0p645161_z0p014839', 'file': 'M0p15_X0p645161_Z0p014839_A1p91804.trk',        'function': _read_model_yapsi},
+        {'instrument': 'hr',        'name': 'yapsi_x0p615836_z0p014164', 'file': 'M0p15_X0p615836_Z0p014164_A1p91804.trk',        'function': _read_model_yapsi},
+        {'instrument': 'hr',        'name': 'yapsi_x0p717092_z0p032908', 'file': 'M0p15_X0p717092_Z0p032908_A1p91804.trk',        'function': _read_model_yapsi},
+        {'instrument': 'hr',        'name': 'yapsi_x0p688408_z0p031592', 'file': 'M0p15_X0p688408_Z0p031592_A1p91804.trk',        'function': _read_model_yapsi},
+        {'instrument': 'hr',        'name': 'yapsi_x0p659725_z0p030275', 'file': 'M0p15_X0p659725_Z0p030275_A1p91804.trk',        'function': _read_model_yapsi},
+        {'instrument': 'hr',        'name': 'yapsi_x0p631041_z0p028959', 'file': 'M0p15_X0p631041_Z0p028959_A1p91804.trk',        'function': _read_model_yapsi},
+        {'instrument': 'hr',        'name': 'yapsi_x0p602357_z0p027643', 'file': 'M0p15_X0p602357_Z0p027643_A1p91804.trk',        'function': _read_model_yapsi}
 
     ],
     'data': {}
