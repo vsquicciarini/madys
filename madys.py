@@ -163,7 +163,7 @@ Draws a color-magnitude diagram (CMD) containing both the measured photometry an
     - groups: list or numpy array of integers, optional. Draws different groups of stars in different colors. The i-th element is a number, indicating to which group the i-th star belongs. Default: None.
     - group_list: list or numpy array of strings, optional. Names of the groups defined by the 'groups' keyword. No. of elements must match the no. of groups. Default: None.
     - label_points: bool, optional. Draws a label next to each point, specifying its row index. Default: True.
-    - tofile: bool, optional. Saves the output to as .png image. Default: False.
+    - tofile: bool or string, optional. If True, saves the output to as .png image. To change the file name, provide a string as full path of the output file. Default: False.
 
 3) interstellar_ext
 Computes the reddening/extinction in a custom band, given the position of a star.
@@ -203,7 +203,25 @@ Prints info about available models for MADYS.
 Informs about 1) the calling sequence; 2) the customizable parameters; 3) age and mass range; 4) adopted solar metallicity and helium content; 5) literature reference.
     Parameters:
     - model: string, optional. Use it to print info about a specific model. If None, prints info about all the available models. Default: None.
-    
+
+6) plot_2D_ext
+Plots the integrated absorption in a given region of the sky, by creating a 2D projection at constant distance of an extinction map.
+No parameter is strictly required, but at one between RA and l, one between dec and b, one between par and d must be supplied.
+    Parameters:
+    - ra: 2-element list, optional. Minimum and maximum right ascension of the sky region [deg].
+    - dec: 2-element list, optional. Minimum and maximum declination of the sky region [deg].
+    - l: 2-element list, optional. Minimum and maximum galactic longitude of the sky region [deg].
+    - b: 2-element list, optional. Minimum and maximum galactic latitude of the sky region [deg].
+    - par: float or int, optional. Parallax corresponding to the depth of the integration [mas].
+    - d: float or int, optional. Maximum distance, i.e. depth of the integration [pc].
+    - ext_map: string, optional. Extinction map to be used: must be 'leike' or 'stilism'. Default: 'leike'.
+    - color: string, optional. Band in which the reddening/extinction is desired. Default: B-V.
+    - n: int, optional. No. of steps along each axis. The final grid will have size [n*n]. Default: 50.
+    - reverse_xaxis: bool, optional. If True, reverses the x axis in the plot. Default: False.
+    - reverse_yaxis: bool, optional. If True, reverses the x axis in the plot. Default: False.
+    - tofile: string, optional. Full path of the output file where the plot will be saved to. Default: None.
+    Output: no output is returned, but the plot is shown in the current window.
+
 """
 
 class MADYS(object):
@@ -2503,3 +2521,44 @@ class MADYS(object):
             if found==False: 
                 mess='The inserted model does not exist. Check the spelling and try again. Available models: '+','.join(f_mods)
                 raise ValueError(mess)
+                
+    @staticmethod
+    def plot_2D_ext(ra=None,dec=None,l=None,b=None,par=None,d=None,color='G',n=50,reverse_xaxis=False,reverse_yaxis=False,tofile=None,ext_map='leike'):
+
+        if type(d)==type(None): 
+            if type(par)==type(None): raise NameError('Exactly one between d and par must be supplied!') 
+            d=1000/par
+        elif (type(d)!=type(None)) & (type(par)!=type(None)):
+            raise NameError('Exactly one between d and par must be supplied!')
+
+        dist=np.full(n**2,d)
+        if (type(ra)!=type(None)) & (type(dec)!=type(None)) & (type(l)==type(None)) & (type(b)==type(None)):
+            a2=np.linspace(ra[0],ra[1],n)
+            d2=np.linspace(dec[0],dec[1],n)
+            coo2,coo1=np.meshgrid(d2,a2)
+            aa=coo1.ravel()
+            dd=coo2.ravel()
+            ee=MADYS.interstellar_ext(ra=aa,dec=dd,d=dist,color=color,ext_map=ext_map)
+            col_name=[r'$\alpha [^\circ]$',r'$\delta [^\circ]$']
+        elif (type(ra)==type(None)) & (type(dec)==type(None)) & (type(l)!=type(None)) & (type(b)!=type(None)):
+            a2=np.linspace(l[0],l[1],n)
+            d2=np.linspace(b[0],b[1],n)
+            coo2,coo1=np.meshgrid(d2,a2)
+            aa=coo1.ravel()
+            dd=coo2.ravel()
+            ee=MADYS.interstellar_ext(l=aa,b=dd,d=d,color=color,ext_map=ext_map)
+            col_name=[r'$l [^\circ]$',r'$b [^\circ]$']
+        else: raise NameError('Exactly one pair between (ra, dec) and (l,b) must be supplied!')       
+
+        E2=ee.reshape(n,n)
+        fig, ax = plt.subplots(figsize=(12,12))
+        CS = ax.contourf(coo1, coo2, E2, 100)
+        cbar = fig.colorbar(CS)
+        ax.set_xlabel(col_name[0],fontsize=15)
+        ax.set_ylabel(col_name[1],fontsize=15)
+        if '-' in color: cbar.ax.set_ylabel(color+' reddening [mag]')
+        else: cbar.ax.set_ylabel(color+'-band extinction [mag]',fontsize=15)
+        if reverse_xaxis: plt.gca().invert_xaxis()
+        if reverse_yaxis: plt.gca().invert_yaxis()
+        if type(tofile)!=type(None): plt.savefig(tofile)
+        plt.show()
