@@ -101,14 +101,14 @@ Estimates age and mass of individual stars by comparison with isochrone grids.
         - ages_err: numpy array. Error on age estimates [Myr].
         - masses_err: numpy array. Error on mass estimates [M_sun or M_jup].
         - ebv: numpy array. Adopted/computed E(B-V), one element per star [mag].
-        - radii: numpy array. Final radius estimates [R_sun or R_jup]. Only returnedif phys_param=True.
-        - radii_err: numpy array. Final radius estimates [R_sun or R_jup]. Only returnedif phys_param=True.
-        - logg: numpy array. Final surface gravity estimates [log10([cm s-2])]. Only returnedif phys_param=True.
-        - logg_err: numpy array. Error on surface gravity estimates [log10([cm s-2])]. Only returnedif phys_param=True.
-        - logL: numpy array. Final luminosity estimates [log10([L_sun])]. Only returnedif phys_param=True.
-        - logL_err: numpy array. Error on luminosity estimates [log10([L_sun])]. Only returnedif phys_param=True.
-        - Teff: numpy array. Final effective temperature estimates [K]. Only returnedif phys_param=True.
-        - Teff_err: numpy array. Error on effective temperature estimates [K]. Only returnedif phys_param=True.
+        - radii: numpy array. Final radius estimates [R_sun or R_jup]. Only returned if phys_param=True.
+        - radii_err: numpy array. Final radius estimates [R_sun or R_jup]. Only returned if phys_param=True.
+        - logg: numpy array. Final surface gravity estimates [log10([cm s-2])]. Only returned if phys_param=True.
+        - logg_err: numpy array. Error on surface gravity estimates [log10([cm s-2])]. Only returned if phys_param=True.
+        - logL: numpy array. Final luminosity estimates [log10([L_sun])]. Only returned if phys_param=True.
+        - logL_err: numpy array. Error on luminosity estimates [log10([L_sun])]. Only returned if phys_param=True.
+        - Teff: numpy array. Final effective temperature estimates [K]. Only returned if phys_param=True.
+        - Teff_err: numpy array. Error on effective temperature estimates [K]. Only returned if phys_param=True.
        (case 2: if age_range is a 2D numpy array)
         - ages: numpy array. Final age estimates [Myr].
         - masses: numpy array. Final mass estimates [M_sun or M_jup].
@@ -222,9 +222,96 @@ No parameter is strictly required, but at one between RA and l, one between dec 
     - tofile: string, optional. Full path of the output file where the plot will be saved to. Default: None.
     Output: no output is returned, but the plot is shown in the current window.
 
+7) info_filters
+Prints info about filters/physical quantity in MADYS.
+Informs about 1) the name of the quantity and its basic reference; 2) the models in which the quantity is available.
+    Parameters:
+    - filt: string, optional. Use it to print info about a specific quantity. If None, prints info about all the available quantities. Default: None.
+    - model: string, optional. If provided, returns True if the quantity is available in the model, False otherwise. Default: None.
+
 """
 
 class MADYS(object):
+    filt={'bessell':{'B':0.4525,'V':0.5525,'U':0.3656,'Ux':0.3656,'Bx':0.4537,'R':0.6535,'I':0.8028,
+                     'B_J':1.22,'B_H':1.63,'B_K':2.19,'L':3.45,'Lp':3.80,'M':4.75,'N':10.4},
+          'gaia':{'G':0.6419,'G2':0.6419,'Gbp':0.5387,'Gbp2':0.5387,'Grp':0.7667,'Grp2':0.7667},
+          '2mass':{'J':1.2345,'H':1.6393,'K':2.1757},
+          'panstarrs':{'g':0.4957,'r':0.6211,'i':0.7522,'z':0.8671,'y':0.9707},
+          'wise':{'W1':3.3172,'W2':4.5501,'W3':11.7281,'W4':22.0883},
+          'hst':{'H_F110W':1.11697,'H_F160W':1.52583,'H_F090M':0.903471,'H_F165M':1.648026,
+                 'H_F187W':1.871407,'H_F205W':2.063609,'H_F207M':2.082083,'H_F222M':2.217527,
+                 'H_F237M':2.369093,'H_F253M':0.254890,'H_F300W':0.298519,'H_F336W':0.334429,
+                 'H_F346M':0.347452,'H_F439W':0.431175,'H_F555W':0.544294,'H_F606W':0.600127,
+                 'H_F675W':0.671771,'H_F785LP':0.868737,'H_F814W':0.799594},
+          'jwst_miri_c':{'MIRI_c_F1065C':10.562839,'MIRI_c_F1140C':11.310303,'MIRI_c_F1550C':15.516774,'MIRI_c_F2300C':22.644644},
+          'jwst_miri_p':{'MIRI_p_F560W':5.635257,'MIRI_p_F770W':7.639324,'MIRI_p_F1000W':9.953116,'MIRI_p_F1130W':11.308501,
+                       'MIRI_p_F1280W':12.810137,'MIRI_p_F1500W':15.063507,'MIRI_p_F1800W':17.983723,'MIRI_p_F2100W':20.795006,
+                       'MIRI_p_F2550W':25.364004},
+          'jwst_nircam_c210':{'NIRCAM_c210_F182M':1.83932,'NIRCAM_c210_F187N':1.8740,'NIRCAM_c210_F200W':1.9694,
+                             'NIRCAM_c210_F210M':2.09152,'NIRCAM_c210_F212N':2.1210},         
+          'jwst_nircam_c335':{'NIRCAM_c335_F250M':2.50085,'NIRCAM_c335_F300M':2.98178,'NIRCAM_c335_F322W2':3.07505,
+                              'NIRCAM_c335_F335M':3.35376,'NIRCAM_c335_F356W':3.52897,'NIRCAM_c335_F360M':3.61512,
+                              'NIRCAM_c335_F410M':4.0720,'NIRCAM_c335_F430M':4.27752,'NIRCAM_c335_F444W':4.34419,
+                              'NIRCAM_c335_F460M':4.62676,'NIRCAM_c335_F480M':4.81229},
+          'jwst_nircam_c430':{'NIRCAM_c430_F250M':2.50085,'NIRCAM_c430_F300M':2.98178,'NIRCAM_c430_F322W2':3.07505,
+                              'NIRCAM_c430_F335M':3.35376,'NIRCAM_c430_F356W':3.52897,'NIRCAM_c430_F360M':3.61512,
+                              'NIRCAM_c430_F410M':4.0720,'NIRCAM_c430_F430M':4.27752,'NIRCAM_c430_F444W':4.34419,
+                              'NIRCAM_c430_F460M':4.62676,'NIRCAM_c430_F480M':4.81229},
+          'jwst_nircam_cswb':{'NIRCAM_cSWB_F182M': 1.83932,'NIRCAM_cSWB_F187N': 1.8740,'NIRCAM_cSWB_F200W':1.96947,
+                              'NIRCAM_cSWB_F210M':2.09152,'NIRCAM_cSWB_F212N':2.1210},
+          'jwst_nircam_clwb':{'NIRCAM_cLWB_F250M':2.50085,'NIRCAM_cLWB_F277W':2.72889,'NIRCAM_cLWB_F300M':2.98178,
+                              'NIRCAM_cLWB_F335M':3.35376,'NIRCAM_cLWB_F356W':3.52897,'NIRCAM_cLWB_F360M':3.61512,
+                              'NIRCAM_cLWB_F410M':4.0720,'NIRCAM_cLWB_F430M':4.27752,'NIRCAM_cLWB_F444W':4.34419,
+                              'NIRCAM_cLWB_F460M':4.62676,'NIRCAM_cLWB_F480M':4.81229},
+          'jwst_nircam_pa':{'NIRCAM_p_F070Wa':0.70401,'NIRCAM_p_F090Wa':0.90045,'NIRCAM_p_F115Wa':1.15039,
+                            'NIRCAM_p_F140Ma':1.40402,'NIRCAM_p_F150Wa':1.49409,'NIRCAM_p_F150W2a':1.54231,
+                            'NIRCAM_p_F162Ma':1.62491,'NIRCAM_p_F164Na':1.6450,'NIRCAM_p_F182Ma':1.83932,
+                            'NIRCAM_p_F187Na':1.8740,'NIRCAM_p_F200Wa':1.96947,'NIRCAM_p_F210Ma':2.09152,
+                            'NIRCAM_p_F212Na':2.1210,'NIRCAM_p_F250Ma':2.50085,'NIRCAM_p_F277Wa':2.72889,
+                            'NIRCAM_p_F300Ma':2.98178,'NIRCAM_p_F322W2a':3.07505,'NIRCAM_p_F323Na':3.2370,
+                            'NIRCAM_p_F335Ma':3.35376,'NIRCAM_p_F356Wa':3.52897,'NIRCAM_p_F360Ma':3.61512,
+                            'NIRCAM_p_F405Na':4.0520,'NIRCAM_p_F410Ma':4.0720,'NIRCAM_p_F430Ma':4.27752,
+                            'NIRCAM_p_F444Wa':4.34419,'NIRCAM_p_F460Ma':4.62676,'NIRCAM_p_F466Na':4.6540,
+                            'NIRCAM_p_F470Na':4.7080,'NIRCAM_p_F480Ma':4.81229},
+          'jwst_nircam_pab':{'NIRCAM_p_F070Wab':0.70401,'NIRCAM_p_F090Wab':0.90045,'NIRCAM_p_F115Wab':1.15039,
+                             'NIRCAM_p_F140Mab':1.40402,'NIRCAM_p_F150Wab':1.49409,'NIRCAM_p_F150W2ab':1.54231,
+                             'NIRCAM_p_F162Mab':1.62491,'NIRCAM_p_F164Nab':1.6450,'NIRCAM_p_F182Mab':1.83932,
+                             'NIRCAM_p_F187Nab':1.8740,'NIRCAM_p_F200Wab':1.96947,'NIRCAM_p_F210Mab':2.09152,
+                             'NIRCAM_p_F212Nab':2.1210,'NIRCAM_p_F250Mab':2.50085,'NIRCAM_p_F277Wab':2.72889,
+                             'NIRCAM_p_F300Mab':2.98178,'NIRCAM_p_F322W2ab':3.07505,'NIRCAM_p_F323Nab':3.2370,
+                             'NIRCAM_p_F335Mab':3.35376,'NIRCAM_p_F356Wab':3.52897,'NIRCAM_p_F360Mab':3.61512,
+                             'NIRCAM_p_F405Nab':4.0520,'NIRCAM_p_F410Mab':4.0720,'NIRCAM_p_F430Mab':4.27752,
+                             'NIRCAM_p_F444Wab':4.34419,'NIRCAM_p_F460Mab':4.62676,'NIRCAM_p_F466Nab':4.6540,
+                             'NIRCAM_p_F470Nab':4.7080,'NIRCAM_p_F480Mab':4.81229},
+          'jwst_nircam_pb':{'NIRCAM_p_F070Wb':0.70401,'NIRCAM_p_F090Wb':0.90045,'NIRCAM_p_F115Wb':1.15039,
+                            'NIRCAM_p_F140Mb':1.40402,'NIRCAM_p_F150Wb':1.49409,'NIRCAM_p_F150W2b':1.54231,
+                            'NIRCAM_p_F162Mb':1.62491,'NIRCAM_p_F164Nb':1.6450,'NIRCAM_p_F182Mb':1.83932,
+                            'NIRCAM_p_F187Nb':1.8740,'NIRCAM_p_F200Wb':1.96947,'NIRCAM_p_F210Mb':2.09152,
+                            'NIRCAM_p_F212Nb':2.1210,'NIRCAM_p_F250Mb':2.50085,'NIRCAM_p_F277Wb':2.72889,
+                            'NIRCAM_p_F300Mb':2.98178,'NIRCAM_p_F322W2b':3.07505,'NIRCAM_p_F323Nb':3.2370,
+                            'NIRCAM_p_F335Mb':3.35376,'NIRCAM_p_F356Wb':3.52897,'NIRCAM_p_F360Mb':3.61512,
+                            'NIRCAM_p_F405Nb':4.0520,'NIRCAM_p_F410Mb':4.0720,'NIRCAM_p_F430Mb':4.27752,
+                            'NIRCAM_p_F444Wb':4.34419,'NIRCAM_p_F460Mb':4.62676,'NIRCAM_p_F466Nb':4.6540,
+                            'NIRCAM_p_F470Nb':4.7080,'NIRCAM_p_F480Mb':4.81229},
+          'jwst_niriss_c':{'NIRISS_c_F277W':2.72889,'NIRISS_c_F380M':3.828358,'NIRISS_c_F430M':4.27752,'NIRISS_c_F480M':4.81229},
+          'jwst_niriss_p':{'NIRISS_p_F090W':0.90045,'NIRISS_p_F115W':1.15039,'NIRISS_p_F140M':1.40402,'NIRISS_p_F150W':1.49409,
+                         'NIRISS_p_F200W':1.96947,'NIRISS_p_F158M':1.586646,'NIRISS_p_F277W':2.72889,'NIRISS_p_F356W':3.52897,
+                         'NIRISS_p_F380M':3.828358,'NIRISS_p_F430M':4.27752,'NIRISS_p_F444W':4.34419,'NIRISS_p_F480M':4.81229},
+          'cfht':{'CFHT_H':1.624354,'CFHT_J':1.251872,'CFHT_K':2.143400,'CFHT_Y':1.024151,'CFHT_Z':0.879313,'CFHT_CH4ON':1.690964,'CFHT_CH4OFF':1.588350},
+          'mko':{'MKO_H':1.622935,'MKO_J':1.245693,'MKO_K':2.193904,'MKO_Lp':3.757162,'MKO_Mp':4.683029,'MKO_Y':1.02},
+          'ukirt':{'UKIDSS_h':1.6313,'UKIDSS_j':1.2483,'UKIDSS_k':2.2010,'UKIDSS_y':1.0305,'UKIDSS_z':0.8817},
+          'spitzer':{'IRAC1':3.537841,'IRAC2':4.478049,'IRAC3':5.696177,'IRAC4':7.797839,'MIPS24':23.593461,'MIPS70':70.890817,
+                     'MIPS160':155.0,'IRSblue':15.766273,'IRSred':22.476444},
+          'sphere':{'SPH_H':1.625,'SPH_H2':1.593,'SPH_H3':1.667,'SPH_H4':1.733,'SPH_J':1.245,'SPH_J2':1.190,'SPH_J3':1.273,'SPH_K':2.182,
+                    'SPH_K1':2.110,'SPH_K2':2.251,'SPH_NDH':1.593,'SPH_Y':1.043,'SPH_Y2':1.022,'SPH_Y3':1.076},
+          'kepler':{'D51':0.510,'Kp':0.630335},
+          'hipparcos':{'Hp':0.502506},
+          'tess':{'I_c':0.769758},
+          'skymapper':{'SM_g':0.507519,'SM_i':0.776798,'SM_r':0.613844,'SM_u':0.349336,'SM_v':0.383593,'SM_z':0.914599},
+          'tycho':{'T_B':0.4280,'T_V':0.5340},      
+          'hr':{'logg':np.nan,'logL':np.nan,'radius':np.nan,'Teff':np.nan}      
+         } #filters, surveys, mean wavelength
+    
     def __init__(self, file, **kwargs):
         if isinstance(file,Table): self.file = kwargs['mock_file']
         else: self.file = file
@@ -667,6 +754,7 @@ class MADYS(object):
         self.n_steps = kwargs['n_steps'] if 'n_steps' in kwargs else [1000,500]
         verbose = kwargs['verbose'] if 'verbose' in kwargs else True
         self.feh = kwargs['feh'] if 'feh' in kwargs else None
+        self.he = kwargs['he'] if 'he' in kwargs else None
         self.afe = kwargs['afe'] if 'afe' in kwargs else None
         self.v_vcrit = kwargs['v_vcrit'] if 'v_vcrit' in kwargs else None
         self.fspot = kwargs['fspot'] if 'fspot' in kwargs else None
@@ -949,26 +1037,18 @@ class MADYS(object):
                 radius_err*=R_sun.value/R_jup.value
                 if 'i_age' in locals():
                     radius_err_p*=R_sun.value/R_jup.value
-                    radius_err_m*=R_sun.value/R_jup.value                
-
-        if verbose==True:
-            if type(self.GaiaID)==Table: star_names=self.GaiaID['ID'].value
-            else: star_names=self.GaiaID.value
+                    radius_err_m*=R_sun.value/R_jup.value                                    
+                    
+        if verbose:
+            try:
+                if type(self.GaiaID)==Table: star_names=self.GaiaID['ID'].value
+                else: star_names=self.GaiaID.value
+            except:
+                if type(self.GaiaID)==Table: star_names=self.GaiaID['ID']
+                else: star_names=self.GaiaID
             filename=os.path.join(self.path,str(self.__sample_name+'_ages_'+model+'.txt'))
             f=open(filename, "w+")
-            if 'i_age' in locals():
-                f.write(tabulate(np.column_stack((star_names,m_final,m_err_m,m_err_p,a_final,a_min,a_max,self.ebv)),
-                                 headers=['ID','MASS','MASS_ERROR_M','MASS_ERROR_P','AGE','AGE_MIN','AGE_MAX','E(B-V)'], tablefmt='plain', stralign='right', numalign='right', floatfmt=(None,".2f",".2f",".2f",".2f",".2f",".2f",".3f")))
-            else:
-                f.write(tabulate(np.column_stack((star_names,m_final,m_err,a_final,a_err,self.ebv)),
-                                 headers=['ID','MASS','MASS_ERROR','AGE','AGE_ERROR','E(B-V)'], tablefmt='plain', stralign='right', numalign='right', floatfmt=(None,".2f",".2f",".2f",".2f",".3f")))
-            f.close()
-            self.__logger.info('Age determination ended. Results saved in '+filename)
-        else:
-            self.__logger.info('Age determination ended. Results not saved in any file because "verbose" is set to False.')
-
-        logging.shutdown()
-
+                    
         if 'i_age' in locals(): 
             if phys_param:
                 dic={'ages':a_final, 'ages_min':a_min, 'ages_max':a_min,
@@ -978,10 +1058,16 @@ class MADYS(object):
                      'logg':logg_fit, 'logg_err_m': logg_err_m, 'logg_err_p': logg_err_p,
                      'logL':logL_fit, 'logL_err_m': logL_err_m, 'logL_err_p': logL_err_p,
                      'Teff':Teff_fit, 'Teff_err_m': Teff_err_m, 'Teff_err_p': Teff_err_p}
+                if verbose:
+                    f.write(tabulate(np.column_stack((star_names,m_final,m_err_m,m_err_p,a_final,a_min,a_max,self.ebv,radius_fit,radius_err_m,radius_err_p,logg_fit,logg_err_m,logg_err_p,logL_fit,logL_err_m,logL_err_p,Teff_fit,Teff_err_m,Teff_err_p)),
+                                     headers=['ID','MASS','MASS_ERR_M','MASS_ERR_P','AGE','AGE_MIN','AGE_MAX','E(B-V)','RADIUS','RADIUS_ERR_M','RADIUS_ERR_P','LOG(G)','LOG(G)_ERR_M','LOG(G)_ERR_P','LOG(L)','LOG(L)_ERR_M','LOG(L)_ERR_P','TEFF','TEFF_ERR_M','TEFF_ERR_P'], tablefmt='plain', stralign='right', numalign='right', floatfmt=(None,".2f",".2f",".2f",".2f",".2f",".2f",".3f",".2f",".2f",".2f",".2f",".2f",".2f",".2f",".2f",".2f",".2f",".2f",".2f")))                
             else:
                 dic={'ages':a_final, 'ages_min':a_min, 'ages_max':a_min,
                      'masses':m_final, 'masses_err_m':m_err_m, 'masses_err_p': m_err_p,
-                     'ebv':self.ebv}
+                     'ebv':self.ebv}                
+                if verbose:
+                    f.write(tabulate(np.column_stack((star_names,m_final,m_err_m,m_err_p,a_final,a_min,a_max,self.ebv)),
+                                     headers=['ID','MASS','MASS_ERROR_M','MASS_ERROR_P','AGE','AGE_MIN','AGE_MAX','E(B-V)'], tablefmt='plain', stralign='right', numalign='right', floatfmt=(None,".2f",".2f",".2f",".2f",".2f",".2f",".3f")))                
         else:
             if phys_param:
                 dic={'ages':a_final, 'ages_err':a_err,
@@ -991,10 +1077,25 @@ class MADYS(object):
                      'logg':logg_fit, 'logg_err': logg_err,
                      'logL':logL_fit, 'logL_err': logL_err,
                      'Teff':Teff_fit, 'Teff_err': Teff_err}
+                if verbose:
+                    f.write(tabulate(np.column_stack((star_names,m_final,m_err,a_final,a_err,self.ebv,radius_fit,radius_err,logg_fit,logg_err,logL_fit,logL_err,Teff_fit,Teff_err)),
+                                     headers=['ID','MASS','MASS_ERROR','AGE','AGE_ERROR','E(B-V)','RADIUS','RADIUS_ERROR','LOG(G)','LOG(G)_ERROR','LOG(L)','LOG(L)_ERROR','TEFF','TEFF_ERROR'], tablefmt='plain', stralign='right', numalign='right', floatfmt=(None,".2f",".2f",".2f",".2f",".3f",".2f",".2f",".2f",".2f",".2f",".2f",".2f",".2f")))           
             else:
                 dic={'ages':a_final, 'ages_err':a_err,
                      'masses':m_final, 'masses_err':m_err,
                      'ebv':self.ebv}            
+                if verbose:
+                    f.write(tabulate(np.column_stack((star_names,m_final,m_err,a_final,a_err,self.ebv)),
+                                     headers=['ID','MASS','MASS_ERROR','AGE','AGE_ERROR','E(B-V)'], tablefmt='plain', stralign='right', numalign='right', floatfmt=(None,".2f",".2f",".2f",".2f",".3f")))
+
+        if verbose:
+            f.close()
+            self.__logger.info('Age determination ended. Results saved in '+filename)
+        else:
+            self.__logger.info('Age determination ended. Results not saved in any file because "verbose" is set to False.')
+
+        logging.shutdown()
+
         
         return dic
                 
@@ -1050,7 +1151,9 @@ class MADYS(object):
     def CMD(self,col,mag,model,ids=None,**kwargs):
 
         def filter_model(model,col):
-            if model in ['bt_settl','starevol','spots','dartmouth','ames_cond','ames_dusty','bt_nextgen','nextgen']:
+            if model in ['bt_settl','starevol','spots','dartmouth','ames_cond',
+                         'ames_dusty','bt_nextgen','nextgen','bhac15','geneva',
+                         'nextgen','pm13']:
                 if col=='G': col2='G2'
                 elif col=='Gbp': col2='Gbp2'
                 elif col=='Grp': col2='Grp2'
@@ -1899,22 +2002,76 @@ class MADYS(object):
 
     @staticmethod
     def extinction(ebv,col):
-        A_law={'U':1.531,'B':1.317,'V':1,'R':0.748,'I':0.482,'L':0.058,'M':0.023,
-           'J':0.243,'H':0.131,'K':0.078,'G':0.789,'Gbp':1.002,'Grp':0.589,
-               'G2':0.789,'Gbp2':1.002,'Grp2':0.589,
-           'W1':0.039,'W2':0.026,'W3':0.040,'W4':0.020,
-           'gmag':1.155,'rmag':0.843,'imag':0.628,'zmag':0.487,'ymag':0.395,
-               'K1mag':0.078,'K2mag':0.078, #copied from 2MASS, should be checked
-               'Hmag': 0.131, 'Jmag': 0.243, 'H2mag': 0.131 #copied from 2MASS, should be checked
-          } #absorption coefficients
+        A_law={'B':1.317,'V':1,
+             'G':0.789,'G2':0.789,'Gbp':1.002,'Gbp2':1.002,'Grp':0.589,'Grp2':0.589,
+             'J':0.243,'H':0.131,'K':0.078,
+             'g':1.155,'r':0.843,'i':0.628,'z':0.487,'y':0.395,
+             'H_F110W':0.2966,'H_F160W':0.1556,
+             'NIRCAM_c210_F182M':0.1058,'NIRCAM_c210_F187N':0.1018,'NIRCAM_c210_F200W':0.0919,
+             'NIRCAM_cSWB_F182M':0.1058,'NIRCAM_cSWB_F187N':0.1018,'NIRCAM_cSWB_F200W':0.0919,
+             'NIRCAM_p_F070Wa':0.6919,'NIRCAM_p_F070Wab':0.6919,'NIRCAM_p_F070Wb':0.6919,'NIRCAM_p_F090Wa':0.4523,
+             'NIRCAM_p_F090Wab':0.4523,'NIRCAM_p_F090Wb':0.4523,'NIRCAM_p_F115Wa':0.2785,'NIRCAM_p_F115Wab':0.2785,
+             'NIRCAM_p_F115Wb':0.2785,'NIRCAM_p_F140Ma':0.1849,'NIRCAM_p_F140Mab':0.1849,'NIRCAM_p_F140Mb':0.1849,
+             'NIRCAM_p_F150Wa':0.1618,'NIRCAM_p_F150Wab':0.1618,'NIRCAM_p_F150Wb':0.1618,'NIRCAM_p_F150W2a':0.1519,
+             'NIRCAM_p_F150W2ab':0.1519,'NIRCAM_p_F150W2b':0.1519,'NIRCAM_p_F162Ma':0.1361,'NIRCAM_p_F162Mab':0.1361,
+             'NIRCAM_p_F162Mb':0.1361,'NIRCAM_p_F164Na':0.1329,'NIRCAM_p_F164Nab':0.1329,'NIRCAM_p_F164Nb':0.1329,
+             'NIRCAM_p_F182Ma':0.1058,'NIRCAM_p_F182Mab':0.1058,'NIRCAM_p_F182Mb':0.1058,'NIRCAM_p_F187Na':0.1018,
+             'NIRCAM_p_F187Nab':0.1018,'NIRCAM_p_F187Nb':0.1018,'NIRCAM_p_F200Wa':0.0919,'NIRCAM_p_F200Wab':0.0919,
+             'NIRCAM_p_F200Wb':0.0919,'NIRISS_p_F090W':0.4523,'NIRISS_p_F115W':0.2785,'NIRISS_p_F140M':0.1849,
+             'NIRISS_p_F150W':0.1618,'NIRISS_p_F200W':0.0919 
+            } #absorption coefficients
+
+        def abs_curve(col,p1=1,p2=2,p3=6.5,p4=40):        
+            found=False
+            n_s=len(list(MADYS.filt.keys()))
+            surv=np.array(list(MADYS.filt.keys()))
+            for i in range(n_s):
+                try:
+                    x=MADYS.filt[surv[i]][col]
+                    found=True
+                    break
+                except KeyError:
+                    continue
+            if found==False: raise NameError('Filter '+col+' not found!')
+
+            ec1=lambda x: 1.+0.7499*x-0.1086*x**2-0.08909*x**3+0.02905*x**4+0.01069*x**5+0.001707*x**6-0.001002*x**7
+            ec2=lambda x: (0.3722)*x**(-2.07)
+
+            B=0.366
+            alpha=1.48
+            S1=0.06893
+            S2=0.02684
+            l01=9.865
+            g01=2.507
+            a01=-0.232
+            l02=19.973
+            g02=16.989
+            a02=-0.273
+
+            g1=lambda x: 2*g01/(1+np.exp(a01*(x-l01)))
+            g2=lambda x: 2*g02/(1+np.exp(a02*(x-l02)))
+            d1=lambda x: (g1(x)/l01)**2/((x/l01-l01/x)**2+(g1(x)/l01)**2)
+            d2=lambda x: (g2(x)/l02)**2/((x/l02-l02/x)**2+(g2(x)/l02)**2)        
+            k=lambda x: B*x**(-alpha)+S1*d1(x)+S2*d2(x)
+            q=lambda x: (x-p2)/(p3-p2)        
+            step=lambda sta, sto, x: np.heaviside(x-sta,0)-np.heaviside(x-sto,0)
+            wc=lambda x: step(0,p1,x)*ec1(1/x-1.82)+step(p1,p2,x)*ec2(x)+step(p2,p3,x)*(q(x)*k(x)+(1-q(x))*ec2(x))+step(p3,p4,x)*k(x)
+
+            return wc(x)
 
         if '-' in col:
             c1,c2=col.split('-')
-            A=A_law[c1]-A_law[c2]
+            try: A1=A_law[c1]
+            except KeyError: A1=abs_curve(c1)
+            try: A2=A_law[c2]
+            except KeyError: A2=abs_curve(c2)            
+            A=A1-A2
         else:
-            A=A_law[col]
+            try: A=A_law[col]
+            except KeyError: A=abs_curve(col)
+
         return 3.16*A*ebv
-    
+
     @staticmethod
     def is_phot_good(phot,phot_err,max_phot_err=0.1):
         if type(phot)==float: dim=0
@@ -2047,75 +2204,88 @@ class MADYS(object):
                 j=np.argmin(abs(he_range-he))
             else: j=1
             model2='yapsi_'+mod_vals[i,j]            
+        elif 'sb12' in model:
+            feh_range=np.array([0.00,0.48])
+            if type(feh)!=type(None):
+                i=np.argmin(abs(feh_range-feh))
+                feh0=feh_range[i]
+                feh1="{:.2f}".format(abs(feh0))
+                model2=model+'_p'+feh1
+            else: model2=model+'_p0.00'
         else: model2=model
 #        return model2,param
         return model2
     
     @staticmethod
-    def get_isochrone_filter(model,filt):
+    def get_isochrone_filter(model,filt): #MODIFICARE NOMI, RENDERLI COERENTI CON IL DIZIONARIO E AGGIUNGERE FILTRI MANCANTI
         if model=='bt_settl':
             dic={'G':'G2018','Gbp':'G2018_BP','Grp':'G2018_RP','J':'J','H':'H','K':'K',
                  'W1':'W1_W10','W2':'W2_W10','W3':'W3_W10','W4':'W4_W10','U':'U','B':'B',
-                 'V':'V','R':'R','I':'i','gmag':'g_p1','rmag':'r_p1','imag':'i_p1',
-                 'zmag':'z_p1','ymag':'y_p1','V_sl':'V','R_sl':'R','I_sl':'I','K_sl':'K',
-                 'R_sl2':'Rsloan','Z_sl':'Zsloan','M_sl':'Msloan',
-                 'Ymag':'B_Y','Jmag':'B_J','Hmag':'B_H','Kmag':'B_Ks','H2mag':'D_H2','H3mag':'D_H3',
-                 'H4mag':'D_H4','J2mag':'D_J2','J3mag':'D_J3','K1mag':'D_K1','K2mag':'D_K2',
-                 'Y2mag':'D_Y2','Y3mag':'D_Y3',
+                 'V':'V','R':'R','I':'i','g':'g_p1','r':'r_p1','i':'i_p1',
+                 'z':'z_p1','y':'y_p1','SPH_Y':'B_Y','SPH_J':'B_J','SPH_H':'B_H',
+                 'SPH_K':'B_Ks','SPH_H2':'D_H2','SPH_H3':'D_H3','SPH_H4':'D_H4',
+                 'SPH_J2':'D_J2','SPH_J3':'D_J3','SPH_K1':'D_K1','SPH_K2':'D_K2',
+                 'SPH_Y2':'D_Y2','SPH_Y3':'D_Y3',
                  'Teff':'Teff','logL':'logL','logg':'logg','radius':'radius'}
         elif model=='ames_cond':
             dic={'G':'G','Gbp':'G_BP','Grp':'G_BP','J':'J','H':'H','K':'K',
-                 'W1':'W1_W10','W2':'W2_W10','W3':'W3_W10','W4':'W4_W10','U':'U','B':'B',
-                 'V':'V','R':'R','I':'i','gmag':'g_p1','rmag':'r_p1','imag':'i_p1',
-                 'zmag':'z_p1','ymag':'y_p1','V_sl':'V','R_sl':'R','I_sl':'I','K_sl':'K',
-                 'R_sl2':'Rsloan','Z_sl':'Zsloan','M_sl':'Msloan',
-                 'Ymag':'B_Y','Jmag':'B_J','Hmag':'B_H','Kmag':'B_Ks','H2mag':'D_H2','H3mag':'D_H3',
-                 'H4mag':'D_H4','J2mag':'D_J2','J3mag':'D_J3','K1mag':'D_K1','K2mag':'D_K2',
-                 'Y2mag':'D_Y2','Y3mag':'D_Y3',
+                 'W1':'W1_W10','W2':'W2_W10','W3':'W3_W10','W4':'W4_W10',
+                 'g':'g_p1','r':'r_p1','i':'i_p1','z':'z_p1','y':'y_p1',
+                 'SPH_Y':'B_Y','SPH_J':'B_J','SPH_H':'B_H','SPH_K':'B_Ks','SPH_H2':'D_H2','SPH_H3':'D_H3',
+                 'SPH_H4':'D_H4','SPH_J2':'D_J2','SPH_J3':'D_J3','SPH_K1':'D_K1','SPH_K2':'D_K2',
+                 'SPH_Y2':'D_Y2','SPH_Y3':'D_Y3','H_F090M':'F090M','H_F110W':'F110W',
+                 'H_F160W':'F160W','H_F165M':'F165M','H_F187W':'F187W','H_F205W':'F205W','H_F207M':'F207M',
+                 'H_F222M':'F222M','H_F237M':'F237M','H_F253M':'F253M','H_F300W':'F300W','H_F336W':'F336W',
+                 'H_F346M':'F346M','H_F439W':'F439W','H_F555W':'F555W','H_F606W':'F606W','H_F675W':'F675W',
+                 'H_F785LP':'F785LP','H_F814W':'F814W',
                  'Teff':'Teff','logL':'logL','logg':'logg','radius':'radius'}
         elif model=='ames_dusty':
             dic={'G':'G','Gbp':'G_BP','Grp':'G_BP','J':'J','H':'H','K':'K',
-                 'W1':'W1_W10','W2':'W2_W10','W3':'W3_W10','W4':'W4_W10','U':'U','B':'B',
-                 'V':'V','R':'R','I':'i','gmag':'g_p1','rmag':'r_p1','imag':'i_p1',
-                 'zmag':'z_p1','ymag':'y_p1','V_sl':'V','R_sl':'R','I_sl':'I','K_sl':'K',
-                 'R_sl2':'Rsloan','Z_sl':'Zsloan','M_sl':'Msloan',
-                 'Ymag':'B_Y','Jmag':'B_J','Hmag':'B_H','Kmag':'B_Ks','H2mag':'D_H2','H3mag':'D_H3',
-                 'H4mag':'D_H4','J2mag':'D_J2','J3mag':'D_J3','K1mag':'D_K1','K2mag':'D_K2',
-                 'Y2mag':'D_Y2','Y3mag':'D_Y3',
+                 'W1':'W1_W10','W2':'W2_W10','W3':'W3_W10','W4':'W4_W10',
+                 'g':'g_p1','r':'r_p1','i':'i_p1','z':'z_p1','y':'y_p1',
+                 'SPH_Y':'B_Y','SPH_J':'B_J','SPH_H':'B_H','SPH_K':'B_Ks','SPH_H2':'D_H2','SPH_H3':'D_H3',
+                 'SPH_H4':'D_H4','SPH_J2':'D_J2','SPH_J3':'D_J3','SPH_K1':'D_K1','SPH_K2':'D_K2',
+                 'SPH_Y2':'D_Y2','SPH_Y3':'D_Y3','H_F090M':'F090M','H_F110W':'F110W',
+                 'H_F160W':'F160W','H_F165M':'F165M','H_F187W':'F187W','H_F205W':'F205W','H_F207M':'F207M',
+                 'H_F222M':'F222M','H_F237M':'F237M','H_F253M':'F253M','H_F300W':'F300W','H_F336W':'F336W',
+                 'H_F346M':'F346M','H_F439W':'F439W','H_F555W':'F555W','H_F606W':'F606W','H_F675W':'F675W',
+                 'H_F785LP':'F785LP','H_F814W':'F814W',
                  'Teff':'Teff','logL':'logL','logg':'logg','radius':'radius'}
         elif model=='nextgen':
             dic={'G':'G2018','Gbp':'G2018_BP','Grp':'G2018_RP','J':'J','H':'H','K':'K',
                  'W1':'W1_W10','W2':'W2_W10','W3':'W3_W10','W4':'W4_W10',
-                 'gmag':'g_p1','rmag':'r_p1','imag':'i_p1','zmag':'z_p1','ymag':'y_p1',
-                 'Ymag':'B_Y','Jmag':'B_J','Hmag':'B_H','Kmag':'B_Ks','H2mag':'D_H2','H3mag':'D_H3',
-                 'H4mag':'D_H4','J2mag':'D_J2','J3mag':'D_J3','K1mag':'D_K1','K2mag':'D_K2',
-                 'Y2mag':'D_Y2','Y3mag':'D_Y3',
+                 'g':'g_p1','r':'r_p1','i':'i_p1','z':'z_p1','y':'y_p1',
+                 'SPH_Y':'B_Y','SPH_J':'B_J','SPH_H':'B_H','SPH_K':'B_Ks','SPH_H2':'D_H2','SPH_H3':'D_H3',
+                 'SPH_H4':'D_H4','SPH_J2':'D_J2','SPH_J3':'D_J3','SPH_K1':'D_K1','SPH_K2':'D_K2',
+                 'SPH_Y2':'D_Y2','SPH_Y3':'D_Y3',
                  'Teff':'Teff','logL':'logL','logg':'logg','radius':'radius'}
         elif model=='mist':
             dic={'G':'Gaia_G_EDR3','Gbp':'Gaia_BP_EDR3','Grp':'Gaia_RP_EDR3',
                  'J':'2MASS_J','H':'2MASS_H','K':'2MASS_Ks',
                  'W1':'WISE_W1','W2':'WISE_W2','W3':'WISE_W3','W4':'WISE_W4',
                  'U':'Bessell_U','B':'Bessell_B','V':'Bessell_V','R':'Bessell_R','I':'Bessell_I',
-                 'Kp':'Kepler_Kp','KD51':'Kepler_D51','Hp':'Hipparcos_Hp',
-                 'B_tycho':'Tycho_B','V_tycho':'Tycho_V','TESS':'TESS',
+                 'Kp':'Kepler_Kp','D51':'Kepler_D51','Hp':'Hipparcos_Hp',
+                 'T_B':'Tycho_B','T_V':'Tycho_V','I_c':'TESS',
                  'Teff':'Teff','logL':'log_L','logg':'log_g','radius':'radius'}
         elif model=='parsec':
             dic={'G':'Gmag','Gbp':'G_BPmag','Grp':'G_RPmag',                 
-                 'J':'Jmag','H':'Hmag','K':'Ksmag','Spitzer_3.6':'IRAC_3.6mag',
-                 'Spitzer_4.5':'IRAC_4.5mag','Spitzer_5.8':'IRAC_5.8mag','Spitzer_8.0':'IRAC_8.0mag',
-                 'Spitzer_24':'MIPS_24mag','Spitzer_70':'MIPS_70mag','Spitzer_160':'MIPS_160mag',
+                 'J':'Jmag','H':'Hmag','K':'Ksmag','IRAC1':'IRAC_3.6mag',
+                 'IRAC2':'IRAC_4.5mag','IRAC3':'IRAC_5.8mag','IRAC4':'IRAC_8.0mag',                 
+                 'MIPS24':'MIPS_24mag', 'MIPS70':'MIPS_70mag', 'MIPS160':'MIPS_160mag',
                  'W1':'W1mag','W2':'W2mag','W3':'W3mag','W4':'W4mag',
-                 'Teff':'Teff','logL':'logL','logg':'logg','radius':'radius'}
+                 'Ux':'UXmag','Bx':'BXmag','B':'Bmag','V':'Vmag','R':'Rmag','I':'Imag',
+                 'B_J':'Jmag','B_H':'Hmag','B_K':'Kmag','L':'Lmag','Lp':"L'mag",'M':'Mmag',
+                 'SM_u':'umag','SM_v':'vmag','SM_g':'gmag','SM_r':'rmag','SM_i':'imag','SM_z':'zmag',
+                 'Teff':'Teff','logL':'logL','logg':'logg','radius':'radius'}            
         elif model=='spots':
             dic={'G':'G_mag','Gbp':'BP_mag','Grp':'RP_mag',                 
                  'J':'J_mag','H':'H_mag','K':'K_mag',
                  'B':'B_mag','V':'V_mag','R':'Rc_mag','I':'Ic_mag',
-                 'W1':'W1_mag', 'W2':'nan', 'W3':'nan', 'W4':'nan',
+                 'W1':'W1_mag',
                  'Teff':'Teff','logL':'log(L/Lsun)','logg':'log(g)','radius':'radius'}
         elif model=='dartmouth':
             dic={'B': 'jc_B','V': 'jc_V','R': 'jc_R','I': 'jc_I',
-                 'G':'gaia_G','Gbp':'gaia_BP','Grp':'gaia_RP',                 
-                 'U':'U','B':'B','V':'V','R':'R','I':'I',
+                 'G':'gaia_G','Gbp':'gaia_BP','Grp':'gaia_RP',
                  'J':'2mass_J','H':'2mass_H','K':'2mass_K',
                  'Teff':'Teff','logL':'log(L)','logg':'log(g)','radius':'radius'}     
         elif model=='starevol':
@@ -2124,26 +2294,112 @@ class MADYS(object):
                  'Teff':'Teff','logL':'logL','logg':'logg','radius':'R'}
         elif model=='bhac15':
             dic={'G':'G','Gbp':'G_BP','Grp':'G_RP','J':'Mj','H':'Mh','K':'Mk',
-                 'gmag':'g_p1','rmag':'r_p1','imag':'i_p1',
-                 'zmag':'z_p1','ymag':'y_p1',
-                 'Ymag':'B_Y','Jmag':'B_J','Hmag':'B_H','Kmag':'B_Ks','H2mag':'D_H2','H3mag':'D_H3',
-                 'H4mag':'D_H4','J2mag':'D_J2','J3mag':'D_J3','K1mag':'D_K1','K2mag':'D_K2',
-                 'Y2mag':'D_Y2','Y3mag':'D_Y3',            
+                 'g':'g_p1','r':'r_p1','i':'i_p1','z':'z_p1','y':'y_p1',
+                 'V':'Mv','R':'Mr','I':'Mi','B_J':'Mj','B_H':'Mh','B_K':'Mk','L':'Ml','Lp':'Mll','M':'Mm',
+                 'SPH_Y':'B_Y','SPH_J':'B_J','SPH_H':'B_H','SPH_K':'B_Ks','SPH_H2':'D_H2','SPH_H3':'D_H3',
+                 'SPH_H4':'D_H4','SPH_J2':'D_J2','SPH_J3':'D_J3','SPH_K1':'D_K1','SPH_K2':'D_K2',
+                 'SPH_Y2':'D_Y2','SPH_Y3':'D_Y3','IRAC1':'IRAC1','IRAC2':'IRAC2',
+                 'IRAC3':'IRAC3','IRAC4':'IRAC4','IRSblue':'IRSblue','IRSred':'IRSred',                 
+                 'MIPS24':'MIPS24', 'MIPS70':'MIPS70', 'MIPS160':'MIPS160',
+                 'UKIDSS_y':'My', 'UKIDSS_z':'Mz', 'UKIDSS_j':'Mj', 'UKIDSS_h':'Mh', 'UKIDSS_k':'Mk',
+                 'CFHT_Z':'Z','CFHT_Y':'Y','CFHT_J':'J','CFHT_H':'H','CFHT_K':'Ks','CFHT_CH4ON':'CH4_ON',
+                 'CFHT_CH4OFF':'CH4_OFF','NIRCAM_p_F070Wa':'F070Wa','NIRCAM_p_F090Wa':'F090Wa',
+                 'NIRCAM_p_F115Wa':'F115Wa','NIRCAM_p_F140Ma':'F140Ma','NIRCAM_p_F150Wa':'F150Wa',
+                 'NIRCAM_p_F150W2a':'F150W2a','NIRCAM_p_F162a':'F162Ma','NIRCAM_p_F164Na':'F164Na',
+                 'NIRCAM_p_F182Ma':'F182Ma','NIRCAM_p_F187Na':'F187Na','NIRCAM_p_F200Wa':'F200Wa',
+                 'NIRCAM_p_F210Ma':'F210Ma','NIRCAM_p_F212Na':'F212Na','NIRCAM_p_F250Ma':'F250Ma',
+                 'NIRCAM_p_F277Wa':'F277Wa','NIRCAM_p_F300Ma':'F300Ma','NIRCAM_p_F322W2a':'F322W2a',
+                 'NIRCAM_p_F323Na':'F323Na','NIRCAM_p_F335Ma':'F335Ma','NIRCAM_p_F356Wa':'F356Wa',
+                 'NIRCAM_p_F360Ma':'F360Ma','NIRCAM_p_F405Na':'F405Na','NIRCAM_p_F410Ma':'F410Ma',
+                 'NIRCAM_p_F430Ma':'F430Ma','NIRCAM_p_F444Wa':'F444Wa','NIRCAM_p_F460Ma':'F460Ma',
+                 'NIRCAM_p_F466Na':'F466Na','NIRCAM_p_F470Na':'F470Na','NIRCAM_p_F480Ma':'F480Ma',
+                 'NIRCAM_p_F070Wb':'F070Wb','NIRCAM_p_F090Wb':'F090Wb','NIRCAM_p_F115Wb':'F115Wb',
+                 'NIRCAM_p_F140Mb':'F140Mb','NIRCAM_p_F150Wb':'F150Wb','NIRCAM_p_F150W2b':'F150W2b',
+                 'NIRCAM_p_F162Mb':'F162Mb','NIRCAM_p_F164Nb':'F164Nb','NIRCAM_p_F182Mb':'F182Mb',
+                 'NIRCAM_p_F187Nb':'F187Nb','NIRCAM_p_F200Wb':'F200Wb','NIRCAM_p_F210Mb':'F210Mb',
+                 'NIRCAM_p_F212Nb':'F212Nb','NIRCAM_p_F250Mb':'F250Mb','NIRCAM_p_F277Wb':'F277Wb',
+                 'NIRCAM_p_F300Mb':'F300Mb','NIRCAM_p_F322W2b':'F322W2b','NIRCAM_p_F323Nb':'F323Nb',
+                 'NIRCAM_p_F335Mb':'F335Mb','NIRCAM_p_F356Wb':'F356Wb','NIRCAM_p_F360Mb':'F360Mb',
+                 'NIRCAM_p_F405Nb':'F405Nb','NIRCAM_p_F410Mb':'F410Mb','NIRCAM_p_F430Mb':'F430Mb',
+                 'NIRCAM_p_F444Wb':'F444Wb','NIRCAM_p_F460Mb':'F460Mb','NIRCAM_p_F466Nb':'F466Nb',
+                 'NIRCAM_p_F470Nb':'F470Nb','NIRCAM_p_F480Mb':'F480Mb','NIRCAM_p_F070Wab':'F070Wab',
+                 'NIRCAM_p_F090Wab':'F090Wab','NIRCAM_p_F115Wab':'F115Wab','NIRCAM_p_F140Mab':'F140Mab',
+                 'NIRCAM_p_F150Wab':'F150Wab','NIRCAM_p_F150W2ab':'F150W2ab','NIRCAM_p_F162Mab':'F162Mab',
+                 'NIRCAM_p_F164Nab':'F164Nab','NIRCAM_p_F182Mab':'F182Mab','NIRCAM_p_F187Nab':'F187Nab',
+                 'NIRCAM_p_F200Wab':'F200Wab','NIRCAM_p_F210Mab':'F210Mab','NIRCAM_p_F212Nab':'F212Nab',
+                 'NIRCAM_p_F250Mab':'F250Mab','NIRCAM_p_F277Wab':'F277Wab','NIRCAM_p_F300Mab':'F300Mab',
+                 'NIRCAM_p_F322W2ab':'F322W2ab','NIRCAM_p_F323Nab':'F323Nab','NIRCAM_p_F335Mab':'F335Mab',
+                 'NIRCAM_p_F356Wab':'F356Wab','NIRCAM_p_F360Mab':'F360Mab','NIRCAM_p_F405Nab':'F405Nab',
+                 'NIRCAM_p_F410Mab':'F410Mab','NIRCAM_p_F430Mab':'F430Mab','NIRCAM_p_F444Wab':'F444Wab',
+                 'NIRCAM_p_F460Mab':'F460Mab','NIRCAM_p_F466Nab':'F466Nab','NIRCAM_p_F470Nab':'F470Nab',
+                 'NIRCAM_p_F480Mab':'F480Mab','MIRI_p_F560W':'F560W','MIRI_p_F770W':'F770W',
+                 'MIRI_p_F1000W':'F1000W','MIRI_p_F1130W':'F1130W','MIRI_p_F1280W':'F1280W',
+                 'MIRI_p_F1500W':'F1500W','MIRI_p_F1800W':'F1800W','MIRI_p_F2100W':'F2100W','MIRI_p_F2550W':'F2550W',
                  'Teff':'Teff','logL':'L/Ls','logg':'g','radius':'radius'}
-        elif model=='atmo2020_ceq':
-            dic={'MKO_Y':'MKO_Y','MKO_J':'MKO_J','MKO_H':'MKO_H','MKO_K':'MKO_K','MKO_L':'MKO_Lp','MKO_M':'MKO_Mp',
+        elif 'atmo2020' in model:
+            dic={'MKO_Y':'MKO_Y','MKO_J':'MKO_J','MKO_H':'MKO_H','MKO_K':'MKO_K','MKO_Lp':'MKO_Lp','MKO_Mp':'MKO_Mp',
                  'W1':'W1','W2':'W2','W3':'W3','W4':'W4',
-                 'IRAC_CH1':'IRAC_CH1','IRAC_CH2':'IRAC_CH2',
-                 'Teff':'Teff','logL':'Luminosity','logg':'Gravity','radius':'Radius'}
-        elif model=='atmo2020_neq_s':
-            dic={'MKO_Y':'MKO_Y','MKO_J':'MKO_J','MKO_H':'MKO_H','MKO_K':'MKO_K','MKO_L':'MKO_Lp','MKO_M':'MKO_Mp',
-                 'W1':'W1','W2':'W2','W3':'W3','W4':'W4',
-                 'IRAC_CH1':'IRAC_CH1','IRAC_CH2':'IRAC_CH2',
-                 'Teff':'Teff','logL':'Luminosity','logg':'Gravity','radius':'Radius'}
-        elif model=='atmo2020_neq_w':
-            dic={'MKO_Y':'MKO_Y','MKO_J':'MKO_J','MKO_H':'MKO_H','MKO_K':'MKO_K','MKO_L':'MKO_Lp','MKO_M':'MKO_Mp',
-                 'W1':'W1','W2':'W2','W3':'W3','W4':'W4',
-                 'IRAC_CH1':'IRAC_CH1','IRAC_CH2':'IRAC_CH2',
+                 'IRAC1':'IRAC_CH1','IRAC2':'IRAC_CH2',
+                 'NIRCAM_p_F070Wa':'NIRCAM-F070W','NIRCAM_p_F090Wa':'NIRCAM-F090W','NIRCAM_p_F115Wa':'NIRCAM-F115W',
+                 'NIRCAM_p_F140Ma':'NIRCAM-F140M','NIRCAM_p_F150Wa':'NIRCAM-F150W','NIRCAM_p_F150W2a':'NIRCAM-F150W2',
+                 'NIRCAM_p_F162Ma':'NIRCAM-F162M','NIRCAM_p_F164Na':'NIRCAM-F164N','NIRCAM_p_F182Ma':'NIRCAM-F182M',
+                 'NIRCAM_p_F187Na':'NIRCAM-F187N','NIRCAM_p_F200Wa':'NIRCAM-F200W','NIRCAM_p_F210Ma':'NIRCAM-F210M',
+                 'NIRCAM_p_F212Na':'NIRCAM-F212N','NIRCAM_p_F250Ma':'NIRCAM-F250M','NIRCAM_p_F277Wa':'NIRCAM-F277W',
+                 'NIRCAM_p_F300Ma':'NIRCAM-F300M','NIRCAM_p_F322W2a':'NIRCAM-F322W2','NIRCAM_p_F323Na':'NIRCAM-F323N',
+                 'NIRCAM_p_F335Ma':'NIRCAM-F335M','NIRCAM_p_F356Wa':'NIRCAM-F356W','NIRCAM_p_F360Ma':'NIRCAM-F360M',
+                 'NIRCAM_p_F405Na':'NIRCAM-F405N','NIRCAM_p_F410Ma':'NIRCAM-F410M','NIRCAM_p_F430Ma':'NIRCAM-F430M',
+                 'NIRCAM_p_F444Wa':'NIRCAM-F444W','NIRCAM_p_F460Ma':'NIRCAM-F460M','NIRCAM_p_F466Na':'NIRCAM-F466N',
+                 'NIRCAM_p_F470Na':'NIRCAM-F470N','NIRCAM_p_F480Ma':'NIRCAM-F480M','NIRCAM_p_F070Wab':'NIRCAM-F070W',
+                 'NIRCAM_p_F090Wab':'NIRCAM-F090W','NIRCAM_p_F115Wab':'NIRCAM-F115W','NIRCAM_p_F140Mab':'NIRCAM-F140M',
+                 'NIRCAM_p_F150Wab':'NIRCAM-F150W','NIRCAM_p_F150W2ab':'NIRCAM-F150W2','NIRCAM_p_F162Mab':'NIRCAM-F162M',
+                 'NIRCAM_p_F164Nab':'NIRCAM-F164N','NIRCAM_p_F182Mab':'NIRCAM-F182M','NIRCAM_p_F187Nab':'NIRCAM-F187N',
+                 'NIRCAM_p_F200Wab':'NIRCAM-F200W','NIRCAM_p_F210Mab':'NIRCAM-F210M','NIRCAM_p_F212Nab':'NIRCAM-F212N',
+                 'NIRCAM_p_F250Mab':'NIRCAM-F250M','NIRCAM_p_F277Wab':'NIRCAM-F277W','NIRCAM_p_F300Mab':'NIRCAM-F300M',
+                 'NIRCAM_p_F322W2ab':'NIRCAM-F322W2','NIRCAM_p_F323Nab':'NIRCAM-F323N','NIRCAM_p_F335Mab':'NIRCAM-F335M',
+                 'NIRCAM_p_F356Wab':'NIRCAM-F356W','NIRCAM_p_F360Mab':'NIRCAM-F360M','NIRCAM_p_F405Nab':'NIRCAM-F405N',
+                 'NIRCAM_p_F410Mab':'NIRCAM-F410M','NIRCAM_p_F430Mab':'NIRCAM-F430M','NIRCAM_p_F444Wab':'NIRCAM-F444W',
+                 'NIRCAM_p_F460Mab':'NIRCAM-F460M','NIRCAM_p_F466Nab':'NIRCAM-F466N','NIRCAM_p_F470Nab':'NIRCAM-F470N',
+                 'NIRCAM_p_F480Mab':'NIRCAM-F480M','NIRCAM_p_F070Wb':'NIRCAM-F070W','NIRCAM_p_F090Wb':'NIRCAM-F090W',
+                 'NIRCAM_p_F115Wb':'NIRCAM-F115W','NIRCAM_p_F140Mb':'NIRCAM-F140M','NIRCAM_p_F150Wb':'NIRCAM-F150W',
+                 'NIRCAM_p_F150W2b':'NIRCAM-F150W2','NIRCAM_p_F162Mb':'NIRCAM-F162M','NIRCAM_p_F164Nb':'NIRCAM-F164N',
+                 'NIRCAM_p_F182Mb':'NIRCAM-F182M','NIRCAM_p_F187Nb':'NIRCAM-F187N','NIRCAM_p_F200Wb':'NIRCAM-F200W',
+                 'NIRCAM_p_F210Mb':'NIRCAM-F210M','NIRCAM_p_F212Nb':'NIRCAM-F212N','NIRCAM_p_F250Mb':'NIRCAM-F250M',
+                 'NIRCAM_p_F277Wb':'NIRCAM-F277W','NIRCAM_p_F300Mb':'NIRCAM-F300M','NIRCAM_p_F322W2b':'NIRCAM-F322W2',
+                 'NIRCAM_p_F323Nb':'NIRCAM-F323N','NIRCAM_p_F335Mb':'NIRCAM-F335M','NIRCAM_p_F356Wb':'NIRCAM-F356W',
+                 'NIRCAM_p_F360Mb':'NIRCAM-F360M','NIRCAM_p_F405Nb':'NIRCAM-F405N','NIRCAM_p_F410Mb':'NIRCAM-F410M',
+                 'NIRCAM_p_F430Mb':'NIRCAM-F430M','NIRCAM_p_F444Wb':'NIRCAM-F444W','NIRCAM_p_F460Mb':'NIRCAM-F460M',
+                 'NIRCAM_p_F466Nb':'NIRCAM-F466N','NIRCAM_p_F470Nb':'NIRCAM-F470N','NIRCAM_p_F480Mb':'NIRCAM-F480M',
+                 'MIRI_p_F560W':'MIRI-F560W','MIRI_p_F770W':'MIRI-F770W','MIRI_p_F1000W':'MIRI-F1000W','MIRI_p_F1130W':'MIRI-F1130W',
+                 'MIRI_p_F1280W':'MIRI-F1280W','MIRI_p_F1500W':'MIRI-F1500W','MIRI_p_F1800W':'MIRI-F1800W',
+                 'MIRI_p_F2100W':'MIRI-F2100W','MIRI_p_F2550W':'MIRI-F2550W',
+                 'NIRISS_p_F090W':'NIRISS-F090W','NIRISS_p_F115W':'NIRISS-F115W','NIRISS_p_F140M':'NIRISS-F140M',
+                 'NIRISS_p_F150W':'NIRISS-F150W','NIRISS_p_F158M':'NIRISS-F158M','NIRISS_p_F200W':'NIRISS-F200W',
+                 'NIRISS_p_F277W':'NIRISS-F277W','NIRISS_p_F356W':'NIRISS-F356W','NIRISS_p_F380M':'NIRISS-F380M',
+                 'NIRISS_p_F430M':'NIRISS-F430M','NIRISS_p_F444W':'NIRISS-F444W','NIRISS_p_F480M':'NIRISS-F480M',
+                 'MIRI_c_F1065C':'MIRI-F1065C','MIRI_c_F1140C':'MIRI-F1140C','MIRI_c_F1550C':'MIRI-F1550C',
+                 'MIRI_c_F2300C':'MIRI-F2300C','NIRCAM_c210_F182M':'NIRCAM-F182M','NIRCAM_c210_F187N':'NIRCAM-F187N',
+                 'NIRCAM_c210_F200W':'NIRCAM-F200W','NIRCAM_c210_F210M':'NIRCAM-F210M','NIRCAM_c210_F212N':'NIRCAM-F212N',
+                 'NIRCAM_c335_F250M':'NIRCAM-F250M','NIRCAM_c335_F300M':'NIRCAM-F300M',
+                 'NIRCAM_c335_F322W2':'NIRCAM-F322W2','NIRCAM_c335_F335M':'NIRCAM-F335M',
+                 'NIRCAM_c335_F356W':'NIRCAM-F356W','NIRCAM_c335_F360M':'NIRCAM-F360M',
+                 'NIRCAM_c335_F410M':'NIRCAM-F410M','NIRCAM_c335_F430M':'NIRCAM-F430M',
+                 'NIRCAM_c335_F444W':'NIRCAM-F444W','NIRCAM_c335_F460M':'NIRCAM-F460M',
+                 'NIRCAM_c335_F480M':'NIRCAM-F480M','NIRCAM_c430_F250M':'NIRCAM-F250M',
+                 'NIRCAM_c430_F300M':'NIRCAM-F300M','NIRCAM_c430_F322W2':'NIRCAM-F322W2',
+                 'NIRCAM_c430_F335M':'NIRCAM-F335M','NIRCAM_c430_F356W':'NIRCAM-F356W',
+                 'NIRCAM_c430_F360M':'NIRCAM-F360M','NIRCAM_c430_F410M':'NIRCAM-F410M',
+                 'NIRCAM_c430_F430M':'NIRCAM-F430M','NIRCAM_c430_F444W':'NIRCAM-F444W',
+                 'NIRCAM_c430_F460M':'NIRCAM-F460M','NIRCAM_c430_F480M':'NIRCAM-F480M',
+                 'NIRCAM_cLWB_F250M':'NIRCAM-F250M','NIRCAM_cLWB_F277W':'NIRCAM-F277W',
+                 'NIRCAM_cLWB_F300M':'NIRCAM-F300M','NIRCAM_cLWB_F335M':'NIRCAM-F335M',
+                 'NIRCAM_cLWB_F356W':'NIRCAM-F356W','NIRCAM_cLWB_F360M':'NIRCAM-F360M',
+                 'NIRCAM_cLWB_F410M':'NIRCAM-F410M','NIRCAM_cLWB_F430M':'NIRCAM-F430M',
+                 'NIRCAM_cLWB_F444W':'NIRCAM-F444W','NIRCAM_cLWB_F460M':'NIRCAM-F460M',
+                 'NIRCAM_cLWB_F480M':'NIRCAM-F480M','NIRCAM_cSWB_F182M':'NIRCAM-F182M',
+                 'NIRCAM_cSWB_F187N':'NIRCAM-F187N','NIRCAM_cSWB_F200W':'NIRCAM-F200W',
+                 'NIRCAM_cSWB_F210M':'NIRCAM-F210M','NIRCAM_cSWB_F212N':'NIRCAM-F212N',
+                 'NIRISS_c_F277W':'NIRISS-F277W','NIRISS_c_F380M':'NIRISS-F380M',
+                 'NIRISS_c_F430M':'NIRISS-F430M','NIRISS_c_F480M':'NIRISS-F480M',                 
                  'Teff':'Teff','logL':'Luminosity','logg':'Gravity','radius':'Radius'}
         elif model=='geneva':
             dic={'V':'V','U':'U','B':'B','R':'R','I':'I',
@@ -2155,7 +2411,16 @@ class MADYS(object):
                  'Teff':'Teff','logL':'logL','logg':'logg','radius':'radius'}
         elif model=='yapsi':
             dic={'Teff':'Teff','logL':'log(L/Lsun)','logg':'log_g','radius':'radius'}
-            
+        elif ('sb12' in model) & ('hot' in model):
+            dic={'B_J':'hJmag','B_H':'hHmag','B_K':'hKmag','radius':'hRad', 'Lp':'hLmag', 'M':'hMmag', 'N':'hNmag'}
+        elif ('sb12' in model) & ('cold' in model):
+            dic={'B_J':'cJmag','B_H':'cHmag','B_K':'cKmag','radius':'cRad', 'Lp':'cLmag', 'M':'cMmag', 'N':'cNmag'}
+        elif model=='b97':
+            dic={'Teff':'T_eff','logL':'log_L','logg':'log_g','radius':'R'}
+        elif model=='pm13':
+            dic={'Teff':'Teff','logL':'logL','logg':'log_g','radius':'R_Rsun',
+                'V':'Mv','B':'B','Gbp':'Bp','Grp':'Rp','G':'M_G','U':'U','R':'Rc','I':'Ic',
+                'H':'H','J':'M_J','K':'M_Ks','W1':'W1','W2':'W2','W3':'W3','W4':'W4'}
         try:
             return dic[filt]
         except KeyError: return 'nan'
@@ -2196,27 +2461,6 @@ class MADYS(object):
         fspot=kwargs['fspot'] if 'fspot' in kwargs else None
         he=kwargs['he'] if 'he' in kwargs else None
 
-        def filters_to_surveys(filters):    
-            surveys=[]
-            gaia=np.array(['G','Gbp','Grp','G2','Gbp2','Grp2'])
-            tmass=np.array(['J','H','K'])
-            wise=np.array(['W1','W2','W3','W4'])
-            johnson=np.array(['U','B','V','R','i'])
-            panstarrs=np.array(['gmag','rmag','imag','zmag','ymag'])
-            sloan=np.array(['V_sl','R_sl','I_sl','K_sl','R_sl2','Z_sl','M_sl'])
-            sphere=np.array(['Ymag','Jmag','Hmag','Kmag','H2mag','H3mag','H4mag','J2mag','J3mag','K1mag','K2mag','Y2mag','Y3mag'])
-            hr=np.array(['radius','logg','logL','Teff'])
-            if len(np.intersect1d(gaia,filters))>0: surveys.append('gaia')
-            if len(np.intersect1d(tmass,filters))>0: surveys.append('2mass')
-            if len(np.intersect1d(wise,filters))>0: surveys.append('wise')
-            if len(np.intersect1d(johnson,filters))>0: surveys.append('johnson')
-            if len(np.intersect1d(panstarrs,filters))>0: surveys.append('panstarrs')
-            if len(np.intersect1d(sloan,filters))>0: surveys.append('sloan')
-            if len(np.intersect1d(sphere,filters))>0: surveys.append('sphere')
-            if len(np.intersect1d(hr,filters))>0: surveys.append('hr')
-            return surveys
-
-
         model_code=MADYS.model_name(model,feh=feh,afe=afe,v_vcrit=v_vcrit,fspot=fspot,B=B,he=he)
     #    model_code,param=model_name(model,feh=feh,afe=afe,v_vcrit=v_vcrit,fspot=fspot,B=B)
     #    param['mass_range']=mass_range
@@ -2227,22 +2471,22 @@ class MADYS(object):
         nf=len(fnew)
         c=0
 
-        surveys=filters_to_surveys(fnew)
+        surveys=MADYS.filters_to_surveys(fnew)
         
         n1=n_steps[0]
         mnew=M_sun.value/M_jup.value*np.exp(np.log(0.999*mass_range[0])+(np.log(1.001*mass_range[1])-np.log(0.999*mass_range[0]))/(n1-1)*np.arange(n1))
 
-        try: len(age_range) #NEWLINE
-        except TypeError: #NEWLINE
-            anew=age_range #NEWLINE
-            n2=1 #NEWLINE
+        try: len(age_range)
+        except TypeError:
+            anew=age_range
+            n2=1
             case=1
         else:
-            if isinstance(age_range,list): #NEWLINE
+            if isinstance(age_range,list):
                 n2=n_steps[1]
-                anew=np.exp(np.log(1.0001*age_range[0])+(np.log(0.9999*age_range[1])-np.log(1.0001*age_range[0]))/(n2-1)*np.arange(n2)) #NEWLINE
+                anew=np.exp(np.log(1.0001*age_range[0])+(np.log(0.9999*age_range[1])-np.log(1.0001*age_range[0]))/(n2-1)*np.arange(n2))
                 case=2
-            elif isinstance(age_range,np.ndarray):  #NEWLINE
+            elif isinstance(age_range,np.ndarray):
                 if len(age_range.shape)==1:
                     anew=np.array(age_range)
                     n2=len(anew)
@@ -2252,12 +2496,12 @@ class MADYS(object):
                     n2=len(anew)
                     case=4
             else: raise TypeError('Only scalar, list or numpy arrays are valid inputs for the keyword "age_range".')
-
+        if model_code=='pm13': case=5
                 
         iso_f=np.full(([n1,n2,nf]), np.nan) #final matrix    
         found=np.zeros(nf,dtype=bool)
 #        c=0
-        if case>1:
+        if case==5:
             for i in range(len(surveys)):
 #                if c==nf: break
                 if np.sum(found)==nf: break
@@ -2265,7 +2509,31 @@ class MADYS(object):
                     masses, ages, v0, data0 = model_data(surveys[i],model_code)
                 except ValueError: #if the survey is not found for the isochrone set, its filters are set to NaN
                     print(surveys[i],model_code)
-                    sys.exit()
+                    if logger!=None:
+                        logger.info('Survey '+surveys[i]+' not found for model '+model+'. Setting all related filters to nan.')
+                    continue
+                iso=np.full([n1,len(ages),len(fnew)],np.nan)
+                for j in range(len(fnew)):
+                    iso_filter=MADYS.get_isochrone_filter(model,fnew[j])
+                    w,=np.where(v0==iso_filter) #leaves NaN if the filter is not found
+                    if (len(w)>0) & (found[j]==False):
+                        found[j]=True
+                        k=0
+                        gv = np.isfinite(data0[:,k,w]).ravel() #interpolates along mass
+                        m0=masses[gv]
+                        if len(m0)>1:
+                            f=interp1d(m0,data0[gv,k,w],kind='linear',fill_value=np.nan,bounds_error=False)
+                            iso_f[:,k,j]=f(mnew)
+                        if np.sum(found)==nf: break
+            anew=ages
+        elif case>1:
+            for i in range(len(surveys)):
+#                if c==nf: break
+                if np.sum(found)==nf: break
+                try:
+                    masses, ages, v0, data0 = model_data(surveys[i],model_code)
+                except ValueError: #if the survey is not found for the isochrone set, its filters are set to NaN
+                    print(surveys[i],model_code)
                     if logger!=None:
                         logger.info('Survey '+surveys[i]+' not found for model '+model+'. Setting all related filters to nan.')
                     continue
@@ -2431,6 +2699,9 @@ class MADYS(object):
                             elif 'geneva' in str.lower(path): f_mods.append('geneva')
                             elif 'sonora' in str.lower(path): f_mods.append('sonora_bobcat')
                             elif 'yapsi' in str.lower(path): f_mods.append('yapsi')
+                            elif 'sb12' in str.lower(path): f_mods.append('sb12')
+                            elif 'b97' in str.lower(path): f_mods.append('b97')
+                            elif 'pm13' in str.lower(path): f_mods.append('pm13')
                             continue
                         else: found=True
                     with open(info) as f:
@@ -2516,7 +2787,12 @@ class MADYS(object):
                         print("CALL IT AS: 'sonora_bobcat'")                    
                     elif 'yapsi' in str.lower(path):
                         print("CALL IT AS: 'yapsi'")                    
-
+                    elif 'sb12' in str.lower(path): 
+                        print("CALL IT AS: 'sb12_hy_cold'/'sb12_hy_hot'/'sb12_cf_cold'/'sb12_cf_hot'")                                        
+                    elif 'b97' in str.lower(path): 
+                        print("CALL IT AS: 'b97'")                                        
+                    elif 'pm13' in str.lower(path): 
+                        print("CALL IT AS: 'pm13'") 
                     print('--------------------------------------------------------------------------------------')
             if found==False: 
                 mess='The inserted model does not exist. Check the spelling and try again. Available models: '+','.join(f_mods)
@@ -2562,3 +2838,84 @@ class MADYS(object):
         if reverse_yaxis: plt.gca().invert_yaxis()
         if type(tofile)!=type(None): plt.savefig(tofile)
         plt.show()
+
+    @staticmethod
+    def filters_to_surveys(filters):    
+        surveys=[]
+
+        n_s=len(list(MADYS.filt.keys()))
+        surv=np.array(list(MADYS.filt.keys()))
+        for i in surv:
+            s=np.array(list(MADYS.filt[i].keys()))
+            if len(np.intersect1d(filters,s))>0: surveys.append(i)
+
+        return surveys
+
+    @staticmethod
+    def info_filters(filt=None,model=None):
+
+        folder = os.path.dirname(os.path.realpath(__file__))
+
+        files=[]
+        i=0
+        found = False
+        for x in os.walk(folder): 
+            for j in range(len(x[2])): 
+                if 'info_filters' in x[2][j]:
+                    ff=os.path.join(x[0],x[2][j])
+                    found = True
+                    break
+
+        if found == False: raise NameError('File info_filters.txt not found in your working path. Please insert it and run this function again.')
+
+        # read column headers and number of values
+        p_cols = re.compile("\s*Quantity name:\s+'(.+)'")
+        p_sp = re.compile("--*")
+
+        # get column names
+        cols  = []
+        file = open(ff, 'r')    
+        line = file.readline()
+        found = False
+
+        if filt!=None:    
+            while True:
+                m = p_cols.match(line)
+                if (m is not None):
+                    cols.append(m.group(1))
+                    if m.group(1)==filt:
+                        print(line)
+                        found = True
+                line = file.readline()         #reads next line
+                if found:
+                    m1 = p_sp.match(line)
+                    if (m1 is not None):
+                        break
+                    else: 
+                        print(' '.join(line.splitlines()))
+                if bool(line)==False: 
+                    break
+            if found==False:
+                cols=np.array(cols)
+                raise NameError("Quantity '"+str(filt)+"' not found: check the spelling and try again. Available filters and physical parameters: "+', '.join(cols)+'.')
+            if model!=None:   
+                surv=MADYS.filters_to_surveys([filt])
+                model_c=MADYS.model_name(model)
+
+                add_search_path(folder)
+                for x in os.walk(folder):
+                    add_search_path(x[0])      
+                try:
+                    model_data(surv[0],model_c)
+                    return True
+                except ValueError: #if the survey is not found for the isochrone set, its filters are set to NaN
+                    return False
+
+        else:
+            while True:
+                if bool(line)==False: 
+                    break
+                else: print(' '.join(line.splitlines()))                    
+                line = file.readline()         #reads next line
+
+        file.close()    
