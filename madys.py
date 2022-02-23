@@ -1114,7 +1114,7 @@ class MADYS(object):
                     chi2=np.sum(sigma[:,:,w2],axis=2)                 
                     all_maps.append(chi2/(len(w2)-2)) # no. of degrees of freedom = no. filters - two parameters (age and mass)                
                     est,ind=MADYS.min_v(chi2)
-                    chi2_min[i]=est
+                    chi2_min[i]=est/(len(w2)-2)
                     m_fit[i]=iso_mass[ind[0]]
                     a_fit[i]=iso_age[i00]
                     for kk in range(len(sigma)):
