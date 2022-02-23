@@ -997,7 +997,6 @@ class MADYS(object):
         app_phot=self.app_phot[:,filt2]-red #a semi-apparent magnitude (already de-extinct. Only needs correction for distance)
         app_phot_err=self.app_phot_err[:,filt2]
 
-        print(iso_filt)
         l=iso_data.shape
 
         m_fit=np.full(xlen,np.nan)
@@ -1117,8 +1116,6 @@ class MADYS(object):
                     chi2_min[i]=est/(len(w2)-2)
                     m_fit[i]=iso_mass[ind[0]]
                     a_fit[i]=iso_age[i00]
-                    for kk in range(len(sigma)):
-                        print(kk,iso_mass[kk],iso_data[kk,i00,:],chi2[kk])
                     
                     if phys_param:
                         logg_fit[i]=phys_data[ind[0],i00,0]
@@ -1528,7 +1525,6 @@ class MADYS(object):
                 
     @staticmethod
     def axis_range(col_name,col_phot,stick_to_points=False):
-        print(col_name,col_phot)
         try:
             len(col_phot)
             cmin=np.min(col_phot)-0.1
@@ -1625,7 +1621,6 @@ class MADYS(object):
         if 'mass_range' in kwargs: mass_r=MADYS.get_mass_range(kwargs['mass_range'],model,dtype='mass')
         elif len(wG)==1: mass_r=MADYS.get_mass_range(self.abs_phot[:,wG],model)
         else: mass_r=MADYS.get_mass_range([1e-6,1e+6],model)
-        print(mass_r)
             
         iso=MADYS.load_isochrones(model,self.filters,logger=self.__logger,mass_range=mass_r,**kwargs)
 
@@ -1691,9 +1686,6 @@ class MADYS(object):
         if 'y_range' in kwargs: y_range=kwargs['y_range']
         else: y_range=MADYS.axis_range(y_axis,y,stick_to_points=stick_to_points)
 
-            
-        print(x_range)
-        print(y_range)
             
         #finds color/magnitude isochrones to plot
         if '-' in x_axis: 
