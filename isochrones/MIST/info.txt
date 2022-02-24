@@ -1,0 +1,8 @@
+Model name: MIST
+Reference: Dotter, ApJS, 222, 8 (2016), Choi et al., ApJ 823, 102 (2016)
+Version: v1.2
+Solar metallicity: Z=0.0142
+Helium abundance: Y=0.2703
+Mass range: [0.1,150] M_sun
+Age range: [0.1 Myr, 20 Gyr]
+Filters: Bessell (U, B, V, R, I), 2MASS (J, H, K), Kepler (Kp, D51), Hipparcos (Hp), Tycho (T_B, T_V), Gaia DR2 (G, Gbp, Grp), Gaia EDR3 (G, Gbp, Grp), TESS (I_c), WISE (W1, W2, W3, W4)

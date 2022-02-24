@@ -1,0 +1,9 @@
+Model name: YAPSI
+Reference: Spada et al., ApJ, 838, 161 (2017)
+Solar metallicity: Z=0.014164
+Helium abundance: Y=0.277486
+Mass range: [0.15,5] M_sun
+Age range: [0.5 Myr, 15 Gyr]
+Available metallicities: [-1.44,-0.94,-0.44,0.06,0.36]
+Available helium fractions: [0.25,0.28,0.31,0.34,0.37]
+Filters: - (only HR)

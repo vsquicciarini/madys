@@ -1,0 +1,7 @@
+Model name: (PHOENIX) NextGen
+Reference:  Hauschild, ApJ 525, 871:880 (1999)
+Solar metallicity: Z=0.02 (?)
+Helium abundance: Y=0.28 (?)
+Mass range: [0.01,1.4] M_sun
+Age range: [1 Myr, 12 Gyr]
+Filters: 2MASS (J, H, K), WISE (W1, W2, W3, W4), Gaia DR2 (G, Gbp, Grp), Panstarrs (g, r, i, z, y), SPHERE (SPH_Y, SPH_J, SPH_H, SPH_K, SPH_NDH, SPH_H2, SPH_H3, SPH_H4, SPH_J2, SPH_J3, SPH_K1, SPH_K2, SPH_Y2, SPH_Y3)

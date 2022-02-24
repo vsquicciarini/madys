@@ -1,0 +1,7 @@
+Model name: Sonora Bobcat
+Reference: Marley et al., ApJ, 920, 85 (2021)
+Solar metallicity: Z=0.0153
+Helium abundance: Y=0.2735
+Mass range: [5*10^4,0.1] M_sun
+Age range: [0.1 Myr, 10 Gyr]
+Filters: 2MASS (J, H, K), WISE (W1, W2, W3, W4)

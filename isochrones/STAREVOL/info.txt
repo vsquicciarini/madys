@@ -1,0 +1,8 @@
+Model name: STAREVOL
+Reference: Amard et al., A&A 631, A77 (2019)
+Version: v3.40
+Solar metallicity: Z=0.0134
+Helium abundance: Y=0.269
+Mass range: [0.2,1.5] M_sun
+Age range: [1 Myr, 12.6 Gyr]
+Filters: Bessell (U, B, V, R, I), Gaia DR2 (G, Gbp, Grp), 2MASS (J, H, K)

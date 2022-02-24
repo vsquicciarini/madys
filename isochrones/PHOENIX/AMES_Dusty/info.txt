@@ -1,0 +1,8 @@
+Model name: (PHOENIX) AMES-Dusty
+Reference: Allard et al., ApJ 556:357-372 (2001)
+Available at: https://phoenix.ens-lyon.fr/Grids/AMES-Dusty/ISOCHRONES/
+Solar metallicity: ?
+Helium abundance: ?
+Mass range: [0.005,1.4] M_sun
+Age range: [1 Myr, 12 Gyr]
+Filters: 2MASS (J, H, K), WISE (W1, W2, W3, W4), Gaia DR2 (G, Gbp, Grp), Panstarrs (g, r, i, z, y), SPHERE (SPH_Y, SPH_J, SPH_H, SPH_K, SPH_NDH, SPH_H2, SPH_H3, SPH_H4, SPH_J2, SPH_J3, SPH_K1, SPH_K2, SPH_Y2, SPH_Y3), HST (H_F090M, H_F110W, H_F160W, H_F165M, H_F187W, H_F205W, H_F207M, H_F222M, H_F237M, H_F253M, H_F300W, H_F336W, H_F346M, H_F439W, H_F555W, H_F606W, H_F675W, H_F785LP, H_F814W)

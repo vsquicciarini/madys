@@ -1,0 +1,8 @@
+Model name: PARSEC
+Reference: Marigo et al., ApJ 835, 77 (2017)
+Version: v1.2S
+Solar metallicity: Z=0.01524
+Helium abundance: Y=0.2485
+Mass range: [0.09,350] M_sun
+Age range: [0.1 Myr, 10 Gyr]
+Filters: 2MASS (J, H, K), Spitzer (IRAC1, IRAC2, IRAC3, IRAC4, MIPS24, MIPS70, MIPS160), WISE (W1, W2, W3, W4), Gaia DR2 (G, Gbp, Grp), Gaia EDR3 (G, Gbp, Grp), Bessell (Ux, Bx, B, V, R, I, B_J, B_H, B_K, L, Lp, M), Panstarrs (g, r, i, z, y), SkyMapper (SM_u, SM_v, SM_g, SM_r, SM_i, SM_z)

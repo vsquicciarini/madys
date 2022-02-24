@@ -1,0 +1,7 @@
+Model name: B97
+Reference: Burrows et al., ApJ, 491, 856 (1997)
+Solar metallicity: ?
+Helium abundance: ?
+Mass range: [1,10] M_jup = [0.001, 0.01] M_sun
+Age range: [1 Myr, 9.6 Gyr]
+Filters: - (only HR)
