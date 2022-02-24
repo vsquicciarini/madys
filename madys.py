@@ -370,13 +370,15 @@ class MADYS(object):
                 self.ebv=kwargs['ebv']
                 self.__logger.info('Extinction type: provided by the user')
             elif ('ra' in col0) & ('dec' in col0) & ('parallax' in col0):
-                par=file['parallax']
-                self.ebv=MADYS.interstellar_ext(ra=file['ra'],dec=file['dec'],par=par,ext_map=ext_map,logger=self.__logger)
+                self.par=file['parallax']
+                self.ebv=MADYS.interstellar_ext(ra=file['ra'],dec=file['dec'],par=self.par,ext_map=ext_map,logger=self.__logger)
                 self.__logger.info('Extinction type: computed using '+ext_map+' extinction map')
             if 'parallax' in col0:
-                par=file['parallax']
-                par_err=file['parallax_err']
-                self.abs_phot,self.abs_phot_err=MADYS.app_to_abs_mag(self.abs_phot,par,app_mag_error=self.abs_phot_err,parallax_error=par_err,ebv=self.ebv,filters=col)
+                self.par=file['parallax']
+                self.par_err=file['parallax_err']
+                self.app_phot=copy.deepcopy(self.abs_phot)
+                self.app_phot_err=copy.deepcopy(self.abs_phot_err)
+                self.abs_phot,self.abs_phot_err=MADYS.app_to_abs_mag(self.abs_phot,self.par,app_mag_error=self.abs_phot_err,parallax_error=self.par_err,ebv=self.ebv,filters=col)
                 self.__logger.info('Input photometry: apparent, converted to absolute.')
             else:
                 self.__logger.info('Input photometry: no parallax provided, assumed absolute.')
@@ -943,10 +945,11 @@ class MADYS(object):
 
 
         iso_mass,iso_age,iso_filt,iso_data=MADYS.load_isochrones(model,filt,logger=self.__logger,**kwargs)        
+        
         self.__logger.info('Isochrones for model '+model+' correctly loaded')
         iso_mass_log=np.log10(iso_mass)
         iso_age_log=np.log10(iso_age)
-
+        
         if phys_param:
             phys_filt=['logg','Teff','logL','radius']
             w_p=MADYS.where_v(phys_filt,iso_filt)
@@ -1087,7 +1090,75 @@ class MADYS(object):
             except MemoryError: mem_err=True
 
         with np.errstate(divide='ignore',invalid='ignore'):        
-            if (case==1) | (case==3):
+            if case==3:
+                sigma0=np.full(([l[0],ylen]),np.nan)
+                sigma=np.full(([l[0],l[1],ylen]),np.nan)
+                for i in range(xlen):
+                    w,=np.where(MADYS.is_phot_good(phot[i,:],phot_err[i,:],max_phot_err=self.ph_cut))
+                    if len(w)==0: 
+                        self.__logger.info('All magnitudes for star '+str(i)+' have an error beyond the maximum allowed threshold ('+str(self.ph_cut)+' mag): age and mass determinations was not possible.')
+                        all_sol.append({})
+                        all_maps.append([])
+                        continue
+                    i00=i_age[i,0]
+                    b=np.zeros(len(w),dtype=bool)
+                    for h in range(len(w)):
+                        ph=phot[i,w[h]]
+                        sigma0[:,w[h]]=((iso_data[:,i00,w[h]]-ph)/phot_err[i,w[h]])**2
+                        ii=np.nanargmin(sigma0[:,w[h]])
+                        if abs(iso_data[ii,i00,w[h]]-ph)<0.2: b[h]=True #if the best theor. match is more than 0.2 mag away, discards it
+                    if np.sum(b)==0:
+                        self.__logger.info('All magnitudes for star '+str(i)+' are more than 0.2 mag away from their best theoretical match. Check age and mass range of the theoretical grid, or change the model if the current one does not cover the expected age/mass range for this star.')
+                        all_sol.append({})
+                        all_maps.append([])
+                        continue
+                    w2=w[b]
+                    chi2=np.sum(sigma0[:,w2],axis=1)/(np.sum(np.isnan(iso_data[:,i00,w2])==False,axis=1)-1)
+                    all_maps.append(chi2) # no. of degrees of freedom = no. filters - two parameters (age and mass)                
+                    est,ind=MADYS.min_v(chi2)
+                    chi2_min[i]=est
+                    ind=ind[0]
+                    
+                    daa=MADYS.closest(iso_mass_log,[iso_mass_log[ind]-0.3,iso_mass_log[ind]+0.3])
+                    n_try=100
+                    n_est=n_try*(i_age[i,2]-i_age[i,1]+1)
+                    ind_array=np.zeros(n_est,dtype=int)
+                    k=0
+                    for l in range(n_try):
+                        phot1,phot_err1=MADYS.app_to_abs_mag(app_phot[i,w2]+app_phot_err[i,w2]*np.random.normal(size=len(w2)),self.par[i]+self.par_err[i]*np.random.normal(),app_mag_error=app_phot_err[i,w2],parallax_error=self.par_err[i])
+                        for j in range(i_age[i,1],i_age[i,2]+1):
+                            for h in range(len(w2)):
+                                sigma[daa[0]:daa[1],j,w2[h]]=((iso_data[daa[0]:daa[1],j,w2[h]]-phot1[h])/phot_err1[h])**2
+                            chi2=np.nansum(sigma[daa[0]:daa[1],j,w2],axis=1)/(np.sum(np.isnan(iso_data[daa[0]:daa[1],j,w2])==False,axis=1)-1)
+                            
+                            ind_array[k]=daa[0]+np.nanargmin(chi2)
+                            k+=1
+                    
+                    m_min[i],m_fit[i],m_max[i]=10**np.percentile(iso_mass_log[ind_array],[16,50,84])
+                    if phys_param:
+                        rep_ages=np.tile(np.arange(i_age[i,1],i_age[i,2]+1),n_try)
+                        logg_min[i],logg_fit[i],logg_max[i]=np.percentile(phys_data[ind_array,rep_ages,0],[16,50,84])
+                        Teff_min[i],Teff_fit[i],Teff_max[i]=10**np.percentile(np.log10(phys_data[ind_array,rep_ages,1]),[16,50,84])
+                        logL_min[i],logL_fit[i],logL_max[i]=np.percentile(phys_data[ind_array,rep_ages,2],[16,50,84])
+                        radius_min[i],radius_fit[i],radius_max[i]=10**np.percentile(np.log10(phys_data[ind_array,rep_ages,3]),[16,50,84])
+                if phys_param:
+                    dic={'ages':a_fit, 'ages_min':a_min, 'ages_max':a_max,
+                         'masses':m_fit, 'masses_min':m_min, 'masses_max':m_max,
+                         'ebv':self.ebv, 'chi2_min':chi2_min, 'all_maps':all_maps,
+                         'radii':radius_fit, 'radii_min': radius_min, 'radii_max': radius_max,
+                         'logg':logg_fit, 'logg_min': logg_min, 'logg_max': logg_max,
+                         'logL':logL_fit, 'logL_min': logL_min, 'logL_max': logL_max,
+                         'Teff':Teff_fit, 'Teff_min': Teff_min, 'Teff_max': Teff_max,
+                         'iso_mass':iso_mass, 'iso_age':iso_age,
+                         'model':model}
+                else:
+                    dic={'ages':a_fit, 'ages_min':a_min, 'ages_max':a_max,
+                         'masses':m_fit, 'masses_min':m_min, 'masses_max':m_max,
+                         'ebv':self.ebv, 'chi2_min':chi2_min, 'all_maps':all_maps,
+                         'iso_mass':iso_mass, 'iso_age':iso_age,
+                         'model':model}
+                        
+            elif case==1:
                 sigma=np.full(([l[0],1,ylen]),np.nan)
                 for i in range(xlen):
                     w,=np.where(MADYS.is_phot_good(phot[i,:],phot_err[i,:],max_phot_err=self.ph_cut))
@@ -1096,7 +1167,7 @@ class MADYS(object):
                         all_sol.append({})
                         all_maps.append([])
                         continue
-                    i00=i_age[i,0] if case==3 else i_age[i]
+                    i00=i_age[i]
 
                     b=np.zeros(len(w),dtype=bool)
                     for h in range(len(w)):
@@ -1110,101 +1181,64 @@ class MADYS(object):
                         all_maps.append([])
                         continue
                     w2=w[b]
-                    chi2=np.sum(sigma[:,:,w2],axis=2)                 
-                    all_maps.append(chi2/(len(w2)-2)) # no. of degrees of freedom = no. filters - two parameters (age and mass)                
+                    chi2=np.nansum(sigma[:,0,w2],axis=1)/(np.sum(np.isnan(iso_data[:,i00,w2])==False,axis=1)-1) #no. of degrees of freedom = no. filters - two parameters (age and mass) 
+                    
+                    all_maps.append(chi2)                
                     est,ind=MADYS.min_v(chi2)
                     chi2_min[i]=est/(len(w2)-2)
                     m_fit[i]=iso_mass[ind[0]]
                     a_fit[i]=iso_age[i00]
                     
+                    n_try=100
+                    m_f1=np.zeros(n_try)
+                    a_f1=np.zeros(n_try)
+                                                
                     if phys_param:
                         logg_fit[i]=phys_data[ind[0],i00,0]
                         Teff_fit[i]=phys_data[ind[0],i00,1]
                         logL_fit[i]=phys_data[ind[0],i00,2]
                         radius_fit[i]=phys_data[ind[0],i00,3]
-                    if case==3:
-                        for h in range(len(w2)):
-                            ph=phot[i,w2[h]]
-                            sigma[:,0,w2[h]]=((iso_data[:,i_age[i,1],w2[h]]-ph)/phot_err[i,w2[h]])**2
-                        cr1=np.sum(sigma[:,:,w2],axis=2)
-                        est1,ind1=MADYS.min_v(cr1)
-                        m_min[i]=iso_mass[ind1[0]]
-                        a_min[i]=iso_age[i_age[i,1]]
-                        if phys_param:
-                            logg_min[i]=phys_data[ind1[0],i_age[i,1],0]
-                            Teff_min[i]=phys_data[ind1[0],i_age[i,1],1]
-                            logL_min[i]=phys_data[ind1[0],i_age[i,1],2]
-                            radius_min[i]=phys_data[ind1[0],i_age[i,1],3]
-                        for h in range(len(w2)):
-                            ph=phot[i,w2[h]]
-                            sigma[:,0,w2[h]]=((iso_data[:,i_age[i,2],w2[h]]-ph)/phot_err[i,w2[h]])**2
-                        cr1=np.sum(sigma[:,:,w2],axis=2)
-                        est1,ind1=MADYS.min_v(cr1)
-                        m_max[i]=iso_mass[ind1[0]]
-                        a_max[i]=iso_age[i_age[i,2]]
-                        if phys_param:
-                            logg_max[i]=phys_data[ind1[0],i_age[i,2],0]
-                            Teff_max[i]=phys_data[ind1[0],i_age[i,2],1]
-                            logL_max[i]=phys_data[ind1[0],i_age[i,2],2]
-                            radius_max[i]=phys_data[ind1[0],i_age[i,2],3]
+                        logg_f1=np.zeros(n_try)
+                        Teff_f1=np.zeros(n_try)
+                        logL_f1=np.zeros(n_try)
+                        radius_f1=np.zeros(n_try)
+                        for j in range(n_try):
+                            phot1,phot_err1=MADYS.app_to_abs_mag(app_phot[i,w2]+app_phot_err[i,w2]*np.random.normal(size=len(w2)),self.par[i]+self.par_err[i]*np.random.normal(),app_mag_error=app_phot_err[i,w2],parallax_error=self.par_err[i])                            
+                            for h in range(len(w2)):
+                                sigma[:,0,w2[h]]=((iso_data[:,i00,w2[h]]-phot1[h])/phot_err1[h])**2
+                            cr1=np.sum(sigma[:,:,w2],axis=2)
+                            est1,ind1=MADYS.min_v(cr1)
+                            m_f1[j]=iso_mass_log[ind1[0]]
+                            a_f1[j]=iso_age_log[i00]
+                            logg_f1[j]=phys_data[ind1[0],i00,0]
+                            Teff_f1[j]=phys_data[ind1[0],i00,1]
+                            logL_f1[j]=phys_data[ind1[0],i00,2]
+                            radius_f1[j]=phys_data[ind1[0],i00,3]
+                        s_logg=np.std(logg_f1,ddof=1)
+                        logg_min[i]=logg_fit[i]-s_logg
+                        logg_max[i]=logg_fit[i]+s_logg
+                        s_logL=np.std(logL_f1,ddof=1)
+                        logL_min[i]=logL_fit[i]-s_logL
+                        logL_max[i]=logL_fit[i]+s_logL
+                        s_Teff=np.std(np.log10(Teff_f1),ddof=1)
+                        Teff_min[i]=10**(np.log10(Teff_fit[i])-s_teff)
+                        Teff_max[i]=10**(np.log10(Teff_fit[i])+s_teff)
+                        s_radius=np.std(np.log10(radius_f1),ddof=1)
+                        radius_min[i]=10**(np.log10(radius_fit[i])-s_radius)
+                        radius_max[i]=10**(np.log10(radius_fit[i])+s_radius)
                     else:
-                        n_try=100
-                        m_f1=np.zeros(n_try)
-                        a_f1=np.zeros(n_try)
-                        if phys_param:
-                            logg_f1=np.zeros(n_try)
-                            Teff_f1=np.zeros(n_try)
-                            logL_f1=np.zeros(n_try)
-                            radius_f1=np.zeros(n_try)
-                            for j in range(n_try):
-                                phot1,phot_err1=MADYS.app_to_abs_mag(app_phot[i,w2]+app_phot_err[i,w2]*np.random.normal(size=len(w2)),self.par[i]+self.par_err[i]*np.random.normal(),app_mag_error=app_phot_err[i,w2],parallax_error=self.par_err[i])                            
-                                for h in range(len(w2)):
-                                    sigma[:,0,w2[h]]=((iso_data[:,i00,w2[h]]-phot1[h])/phot_err1[h])**2
-                                cr1=np.sum(sigma[:,:,w2],axis=2)
-                                est1,ind1=MADYS.min_v(cr1)
-                                m_f1[j]=iso_mass_log[ind1[0]]
-                                a_f1[j]=iso_age_log[i00]
-                                logg_f1[j]=phys_data[ind1[0],i00,0]
-                                Teff_f1[j]=phys_data[ind1[0],i00,1]
-                                logL_f1[j]=phys_data[ind1[0],i00,2]
-                                radius_f1[j]=phys_data[ind1[0],i00,3]
-                            s_logg=np.std(logg_f1,ddof=1)
-                            logg_min[i]=logg_fit[i]-s_logg
-                            logg_max[i]=logg_fit[i]+s_logg
-                            s_logL=np.std(logL_f1,ddof=1)
-                            logL_min[i]=logL_fit[i]-s_logL
-                            logL_max[i]=logL_fit[i]+s_logL
-                            s_Teff=np.std(np.log10(Teff_f1),ddof=1)
-                            Teff_min[i]=10**(np.log10(Teff_fit[i])-s_teff)
-                            Teff_max[i]=10**(np.log10(Teff_fit[i])+s_teff)
-                            s_radius=np.std(np.log10(radius_f1),ddof=1)
-                            radius_min[i]=10**(np.log10(radius_fit[i])-s_radius)
-                            radius_max[i]=10**(np.log10(radius_fit[i])+s_radius)
-                        else:
-                            for j in range(n_try):
-                                phot1,phot_err1=MADYS.app_to_abs_mag(app_phot[i,w2]+app_phot_err[i,w2]*np.random.normal(size=len(w2)),self.par[i]+self.par_err[i]*np.random.normal(),app_mag_error=app_phot_err[i,w2],parallax_error=self.par_err[i])                            
-                                for h in range(len(w2)):
-                                    sigma[:,0,w2[h]]=((iso_data[:,i00,w2[h]]-phot1[h])/phot_err1[h])**2
-                                cr1=np.sum(sigma[:,:,w2],axis=2)
-                                est1,ind1=MADYS.min_v(cr1)
-                                m_f1[j]=iso_mass_log[ind1[0]]
-                                a_f1[j]=iso_age_log[i00]
-                        m_min[i]=10**(np.log10(m_fit[i])-np.std(m_f1,ddof=1))
-                        m_max[i]=10**(np.log10(m_fit[i])+np.std(m_f1,ddof=1))
-                        a_min[i]=10**(np.log10(a_fit[i])-np.std(a_f1,ddof=1))
-                        a_max[i]=10**(np.log10(a_fit[i])+np.std(a_f1,ddof=1))            
-                    if phys_param:
-                        all_sol.append({'masses':np.array([m_fit[i],m_min[i],m_max[i]]),
-                                        'ages':np.array([a_fit[i],a_min[i],a_max[i]]),
-                                        'logg':np.array([logg_fit[i],logg_min[i],logg_max[i]]),
-                                        'Teff':np.array([Teff_fit[i],Teff_min[i],Teff_max[i]]),
-                                        'logL':np.array([logL_fit[i],logL_min[i],logL_max[i]]),
-                                        'radii':np.array([radius_fit[i],radius_min[i],radius_max[i]]),
-                                        'prob':np.array([1])})
-                    else:
-                        all_sol.append({'masses':np.array([m_fit[i],m_min[i],m_max[i]]),
-                                        'ages':np.array([a_fit[i],a_min[i],a_max[i]]),
-                                        'prob':np.array([1])})                        
+                        for j in range(n_try):
+                            phot1,phot_err1=MADYS.app_to_abs_mag(app_phot[i,w2]+app_phot_err[i,w2]*np.random.normal(size=len(w2)),self.par[i]+self.par_err[i]*np.random.normal(),app_mag_error=app_phot_err[i,w2],parallax_error=self.par_err[i])                            
+                            for h in range(len(w2)):
+                                sigma[:,0,w2[h]]=((iso_data[:,i00,w2[h]]-phot1[h])/phot_err1[h])**2
+                            cr1=np.sum(sigma[:,:,w2],axis=2)
+                            est1,ind1=MADYS.min_v(cr1)
+                            m_f1[j]=iso_mass_log[ind1[0]]
+                            a_f1[j]=iso_age_log[i00]
+                    m_min[i]=10**(np.log10(m_fit[i])-np.std(m_f1,ddof=1))
+                    m_max[i]=10**(np.log10(m_fit[i])+np.std(m_f1,ddof=1))
+                    a_min[i]=10**(np.log10(a_fit[i])-np.std(a_f1,ddof=1))
+                    a_max[i]=10**(np.log10(a_fit[i])+np.std(a_f1,ddof=1))            
                         
                 if phys_param:
                     dic={'ages':a_fit, 'ages_min':a_min, 'ages_max':a_max,
@@ -1214,13 +1248,13 @@ class MADYS(object):
                          'logg':logg_fit, 'logg_min': logg_min, 'logg_max': logg_max,
                          'logL':logL_fit, 'logL_min': logL_min, 'logL_max': logL_max,
                          'Teff':Teff_fit, 'Teff_min': Teff_min, 'Teff_max': Teff_max,
-                         'all_solutions':all_sol, 'iso_mass':iso_mass, 'iso_age':iso_age,
+                         'iso_mass':iso_mass, 'iso_age':iso_age,
                          'model':model}
                 else:
                     dic={'ages':a_fit, 'ages_min':a_min, 'ages_max':a_max,
                          'masses':m_fit, 'masses_min':m_min, 'masses_max':m_max,
                          'ebv':self.ebv, 'chi2_min':chi2_min, 'all_maps':all_maps,
-                         'all_solutions':all_sol, 'iso_mass':iso_mass, 'iso_age':iso_age,
+                         'iso_mass':iso_mass, 'iso_age':iso_age,
                          'model':model}
 
             else:
@@ -1256,8 +1290,10 @@ class MADYS(object):
                         all_maps.append([])
                         continue #at least 3 filters needed for the fit
                     if len(use_i)<l_r: sigma[MADYS.complement_v(use_i,l_r),:]=np.nan
-                    chi2=np.sum(sigma[:,w2],axis=1)                
-                    all_maps.append((chi2/(len(w2)-2)).reshape([l[0],l[1]])) #two parameters: age and mass
+                    chi2=np.nansum(sigma[:,w2],axis=1)/(np.sum(np.isnan(iso_data_r[:,w2])==False,axis=1)-2)
+                    
+                    
+                    all_maps.append(chi2.reshape([l[0],l[1]])) #two parameters: age and mass
                     ind=np.nanargmin(chi2)
                     crit1=np.sort(sigma[ind,w2])
                     crit2=np.sort(iso_data_r[ind,w2])
@@ -1280,7 +1316,7 @@ class MADYS(object):
                                 for h in range(len(w2)):
                                     sigma[w_ntb,w2[h]]=((iso_data_r[w_ntb,w2[h]]-phot1[h])/phot_err1[h])**2
                                 sigma_red=sigma[w_ntb,:]
-                                chi2=np.sum(sigma_red[:,w2],axis=1)
+                                chi2=np.sum(sigma_red[:,w2],axis=1)/(np.sum(np.isnan(iso_data_r[:,w2])==False,axis=1)-2)
                                 ind=np.argmin(chi2)
                                 gsol,=np.where(chi2<(chi2[ind]+2.3)) #68.3% C.I.. Use delta chi2=4.61,6.17,11.8 for 90%,95.4%,99.73% C.I.
                                 g_sol.append(w_ntb[gsol])
@@ -1384,7 +1420,7 @@ class MADYS(object):
                                 for h in range(len(w2)):
                                     sigma[w_ntb,w2[h]]=((iso_data_r[w_ntb,w2[h]]-phot1[h])/phot_err1[h])**2
                                 sigma_red=sigma[w_ntb,:]
-                                chi2=np.sum(sigma_red[:,w2],axis=1)
+                                chi2=np.sum(sigma_red[:,w2],axis=1)/(np.sum(np.isnan(iso_data_r[:,w2])==False,axis=1)-2)
                                 ind=np.argmin(chi2)
                                 gsol,=np.where(chi2<(chi2[ind]+2.3)) #68.3% C.I.. Use delta chi2=4.61,6.17,11.8 for 90%,95.4%,99.73% C.I.
                                 g_sol.append(w_ntb[gsol])
@@ -1525,6 +1561,7 @@ class MADYS(object):
                 
     @staticmethod
     def axis_range(col_name,col_phot,stick_to_points=False):
+        print(col_name,col_phot)
         try:
             len(col_phot)
             cmin=np.min(col_phot)-0.1
@@ -1621,6 +1658,7 @@ class MADYS(object):
         if 'mass_range' in kwargs: mass_r=MADYS.get_mass_range(kwargs['mass_range'],model,dtype='mass')
         elif len(wG)==1: mass_r=MADYS.get_mass_range(self.abs_phot[:,wG],model)
         else: mass_r=MADYS.get_mass_range([1e-6,1e+6],model)
+        print(mass_r)
             
         iso=MADYS.load_isochrones(model,self.filters,logger=self.__logger,mass_range=mass_r,**kwargs)
 
@@ -1686,6 +1724,9 @@ class MADYS(object):
         if 'y_range' in kwargs: y_range=kwargs['y_range']
         else: y_range=MADYS.axis_range(y_axis,y,stick_to_points=stick_to_points)
 
+            
+        print(x_range)
+        print(y_range)
             
         #finds color/magnitude isochrones to plot
         if '-' in x_axis: 
@@ -2729,7 +2770,7 @@ class MADYS(object):
                 model2+='_'+s+v_vcrit1
             else: model2+='_p0.0'
         elif model=='parsec':
-            feh_range=np.array([-1.0,-0.75,-0.5,-0.25,0.0,0.25,0.5,0.75,1.00])
+            feh_range=np.array([-1.0,-0.75,-0.5,-0.25,0.0,0.13,0.25,0.5,0.75,1.00])
             if type(feh)!=type(None):
                 i=np.argmin(abs(feh_range-feh))
                 feh0=feh_range[i]
@@ -3098,7 +3139,12 @@ class MADYS(object):
                     n2=len(anew)
                     case=3
                 elif len(age_range[0])==3:
-                    anew=np.unique(age_range.ravel())
+                    age0=np.unique(age_range.ravel())    
+                    age1=(age0[:-1]+(age0[1:]-age0[:-1])/4)
+                    age2=(age0[:-1]+(age0[1:]-age0[:-1])/2)
+                    age3=(age0[:-1]+3*(age0[1:]-age0[:-1])/4)
+                    anew=np.sort(np.concatenate((age0,age1,age2,age3)))
+                    #anew=np.unique(age_range.ravel())
                     n2=len(anew)
                     case=4
                 elif len(age_range[0])==2:
@@ -3620,8 +3666,9 @@ class MADYS(object):
         try: len(indices)
         except TypeError: indices=np.array([indices])
 
-        limits=np.array(limits)
-        if len(limits.shape)==1: limits=np.tile(limits, (len(indices), 1))
+        if type(limits)!=type(None):
+            limits=np.array(limits)
+            if len(limits.shape)==1: limits=np.tile(limits, (len(indices), 1))
 
         p=0
         for i in indices:

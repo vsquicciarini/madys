@@ -2134,6 +2134,15 @@ models = {
         {'instrument': 'hr',        'name': 'parsec_p0.00',           'file': 'GAIA_EDR3_feh_p0.00.txt',                                       'function': _read_model_PARSEC},
         {'instrument': 'spitzer',   'name': 'parsec_p0.00',           'file': '2MASS_WISE_feh_p0.00.txt',                                      'function': _read_model_PARSEC},
 
+        {'instrument': '2mass',     'name': 'parsec_p0.13',           'file': '2MASS_WISE_feh_p0.13.txt',                                      'function': _read_model_PARSEC},
+        {'instrument': 'wise',      'name': 'parsec_p0.13',           'file': '2MASS_WISE_feh_p0.13.txt',                                      'function': _read_model_PARSEC},
+        {'instrument': 'gaia',      'name': 'parsec_p0.13',           'file': 'GAIA_EDR3_feh_p0.13.txt',                                       'function': _read_model_PARSEC},
+        {'instrument': 'bessell',   'name': 'parsec_p0.13',           'file': 'Bessell_feh_p0.13.txt',                                         'function': _read_model_PARSEC},
+        {'instrument': 'panstarrs', 'name': 'parsec_p0.13',           'file': 'PANSTARRS_feh_p0.13.txt',                                       'function': _read_model_PARSEC},
+        {'instrument': 'skymapper', 'name': 'parsec_p0.13',           'file': 'SkyMapper_feh_p0.13.txt',                                       'function': _read_model_PARSEC},
+        {'instrument': 'hr',        'name': 'parsec_p0.13',           'file': 'GAIA_EDR3_feh_p0.13.txt',                                       'function': _read_model_PARSEC},
+        {'instrument': 'spitzer',   'name': 'parsec_p0.13',           'file': '2MASS_WISE_feh_p0.13.txt',                                      'function': _read_model_PARSEC},
+
         {'instrument': '2mass',     'name': 'parsec_p0.25',           'file': '2MASS_WISE_feh_p0.25.txt',                                      'function': _read_model_PARSEC},
         {'instrument': 'wise',      'name': 'parsec_p0.25',           'file': '2MASS_WISE_feh_p0.25.txt',                                      'function': _read_model_PARSEC},
         {'instrument': 'gaia',      'name': 'parsec_p0.25',           'file': 'GAIA_EDR3_feh_p0.25.txt',                                       'function': _read_model_PARSEC},
