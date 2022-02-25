@@ -1971,7 +1971,7 @@ class MADYS(object):
     #            qstr=self.query_string(query_list,surveys=['gaia','wise'])
                 qstr=self.query_string('',surveys=['gaia','wise'])
         
-                t1=self.divide_query(qstr,id_list=np.array(self.GaiaID)[w],n_it_max=10,engine='gaia')
+                t1=self.divide_query(qstr,id_list=np.array(self.GaiaID['ID'])[w],n_it_max=10,engine='gaia')
     #            adql = QueryStr(qstr,verbose=False)
     #            t1=gaia.query(adql)            
 
