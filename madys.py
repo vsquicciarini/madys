@@ -523,6 +523,13 @@ class MADYS(object):
 
     def list_chunk(self,ind=None,key_name=None,id_list=None,equality='=',quote_mark=False):
         query_list=''
+        
+        print(ind)
+        print(key_name)
+        print(id_list)
+        print(equality)
+        print(quote_mark)
+        
         if (type(key_name)==type(None)) & (type(id_list)==type(None)):
             id_str = 'Gaia EDR3 ' if self.__id_type=='EDR3' else 'Gaia DR2 '
             id_sea = 'edr3.source_id' if self.__id_type=='EDR3' else 'dr2xmatch.dr2_source_id'    
@@ -1111,16 +1118,20 @@ class MADYS(object):
                         self.__logger.info('All magnitudes for star '+str(i)+' are more than 0.2 mag away from their best theoretical match. Check age and mass range of the theoretical grid, or change the model if the current one does not cover the expected age/mass range for this star.')
                         all_sol.append({})
                         all_maps.append([])
-                        continue
+                        continue                        
                     w2=w[b]
-                    chi2=np.sum(sigma0[:,w2],axis=1)/(np.sum(np.isnan(iso_data[:,i00,w2])==False,axis=1)-1)
+                    if len(w2)>1:
+                        chi2=np.sum(sigma0[:,w2],axis=1)/(np.sum(np.isnan(iso_data[:,i00,w2])==False,axis=1)-1)
+                    else:
+                        chi2=np.sum(sigma0[:,w2],axis=1)
+                        
                     all_maps.append(chi2) # no. of degrees of freedom = no. filters - two parameters (age and mass)                
                     est,ind=MADYS.min_v(chi2)
                     chi2_min[i]=est
                     ind=ind[0]
                     
                     daa=MADYS.closest(iso_mass_log,[iso_mass_log[ind]-0.3,iso_mass_log[ind]+0.3])
-                    n_try=100
+                    n_try=1000
                     n_est=n_try*(i_age[i,2]-i_age[i,1]+1)
                     ind_array=np.zeros(n_est,dtype=int)
                     k=0
@@ -1129,7 +1140,10 @@ class MADYS(object):
                         for j in range(i_age[i,1],i_age[i,2]+1):
                             for h in range(len(w2)):
                                 sigma[daa[0]:daa[1],j,w2[h]]=((iso_data[daa[0]:daa[1],j,w2[h]]-phot1[h])/phot_err1[h])**2
-                            chi2=np.nansum(sigma[daa[0]:daa[1],j,w2],axis=1)/(np.sum(np.isnan(iso_data[daa[0]:daa[1],j,w2])==False,axis=1)-1)
+                            if len(w2)>1:
+                                chi2=np.nansum(sigma[daa[0]:daa[1],j,w2],axis=1)/(np.sum(np.isnan(iso_data[daa[0]:daa[1],j,w2])==False,axis=1)-1)
+                            else:
+                                chi2=np.nansum(sigma[daa[0]:daa[1],j,w2],axis=1)
                             
                             ind_array[k]=daa[0]+np.nanargmin(chi2)
                             k+=1
@@ -1181,7 +1195,11 @@ class MADYS(object):
                         all_maps.append([])
                         continue
                     w2=w[b]
-                    chi2=np.nansum(sigma[:,0,w2],axis=1)/(np.sum(np.isnan(iso_data[:,i00,w2])==False,axis=1)-1) #no. of degrees of freedom = no. filters - two parameters (age and mass) 
+                    
+                    if len(w2)>1:
+                        chi2=np.nansum(sigma[:,0,w2],axis=1)/(np.sum(np.isnan(iso_data[:,i00,w2])==False,axis=1)-1) #no. of degrees of freedom = no. filters - one parameter (mass) 
+                    else:
+                        chi2=np.nansum(sigma[:,0,w2],axis=1)
                     
                     all_maps.append(chi2)                
                     est,ind=MADYS.min_v(chi2)
@@ -1189,7 +1207,7 @@ class MADYS(object):
                     m_fit[i]=iso_mass[ind[0]]
                     a_fit[i]=iso_age[i00]
                     
-                    n_try=100
+                    n_try=1000
                     m_f1=np.zeros(n_try)
                     a_f1=np.zeros(n_try)
                                                 
@@ -1291,7 +1309,6 @@ class MADYS(object):
                         continue #at least 3 filters needed for the fit
                     if len(use_i)<l_r: sigma[MADYS.complement_v(use_i,l_r),:]=np.nan
                     chi2=np.nansum(sigma[:,w2],axis=1)/(np.sum(np.isnan(iso_data_r[:,w2])==False,axis=1)-2)
-                    
                     
                     all_maps.append(chi2.reshape([l[0],l[1]])) #two parameters: age and mass
                     ind=np.nanargmin(chi2)
@@ -3794,6 +3811,7 @@ class MADYS(object):
                 query_list=self.list_chunk(todo_c,key_name=key_name,id_list=id_list,equality=equality,quote_mark=quote_mark)
                 qstr=query+query_list
                 try:
+                    print(qstr)
                     adql = QueryStr(qstr,verbose=False)
                     t=f(adql)
                     data.append(t)
