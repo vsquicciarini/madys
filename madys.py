@@ -38,11 +38,11 @@ vizier = TAPVizieR()
 Class: MADYS
 
 Tool for age and mass determination of young stellar and substellar objects. Given a list of stars:
-- it retrieves and cross-matches photometry from Gaia and 2MASS
-- corrects for interstellar extinction
-- assesses the quality of each photometric measurement
+- it retrieves and cross-matches photometry from Gaia and 2MASS;
+- corrects for interstellar extinction;
+- assesses the quality of each photometric measurement;
 - uses reliable photometric data to derive ages and masses (and optionally, other physical parameters too) of individual stars.
-MADYS allows a selection of one among 13 theoretical models, many of which with several tunable parameters (metallicity, rotational velocity, etc).
+MADYS allows a selection of one among 17 theoretical models, many of which with several tunable parameters (metallicity, rotational velocity, etc).
 Check the provided manual for additional details on general working, customizable settings and allowed inputs.
 
 MADYS can work in two modes, differing in the shape of input data:
@@ -52,12 +52,13 @@ Parameters that are only used in mode 1 will be labeled with (1), and similarly 
 
 Parameters:
 - file (1): string, required. Full path of the file containing target names
-- file (2): astropy.table.table.Table, required. Table containing target names and photometric data.
+- file (2): astropy.table.table.Table, required. Table containing target names and photometric data. See documentation for examples of valid inputs.
 - mock_file (2): string, required. Full path of the non-existing file where the Table would come from if in mode 1. Used to extract the working path and to name the outputs after it.
+- surveys (1): list, optional. List of surveys where to extract photometric data from. Default: ['gaia','2mass'].
 - id_type (1): string, optional. Type of IDs provided: must be one among 'DR2','EDR3' or 'other'. Default: 'DR2'
 - get_phot (1): bool or string, optional. Set to:
         -True: to query the provided IDs;
-        -False: to recover photometric data from a previous execution; the filename and path must match the default one.
+        -False: to recover photometric data from a previous execution; the filename and path must match the default one (see documentation).
         -string: full path of the file to load photometric data from. The file should come from a previous execution.
   Default: True.
 - save_phot (1): bool, optional. Set to True to create a .csv file with the retrieved photometry. Default: True.
@@ -73,20 +74,22 @@ Attributes:
 - phot_table (1): Table containing all retrieved data.
 - abs_phot: absolute magnitudes in the required filters.
 - abs_phot_err: errors on absolute magnitudes in the required filters.
-- filters: set of filters, given either by filters of Gaia DR2+EDR3 + 2MASS (1) or by column names (2) 
+- filters: set of filters, given either by filters of Gaia DR2+EDR3 + 2MASS (1) or by column names (2).
+- surveys: list of surveys used to extract photometric data.
+
 
 Methods:
 
 1) get_agemass
 Estimates age and mass of individual stars by comparison with isochrone grids.
-    Parameters:
-    - model: string, required. Chosen model of isochrone grids. Use MADYS.info_models() for further information on the available models.
-    - mass_range: list, optional. A two-element list with minimum and maximum mass to consider (M_sun). Default: [0.01,1.4]
+    Input:
+    - model: string, required. Selected isochrone grid model. Use MADYS.info_models() for further information on available models.
+    - mass_range: list, optional. A two-element list with minimum and maximum mass within the grid (M_sun). Default: not set; the mass_range is the intersection between a rough mass estimate based on G magnitudes and the dynamical range of the model itself.
     - age_range: list or numpy array, optional. It can be either:
-            - a two-element list with minimum and maximum age to consider for the whole sample (Myr);
-            - a 1D numpy array, so that the i-th age (Myr) is used as fixed age for the i-th star;
-            - a 2D numpy array with 2 columns. The i-th row defines (lower_age,upper_age) range in which one or more solutions are found for the i-th star.
-            - a 2D numpy array with 3 columns. The i-th row is used as fixed (mean_age,lower_age,upper_age) for the i-th star.
+            1) a two-element list with minimum and maximum age to consider for the whole sample (Myr);
+            2) a 1D numpy array, so that the i-th age (Myr) is used as fixed age for the i-th star;
+            3) a 2D numpy array with 2 columns. The i-th row defines (lower_age,upper_age) range in which one or more solutions are found for the i-th star.
+            4) a 2D numpy array with 3 columns. The i-th row is used as (mean_age,lower_age,upper_age) for the i-th star; mean_age is used as in case 2), and [lower_age, upper_age] are used as in case 3).
       Default: [1,1000]
     - n_steps: list, optional. Number of (mass, age) steps of the interpolated grid. Default: [1000,500].
     - verbose: bool, optional. Set to True to save the results in a file. Default: True.
@@ -96,58 +99,52 @@ Estimates age and mass of individual stars by comparison with isochrone grids.
     - v_vcrit: float, optional. Selects rotational velocity of the isochrone set. Default: None (=0.00, non-rotating).
     - fspot: float, optional. Selects fraction of stellar surface covered by star spots. Default: None (=0.00).
     - B: int, optional. Set to 1 to turn on the magnetic field (only for Dartmouth models). Default: 0.
-    - ph_cut: float, optional. Maximum  allowed photometric uncertainty [mag]. Default: 0.2.
+    - ph_cut: float, optional. Maximum  allowed photometric uncertainty [mag]. Data with a larger error will be ignored. Default: 0.2.
     - m_unit: string, optional. Unit of measurement of the resulting mass. Choose either 'm_sun' or 'm_jup'. Default: 'm_sun'.
     - phys_param: bool, optional. Set to True to estimate, in addition to mass and age, also radius, effective temperature, surface gravity and luminosity. Default: False.
+    - hot_points: bool, optional. Set to True to return maps where the best (age, mass) fitting points are highlighted. If n_star>50, it can result in a severe memory allocation. Default: False.
     Output:
     - dic: a dictionary containing the following keys:
-        (case 1: if age_range is a list or a 1D numpy array)
         - ages: numpy array. Final age estimates [Myr].
         - masses: numpy array. Final mass estimates [M_sun or M_jup].
-        - ages_err: numpy array. Error on age estimates [Myr].
-        - masses_err: numpy array. Error on mass estimates [M_sun or M_jup].
+        - ages_min: numpy array. Minimum age (given by the user or derived) [Myr].
+        - ages_max: numpy array. Maximum age (given by the user or derived) [Myr].
+        - masses_min: numpy array. Minimum mass estimates [M_sun or M_jup].
+        - masses_max: numpy array. Maximum mass estimates [M_sun or M_jup].
         - ebv: numpy array. Adopted/computed E(B-V), one element per star [mag].
+        - chi2_min: numpy array. Reduced chi2 of best-fit solutions.
         - radii: numpy array. Final radius estimates [R_sun or R_jup]. Only returned if phys_param=True.
-        - radii_err: numpy array. Final radius estimates [R_sun or R_jup]. Only returned if phys_param=True.
+        - radii_min: numpy array. Minimum radius estimates [R_sun or R_jup]. Only returned if phys_param=True.
+        - radii_max: numpy array. Maximum radius estimates [R_sun or R_jup]. Only returned if phys_param=True.
         - logg: numpy array. Final surface gravity estimates [log10([cm s-2])]. Only returned if phys_param=True.
-        - logg_err: numpy array. Error on surface gravity estimates [log10([cm s-2])]. Only returned if phys_param=True.
+        - logg_min: numpy array. Minimum surface gravity estimates [log10([cm s-2])]. Only returned if phys_param=True.
+        - logg_max: numpy array. Maximum surface gravity estimates [log10([cm s-2])]. Only returned if phys_param=True.
         - logL: numpy array. Final luminosity estimates [log10([L_sun])]. Only returned if phys_param=True.
-        - logL_err: numpy array. Error on luminosity estimates [log10([L_sun])]. Only returned if phys_param=True.
+        - logL_min: numpy array. Minimum luminosity estimates [log10([L_sun])]. Only returned if phys_param=True.
+        - logL_max: numpy array. Maximum luminosity estimates [log10([L_sun])]. Only returned if phys_param=True.
         - Teff: numpy array. Final effective temperature estimates [K]. Only returned if phys_param=True.
-        - Teff_err: numpy array. Error on effective temperature estimates [K]. Only returned if phys_param=True.
-       (case 2: if age_range is a 2D numpy array)
-        - ages: numpy array. Final age estimates [Myr].
-        - masses: numpy array. Final mass estimates [M_sun or M_jup].
-        - ages_min: numpy array. Minimum age given by the user [Myr].
-        - ages_max: numpy array. Maximum age given by the user [Myr].
-        - masses_err_m: numpy array. Difference between 'masses' and masses computed at age=a_min [M_sun or M_jup].
-        - masses_err_p: numpy array. Difference between masses computed at age=a_max and 'masses' [M_sun or M_jup].
-        - radii: numpy array. Final radius estimates [R_sun or R_jup]. Only returnedif phys_param=True.
-        - logg: numpy array. Final surface gravity estimates [log10([cm s-2])]. Only returnedif phys_param=True.
-        - logL: numpy array. Final luminosity estimates [log10([L_sun])]. Only returnedif phys_param=True.
-        - Teff: numpy array. Final effective temperature estimates [K]. Only returnedif phys_param=True.
-        - radii_err_m: numpy array. Difference between 'radii' and radii computed at age=a_min [R_sun or R_jup].
-        - radii_err_p: numpy array. Difference between radii computed at age=a_max and 'radii' [R_sun or R_jup].
-        - logg_err_m: numpy array. Difference between 'logg' and logg computed at age=a_min.
-        - logg_err_p: numpy array. Difference between logg computed at age=a_max and 'logg'.
-        - logL_err_m: numpy array. Difference between 'logL' and logL computed at age=a_min.
-        - logL_err_p: numpy array. Difference between logL computed at age=a_max and 'logL'.
-        - Teff_err_m: numpy array. Difference between 'Teff' and Teff computed at age=a_min [K].
-        - Teff_err_p: numpy array. Difference between Teff computed at age=a_max and 'Teff' [K].
-    
+        - Teff_min: numpy array. Minimum effective temperature estimates [K]. Only returned if phys_param=True.
+        - Teff_max: numpy array. Maximim effective temperature estimates [K]. Only returned if phys_param=True.
+        - all_maps: list. Contains one 2D numpy array per star, with reduced chi2 estimates corresponding to each (age, mass) step, using nominal data.
+        - all_solutions: list. Contains a dictionary per star, with all possible solutions providing an accettable fit to data.
+        - iso_mass: numpy array. Values of all the mass steps of the isochrone grid.
+        - iso_age: numpy array. Values of all the age steps of the isochrone grid.
+        - model: string. Name of the selected isochrone model.
+        
 2) CMD
 Draws a color-magnitude diagram (CMD) containing both the measured photometry and a set of theoretical isochrones.
-    Parameters:
+    Input:
     - col: string, required. Quantity to be plotted along the x axis (e.g.: 'G' or 'G-K')
     - mag: string, required. Quantity to be plotted along the y axis (e.g.: 'G' or 'G-K')
     - model: string, required. Chosen model of isochrone grids. Use MADYS.info_models() for further information on the available models.
-    - mass_range: list, optional. A two-element list with minimum and maximum mass to consider (M_sun). Default: [0.01,1.4]
-    - age_range: list or numpy array, optional. It can be either:
-            - a two-element list with minimum and maximum age to consider for the whole sample (Myr);
-            - a 1D numpy array, so that the i-th age (Myr) is used as fixed age for the i-th star;
-            - a 2D numpy array with 3 columns. The i-th row is used as fixed (mean_age,lower_age,upper_age) for the i-th star.
-      Default: [1,1000]
-    - n_steps: list, optional. Number of (mass, age) steps of the interpolated grid. Default: [1000,500].
+    - plot_ages: numpy array or bool, optional. It can be either:
+            - a numpy array containing the ages (in Myr) of the isochrones to be plotted;
+            - False, not to plot any isochrone.
+      Default: [1,3,5,10,20,30,100,200,500,1000].
+    - plot_masses: numpy array or bool, optional. It can be either:
+            - a numpy array containing the masses (in M_sun) of the tracks to be plotted.
+            - False, not to plot any track.
+      Default: 0.1,0.3,0.5,0.7,0.85,1.0,1.3,2].
     - feh: float, optional. Selects [Fe/H] of the isochrone set. Default: None (=0.00, solar metallicity).
     - afe: float, optional. Selects alpha enhancement [a/Fe] of the isochrone set. Default: None (=0.00).
     - v_vcrit: float, optional. Selects rotational velocity of the isochrone set. Default: None (=0.00, non-rotating).
@@ -155,17 +152,8 @@ Draws a color-magnitude diagram (CMD) containing both the measured photometry an
     - B: int, optional. Set to 1 to turn on the magnetic field (only for Dartmouth models). Default: 0.
     - he: float, optional. Selects helium fraction Y of the isochrone set. Default: None (=solar Y).    
     - ids: list or numpy array of integers, optional. Array of indices, selects the subset of input data to be drawn.
-    - plot_ages: numpy array or bool, optional. It can be either:
-            - a numpy array containing the ages (in Myr) of the isochrones to be plotted;
-            - False, not to plot any isochrone.
-      Default: [1,3,5,10,20,30,100,200,500,1000].
-    - plot_masses: numpy array or bool, optional. It can be either:
-            - a numpy array containing the masses (in M_sun) of the tracks to be plotted.             - a numpy array containing the ages (in Myr) of the isochrones to be plotted;
-            - False, not to plot any track.
-      Default: 0.1,0.3,0.5,0.7,0.85,1.0,1.3,2].
-    - stick_to_points: bool, optional. Zooms the view on data points so that the axes are defined as [min(data)-0.1,max(data)+0.1]. Default: False.
-    - x_range: list, optional. A two-element list with minimum and maximum value for the x axis. Similar to pyplot's xlim.
-    - y_range: list, optional. A two-element list with minimum and maximum value for the y axis. Similar to pyplot's ylim.
+    - xlim: list, optional. A two-element list with minimum and maximum value for the x axis.
+    - ylim: list, optional. A two-element list with minimum and maximum value for the y axis.
     - groups: list or numpy array of integers, optional. Draws different groups of stars in different colors. The i-th element is a number, indicating to which group the i-th star belongs. Default: None.
     - group_list: list or numpy array of strings, optional. Names of the groups defined by the 'groups' keyword. No. of elements must match the no. of groups. Default: None.
     - label_points: bool, optional. Draws a label next to each point, specifying its row index. Default: True.
@@ -174,7 +162,7 @@ Draws a color-magnitude diagram (CMD) containing both the measured photometry an
 3) interstellar_ext
 Computes the reddening/extinction in a custom band, given the position of a star.
 No parameter is strictly required, but at one between RA and l, one between dec and b, one between par and d must be supplied.
-    Parameters:
+    Input:
     - ra: float or numpy array, optional. Right ascension of the star(s) [deg].
     - dec: float or numpy array, optional. Declination of the star(s) [deg].
     - l: float or numpy array, optional. Galactic longitude of the star(s) [deg].
@@ -186,12 +174,19 @@ No parameter is strictly required, but at one between RA and l, one between dec 
     - error: bool, optional. Computes also the uncertainty on the estimate. Default: False.
     Output:
     - ext: float or numpy array. Best estimate of reddening/extinction for each star.
-    (only if error==True:)
-    (- err: float or numpy array. Uncertainty on the best estimate of reddening/extinction for each star.)
+    - err: float or numpy array, returned only if error==True. Uncertainty on the best estimate of reddening/extinction for each star.
 
-4) app_to_abs_mag
+4) extinction
+Converts one or more B-V color excess(es) into absorption(s) in the required photometric band.
+    Input:
+    - ebv: float or numpy array, required. Input color excess(es).
+    - col: string, required. Name of the photometric band of interest. Use MADYS.info_filters() for further information on the available bands.
+    Output:
+    - ext: float or numpy array. Absorption(s) in the band 'col'.
+
+5) app_to_abs_mag
 Turns one or more apparent magnitude(s) into absolute magnitude(s).
-    Parameters:
+    Input:
     - app_mag: float, list or numpy array (1D or 2D), required. Input apparent magnitude(s).
       If a 2D numpy array, each row corresponds to a star, each row to a certain band.
     - parallax: float, list or 1D numpy array, required. Input parallax(es).
@@ -201,19 +196,19 @@ Turns one or more apparent magnitude(s) into absolute magnitude(s).
     - filters: list or 1D numpy array, optional. Names of the filters; length must equal no. of columns of app_mag. Default: None.
     Output:
     - abs_mag: float or numpy array. Absolute magnitudes, same shape as app_mag.
-    (only if app_mag_error!=None and parallax_error!=None)
-    (- abs_err: float or numpy array. Propagated uncertainty on abs_mag.)
+    - abs_err: float or numpy array, returned only if app_mag_error!=None and parallax_error!=None. Propagated uncertainty on abs_mag.
     
-5) info_models
+6) info_models
 Prints info about available models for MADYS.
 Informs about 1) the calling sequence; 2) the customizable parameters; 3) age and mass range; 4) adopted solar metallicity and helium content; 5) literature reference.
-    Parameters:
+    Input:
     - model: string, optional. Use it to print info about a specific model. If None, prints info about all the available models. Default: None.
+    Output: none.
 
-6) plot_2D_ext
+7) plot_2D_ext
 Plots the integrated absorption in a given region of the sky, by creating a 2D projection at constant distance of an extinction map.
 No parameter is strictly required, but at one between RA and l, one between dec and b, one between par and d must be supplied.
-    Parameters:
+    Input:
     - ra: 2-element list, optional. Minimum and maximum right ascension of the sky region [deg].
     - dec: 2-element list, optional. Minimum and maximum declination of the sky region [deg].
     - l: 2-element list, optional. Minimum and maximum galactic longitude of the sky region [deg].
@@ -228,12 +223,74 @@ No parameter is strictly required, but at one between RA and l, one between dec 
     - tofile: string, optional. Full path of the output file where the plot will be saved to. Default: None.
     Output: no output is returned, but the plot is shown in the current window.
 
-7) info_filters
+8) info_filters
 Prints info about filters/physical quantity in MADYS.
 Informs about 1) the name of the quantity and its basic reference; 2) the models in which the quantity is available.
-    Parameters:
+    Input:
     - filt: string, optional. Use it to print info about a specific quantity. If None, prints info about all the available quantities. Default: None.
     - model: string, optional. If provided, returns True if the quantity is available in the model, False otherwise. Default: None.
+    Output: none.
+
+9) plot_chi2_map
+Plots the reduced chi2 maps returned by MADYS.get_agemass as a f(mass,age) color map.
+    Input:
+    - result: dictionary, required. The output of a call to the function MADYS.get_agemass.
+    - indices: list, required. Indices of the stars, ordered as in the original file which the analysis was performed upon, to be considered.
+    - tofile: bool, optional. If True, saves the plots as .png images in the same path where the analysis was performed. Default: False.
+    Output: no output is returned, but the plot is shown in the current window.
+
+10) ang_dist
+Computes the angular distance between two sky coordinates or two equal-sized arrays of positions.
+    Input:
+    - ra1: float or numpy array, required. Right ascension of the first star. If unitless, it is interpreted as if measured in degrees.
+    - dec1: float or numpy array, required. Declination of the first star. If unitless, it is interpreted as if measured in degrees.
+    - ra2: float or numpy array, required. Right ascension of the second star. If unitless, it is interpreted as if measured in degrees.
+    - dec2: float or numpy array, required. Declination of the second star. If unitless, it is interpreted as if measured in degrees.
+    - ra1_err: float or numpy array, required if error==True. Error on RA, first star. If unitless, it is interpreted as if measured in degrees. Default: None.
+    - dec1_err: float or numpy array, required if error==True. Error on dec, first star. If unitless, it is interpreted as if measured in degrees. Default: None.
+    - ra2_err: float or numpy array, required if error==True. Error on RA, second star. If unitless, it is interpreted as if measured in degrees. Default: None.
+    - dec2_err: float or numpy array, required if error==True. Error on dec, second star. If unitless, it is interpreted as if measured in degrees. Default: None.
+    - error: bool, optional. If True, propagates the errors into the final estimate(s).
+    Output:
+    - dist: float or numpy array. Distance between (each couple of) coordinates [deg].
+    - err: float or numpy array, returned only if error==True. Uncertainty on the angular distance for (each couple of) coordinates [deg].
+
+11) plot_isochrones
+Similar to CMD, but draws only the isochrones over an existing figure.
+    Input:
+    - col: string, required. Quantity to be plotted along the x axis (e.g.: 'G' or 'G-K')
+    - mag: string, required. Quantity to be plotted along the y axis (e.g.: 'G' or 'G-K')
+    - model: string, required. Chosen model of isochrone grids. Use MADYS.info_models() for further information on the available models.
+    - ax: AxesSubplot, required. Axis object where the isochrones will be drawn upon.
+    - plot_ages: numpy array or bool, optional. It can be either:
+            - a numpy array containing the ages (in Myr) of the isochrones to be plotted;
+            - False, not to plot any isochrone.
+      Default: [1,3,5,10,20,30,100,200,500,1000].
+    - plot_masses: numpy array or bool, optional. It can be either:
+            - a numpy array containing the masses (in M_sun) of the tracks to be plotted.
+            - False, not to plot any track.
+      Default: 0.1,0.3,0.5,0.7,0.85,1.0,1.3,2].
+    - feh: float, optional. Selects [Fe/H] of the isochrone set. Default: None (=0.00, solar metallicity).
+    - afe: float, optional. Selects alpha enhancement [a/Fe] of the isochrone set. Default: None (=0.00).
+    - v_vcrit: float, optional. Selects rotational velocity of the isochrone set. Default: None (=0.00, non-rotating).
+    - fspot: float, optional. Selects fraction of stellar surface covered by star spots. Default: None (=0.00).
+    - B: int, optional. Set to 1 to turn on the magnetic field (only for Dartmouth models). Default: 0.
+    - he: float, optional. Selects helium fraction Y of the isochrone set. Default: None (=solar Y).    
+
+12) plot_photometry
+Similar to CMD, but draws only photometric data over an existing figure.
+    Input:
+    - col: string, required. Quantity to be plotted along the x axis (e.g.: 'G' or 'G-K')
+    - mag: string, required. Quantity to be plotted along the y axis (e.g.: 'G' or 'G-K')
+    - ax: AxesSubplot, required. Axis object where the isochrones will be drawn upon.
+    - data: MADYS instance or numpy array, required. It can be either:
+            - a MADYS instance;
+            - a 2D numpy array; the first row will be plotted on the 'col' axis, the second row on the 'mag' axis.
+    - errors: numpy array, optional. Use it only if data is a numpy array. Contains the errors associated to data (first row: errors on 'col', second row: errors on 'mag').
+    - ids: list or numpy array of integers, optional. Array of indices, selects the subset of input data to be drawn.
+    - groups: list or numpy array of integers, optional. Draws different groups of stars in different colors. The i-th element is a number, indicating to which group the i-th star belongs. Default: None.
+    - group_list: list or numpy array of strings, optional. Names of the groups defined by the 'groups' keyword. No. of elements must match the no. of groups. Default: None.
+    - label_points: bool, optional. Draws a label next to each point, specifying its row index. Default: True.
 
 """
 
@@ -466,11 +523,12 @@ class MADYS(object):
         logging.shutdown() 
         
     def sample_name_ext(self):
-        sample_name=os.path.split(self.file)[1]
+        sample_p,sample_name=os.path.split(self.file)
         i=0
         while sample_name[i]!='.': i=i+1
         self.__ext=sample_name[i:]
         self.__sample_name=sample_name[:i]
+        self.__sample_path=self.file.split(self.__ext)[0]
         
     def read_IDs(self):
 
@@ -523,12 +581,6 @@ class MADYS(object):
 
     def list_chunk(self,ind=None,key_name=None,id_list=None,equality='=',quote_mark=False):
         query_list=''
-        
-        print(ind)
-        print(key_name)
-        print(id_list)
-        print(equality)
-        print(quote_mark)
         
         if (type(key_name)==type(None)) & (type(id_list)==type(None)):
             id_str = 'Gaia EDR3 ' if self.__id_type=='EDR3' else 'Gaia DR2 '
@@ -747,7 +799,6 @@ class MADYS(object):
 
         n_chunks=1
         nst=len(self.GaiaID)
-        print('no. of stars: ',nst)
         done=np.zeros(nst,dtype=bool)
         nit=0
         while (np.sum(done)<nst) & (nit<10):
@@ -770,9 +821,8 @@ class MADYS(object):
                 
         if len(data)>1: t=vstack(data)
         else: t=data[0]
-        print('len before: ',len(t))
+
         t=self.fix_double_entries(t)
-        print('len after: ',len(t))
         
         t=self.fix_2mass(t)
 
@@ -951,7 +1001,7 @@ class MADYS(object):
         filt=np.concatenate([self.filters,['logg','Teff','logL','radius']]) if phys_param else self.filters
 
 
-        iso_mass,iso_age,iso_filt,iso_data=MADYS.load_isochrones(model,filt,logger=self.__logger,**kwargs)        
+        iso_mass,iso_age,iso_filt,iso_data=MADYS.load_isochrones(model,filt,logger=self.__logger,**kwargs)    
         
         self.__logger.info('Isochrones for model '+model+' correctly loaded')
         iso_mass_log=np.log10(iso_mass)
@@ -1141,7 +1191,7 @@ class MADYS(object):
                             for h in range(len(w2)):
                                 sigma[daa[0]:daa[1],j,w2[h]]=((iso_data[daa[0]:daa[1],j,w2[h]]-phot1[h])/phot_err1[h])**2
                             if len(w2)>1:
-                                chi2=np.nansum(sigma[daa[0]:daa[1],j,w2],axis=1)/(np.sum(np.isnan(iso_data[daa[0]:daa[1],j,w2])==False,axis=1)-1)
+                                chi2=MADYS.nansumwrapper(sigma[daa[0]:daa[1],j,w2],axis=1)/(np.sum(np.isnan(iso_data[daa[0]:daa[1],j,w2])==False,axis=1)-1)
                             else:
                                 chi2=np.nansum(sigma[daa[0]:daa[1],j,w2],axis=1)
                             
@@ -1164,13 +1214,13 @@ class MADYS(object):
                          'logL':logL_fit, 'logL_min': logL_min, 'logL_max': logL_max,
                          'Teff':Teff_fit, 'Teff_min': Teff_min, 'Teff_max': Teff_max,
                          'iso_mass':iso_mass, 'iso_age':iso_age,
-                         'model':model}
+                         'model':model,'path':self.__sample_path}
                 else:
                     dic={'ages':a_fit, 'ages_min':a_min, 'ages_max':a_max,
                          'masses':m_fit, 'masses_min':m_min, 'masses_max':m_max,
                          'ebv':self.ebv, 'chi2_min':chi2_min, 'all_maps':all_maps,
                          'iso_mass':iso_mass, 'iso_age':iso_age,
-                         'model':model}
+                         'model':model,'path':self.__sample_path}
                         
             elif case==1:
                 sigma=np.full(([l[0],1,ylen]),np.nan)
@@ -1197,7 +1247,7 @@ class MADYS(object):
                     w2=w[b]
                     
                     if len(w2)>1:
-                        chi2=np.nansum(sigma[:,0,w2],axis=1)/(np.sum(np.isnan(iso_data[:,i00,w2])==False,axis=1)-1) #no. of degrees of freedom = no. filters - one parameter (mass) 
+                        chi2=MADYS.nansumwrapper(sigma[:,0,w2],axis=1)/(np.sum(np.isnan(iso_data[:,i00,w2])==False,axis=1)-1) #no. of degrees of freedom = no. filters - one parameter (mass) 
                     else:
                         chi2=np.nansum(sigma[:,0,w2],axis=1)
                     
@@ -1267,13 +1317,13 @@ class MADYS(object):
                          'logL':logL_fit, 'logL_min': logL_min, 'logL_max': logL_max,
                          'Teff':Teff_fit, 'Teff_min': Teff_min, 'Teff_max': Teff_max,
                          'iso_mass':iso_mass, 'iso_age':iso_age,
-                         'model':model}
+                         'model':model,'path':self.__sample_path}
                 else:
                     dic={'ages':a_fit, 'ages_min':a_min, 'ages_max':a_max,
                          'masses':m_fit, 'masses_min':m_min, 'masses_max':m_max,
                          'ebv':self.ebv, 'chi2_min':chi2_min, 'all_maps':all_maps,
                          'iso_mass':iso_mass, 'iso_age':iso_age,
-                         'model':model}
+                         'model':model,'path':self.__sample_path}
 
             else:
                 n_try=1000
@@ -1284,7 +1334,7 @@ class MADYS(object):
                         all_sol.append({})
                         all_maps.append([])
                         continue
-                    b=np.zeros(len(w),dtype=bool)
+                    b=np.zeros(len(w),dtype=bool)                    
 
                     if case==2:                    
                         use_i=[]
@@ -1308,12 +1358,14 @@ class MADYS(object):
                         all_maps.append([])
                         continue #at least 3 filters needed for the fit
                     if len(use_i)<l_r: sigma[MADYS.complement_v(use_i,l_r),:]=np.nan
-                    chi2=np.nansum(sigma[:,w2],axis=1)/(np.sum(np.isnan(iso_data_r[:,w2])==False,axis=1)-2)
+                    chi2=MADYS.nansumwrapper(sigma[:,w2],axis=1)/(np.sum(np.isnan(iso_data_r[:,w2])==False,axis=1)-2)
+                    
                     
                     all_maps.append(chi2.reshape([l[0],l[1]])) #two parameters: age and mass
                     ind=np.nanargmin(chi2)
                     crit1=np.sort(sigma[ind,w2])
-                    crit2=np.sort(iso_data_r[ind,w2])
+                    crit2=np.sort(np.abs(iso_data_r[ind,w2]-phot[i,w2]))
+
                     g_sol=[]
                     chi_sol=[]
                     if (crit1[2]<9) | (crit2[2]<0.1): #the 3rd best sigma < 3 or the 3rd best solution closer than 0.1 mag  
@@ -1333,7 +1385,8 @@ class MADYS(object):
                                 for h in range(len(w2)):
                                     sigma[w_ntb,w2[h]]=((iso_data_r[w_ntb,w2[h]]-phot1[h])/phot_err1[h])**2
                                 sigma_red=sigma[w_ntb,:]
-                                chi2=np.sum(sigma_red[:,w2],axis=1)/(np.sum(np.isnan(iso_data_r[:,w2])==False,axis=1)-2)
+                                iso_data_red=iso_data_r[w_ntb,:]
+                                chi2=np.sum(sigma_red[:,w2],axis=1)/(np.sum(np.isnan(iso_data_red[:,w2])==False,axis=1)-2)
                                 ind=np.argmin(chi2)
                                 gsol,=np.where(chi2<(chi2[ind]+2.3)) #68.3% C.I.. Use delta chi2=4.61,6.17,11.8 for 90%,95.4%,99.73% C.I.
                                 g_sol.append(w_ntb[gsol])
@@ -1437,7 +1490,8 @@ class MADYS(object):
                                 for h in range(len(w2)):
                                     sigma[w_ntb,w2[h]]=((iso_data_r[w_ntb,w2[h]]-phot1[h])/phot_err1[h])**2
                                 sigma_red=sigma[w_ntb,:]
-                                chi2=np.sum(sigma_red[:,w2],axis=1)/(np.sum(np.isnan(iso_data_r[:,w2])==False,axis=1)-2)
+                                iso_data_red=iso_data_r[w_ntb,:]
+                                chi2=np.sum(sigma_red[:,w2],axis=1)/(np.sum(np.isnan(iso_data_red[:,w2])==False,axis=1)-2)
                                 ind=np.argmin(chi2)
                                 gsol,=np.where(chi2<(chi2[ind]+2.3)) #68.3% C.I.. Use delta chi2=4.61,6.17,11.8 for 90%,95.4%,99.73% C.I.
                                 g_sol.append(w_ntb[gsol])
@@ -1510,7 +1564,7 @@ class MADYS(object):
                              'logL':logL_fit, 'logL_min': logL_min, 'logL_max': logL_max,
                              'Teff':Teff_fit, 'Teff_min': Teff_min, 'Teff_max': Teff_max,
                              'all_solutions':all_sol, 'iso_mass':iso_mass, 'iso_age':iso_age,
-                             'model':model}
+                             'model':model,'path':self.__sample_path}
                     else:
                         dic={'ages':a_fit, 'ages_min':a_min, 'ages_max':a_max,
                          'masses':m_fit, 'masses_min':m_min, 'masses_max':m_max,
@@ -1520,7 +1574,7 @@ class MADYS(object):
                          'logL':logL_fit, 'logL_min': logL_min, 'logL_max': logL_max,
                          'Teff':Teff_fit, 'Teff_min': Teff_min, 'Teff_max': Teff_max,
                          'all_solutions':all_sol, 'iso_mass':iso_mass, 'iso_age':iso_age,
-                         'model':model}
+                         'model':model,'path':self.__sample_path}
 
                 else:
                     if mem_err:
@@ -1528,13 +1582,13 @@ class MADYS(object):
                              'masses':m_fit, 'masses_min':m_min, 'masses_max':m_max,
                              'ebv':self.ebv, 'chi2_min':chi2_min, 'all_maps':all_maps,
                              'all_solutions':all_sol, 'iso_mass':iso_mass, 'iso_age':iso_age,
-                             'model':model}
+                             'model':model,'path':self.__sample_path}
                     else:
                         dic={'ages':a_fit, 'ages_min':a_min, 'ages_max':a_max,
                              'masses':m_fit, 'masses_min':m_min, 'masses_max':m_max,
                              'ebv':self.ebv, 'chi2_min':chi2_min, 'all_maps':all_maps,'hot_points':hot_p,
                              'all_solutions':all_sol, 'iso_mass':iso_mass, 'iso_age':iso_age,
-                             'model':model}
+                             'model':model,'path':self.__sample_path}
 
         if m_unit.lower()=='m_jup':
             m_fit*=M_sun.value/M_jup.value
@@ -1577,8 +1631,7 @@ class MADYS(object):
         return dic
                 
     @staticmethod
-    def axis_range(col_name,col_phot,stick_to_points=False):
-        print(col_name,col_phot)
+    def axis_range(col_name,col_phot):
         try:
             len(col_phot)
             cmin=np.min(col_phot)-0.1
@@ -1587,32 +1640,18 @@ class MADYS(object):
             cmin=col_phot-0.1
             cmax=np.min([70,col_phot])+0.1
         
-        if stick_to_points:
-            dic1={'G':[cmax,cmin], 'Gbp':[cmax,cmin], 'Grp':[cmax,cmin],
-                'J':[cmax,cmin], 'H':[cmax,cmin], 'K':[cmax,cmin],
-                'W1':[cmax,cmin], 'W2':[cmax,cmin], 'W3':[cmax,cmin],
-                'W4':[cmax,cmin], 'K1mag':[cmax,cmin], 'K2mag':[cmax,cmin],
-                'G-J':[cmin,cmax],
-                'G-H':[cmin,cmax], 'G-K':[cmin,cmax],
-                'G-W1':[cmin,cmax], 'G-W2':[cmin,cmax],
-                'G-W3':[cmin,cmax], 'G-W4':[cmin,cmax],
-                'J-H':[cmin,cmax], 'J-K':[cmin,cmax],
-                'H-K':[cmin,cmax], 'Gbp-Grp':[cmin,cmax],
-                'K1mag-K2mag':[cmin,cmax]
-                }
-        else:
-            dic1={'G':[max(15,cmax),min(1,cmin)], 'Gbp':[max(15,cmax),min(1,cmin)], 'Grp':[max(15,cmax),min(1,cmin)],
-                'J':[max(10,cmax),min(0,cmin)], 'H':[max(10,cmax),min(0,cmin)], 'K':[max(10,cmax),min(0,cmin)],
-                'W1':[max(10,cmax),min(0,cmin)], 'W2':[max(10,cmax),min(0,cmin)], 'W3':[max(10,cmax),min(0,cmin)],
-                'W4':[max(10,cmax),min(0,cmin)], 'K1mag':[max(19,cmax),min(6,cmin)], 'K2mag':[max(19,cmax),min(6,cmin)],
-                'G-J':[min(0,cmin),max(5,cmax)],
-                'G-H':[min(0,cmin),max(5,cmax)], 'G-K':[min(0,cmin),max(5,cmax)],
-                'G-W1':[min(0,cmin),max(6,cmax)], 'G-W2':[min(0,cmin),max(6,cmax)],
-                'G-W3':[min(0,cmin),max(10,cmax)], 'G-W4':[min(0,cmin),max(12,cmax)],
-                'J-H':[min(0,cmin),max(1,cmax)], 'J-K':[min(0,cmin),max(1.5,cmax)],
-                'H-K':[min(0,cmin),max(0.5,cmax)], 'Gbp-Grp':[min(0,cmin),max(5,cmax)],
+        dic1={'G':[max(15,cmax),min(1,cmin)], 'Gbp':[max(15,cmax),min(1,cmin)], 'Grp':[max(15,cmax),min(1,cmin)],
+            'J':[max(10,cmax),min(0,cmin)], 'H':[max(10,cmax),min(0,cmin)], 'K':[max(10,cmax),min(0,cmin)],
+            'W1':[max(10,cmax),min(0,cmin)], 'W2':[max(10,cmax),min(0,cmin)], 'W3':[max(10,cmax),min(0,cmin)],
+            'W4':[max(10,cmax),min(0,cmin)], 'K1mag':[max(19,cmax),min(6,cmin)], 'K2mag':[max(19,cmax),min(6,cmin)],
+            'G-J':[min(0,cmin),max(5,cmax)],
+            'G-H':[min(0,cmin),max(5,cmax)], 'G-K':[min(0,cmin),max(5,cmax)],
+            'G-W1':[min(0,cmin),max(6,cmax)], 'G-W2':[min(0,cmin),max(6,cmax)],
+            'G-W3':[min(0,cmin),max(10,cmax)], 'G-W4':[min(0,cmin),max(12,cmax)],
+            'J-H':[min(0,cmin),max(1,cmax)], 'J-K':[min(0,cmin),max(1.5,cmax)],
+            'H-K':[min(0,cmin),max(0.5,cmax)], 'Gbp-Grp':[min(0,cmin),max(5,cmax)],
 #                'K1mag-K2mag':[min(-3,cmin),max(2,cmax)]
-                }
+            }
 
         try:
             xx=dic1[col_name]
@@ -1651,8 +1690,8 @@ class MADYS(object):
             col_n=filter_model(model,col).split('-')
             c1,=np.where(self.filters==col_n[0])
             c2,=np.where(self.filters==col_n[1])
-            col1,col1_err=self.abs_phot[:,c1],self.abs_phot_err[:,c1]
-            col2,col2_err=self.abs_phot[:,c2],self.abs_phot_err[:,c2]
+            col1,col1_err=self.abs_phot[:,c1],self.app_phot_err[:,c1]
+            col2,col2_err=self.abs_phot[:,c2],self.app_phot_err[:,c2]
             col_data=col1-col2
             col_err=np.sqrt(col1_err**2+col2_err**2)
         else:
@@ -1662,8 +1701,8 @@ class MADYS(object):
             mag_n=filter_model(model,mag).split('-')
             m1,=np.where(self.filters==mag_n[0])
             m2,=np.where(self.filters==mag_n[1])
-            mag1,mag1_err=self.abs_phot[:,m1],self.abs_phot_err[:,m1]
-            mag2,mag2_err=self.abs_phot[:,m2],self.abs_phot_err[:,m2]
+            mag1,mag1_err=self.abs_phot[:,m1],self.app_phot_err[:,m1]
+            mag2,mag2_err=self.abs_phot[:,m2],self.app_phot_err[:,m2]
             mag_data=mag1-mag2
             mag_err=np.sqrt(mag1_err**2+mag2_err**2)
         else:
@@ -1675,9 +1714,11 @@ class MADYS(object):
         if 'mass_range' in kwargs: mass_r=MADYS.get_mass_range(kwargs['mass_range'],model,dtype='mass')
         elif len(wG)==1: mass_r=MADYS.get_mass_range(self.abs_phot[:,wG],model)
         else: mass_r=MADYS.get_mass_range([1e-6,1e+6],model)
-        print(mass_r)
             
-        iso=MADYS.load_isochrones(model,self.filters,logger=self.__logger,mass_range=mass_r,**kwargs)
+        plot_ages = np.array(kwargs['plot_ages']) if 'plot_ages' in kwargs else np.array([1,3,5,10,20,30,100,200,500,1000])
+        plot_masses = kwargs['plot_masses'] if 'plot_masses' in kwargs else np.array([0.1,0.3,0.5,0.7,0.85,1.0,1.3,2])
+        
+        iso=MADYS.load_isochrones(model,self.filters,logger=self.__logger,mass_range=mass_r,age_range=plot_ages,**kwargs)
 
         col_data=col_data.ravel()
         mag_data=mag_data.ravel()
@@ -1693,16 +1734,6 @@ class MADYS(object):
         else:
             ebv1=self.ebv
         
-        plot_ages=np.array([1,3,5,10,20,30,100,200,500,1000])
-        plot_masses=np.array([0.1,0.3,0.5,0.7,0.85,1.0,1.3,2])
-        stick_to_points=False
-        tofile=False
-        
-        if 'stick_to_points' in kwargs: stick_to_points=kwargs['stick_to_points']
-        if 'tofile' in kwargs: tofile=kwargs['tofile']
-        if 'plot_masses' in kwargs: plot_masses=kwargs['plot_masses']
-        if 'plot_ages' in kwargs: plot_ages=kwargs['plot_ages']
-
         try:
             len(col_err)
             col_err=col_err.ravel()
@@ -1721,11 +1752,12 @@ class MADYS(object):
         label_points = kwargs['label_points'] if 'label_points' in kwargs else True        
         groups = kwargs['groups'] if 'groups' in kwargs else None
         group_names = kwargs['group_names'] if 'group_names' in kwargs else None
+        tofile = kwargs['tofile'] if 'tofile' in kwargs else False
         
         isochrones=iso[3]
         iso_ages=iso[1]
         iso_filters=iso[2]
-        iso_masses=iso[0]
+        iso_masses=iso[0]        
 
         #changes names of Gaia_DR2 filters to EDR3
         if 'G2' in iso_filters: 
@@ -1733,17 +1765,8 @@ class MADYS(object):
             iso_filters[w]=['G','Gbp','Grp']
 
         #axes ranges
-        if 'stick_to_points' in kwargs: stick_to_points=kwargs['stick_to_points']
-        else: stick_to_points=False
-        
-        if 'x_range' in kwargs: x_range=kwargs['x_range']
-        else: x_range=MADYS.axis_range(x_axis,x,stick_to_points=stick_to_points)
-        if 'y_range' in kwargs: y_range=kwargs['y_range']
-        else: y_range=MADYS.axis_range(y_axis,y,stick_to_points=stick_to_points)
-
-            
-        print(x_range)
-        print(y_range)
+        xlim = kwargs['xlim'] if 'xlim' in kwargs else MADYS.axis_range(x_axis,x)
+        ylim = kwargs['ylim'] if 'ylim' in kwargs else MADYS.axis_range(y_axis,y)
             
         #finds color/magnitude isochrones to plot
         if '-' in x_axis: 
@@ -1763,9 +1786,29 @@ class MADYS(object):
             w1,=np.where(iso_filters==y_axis)
             mag_th=isochrones[:,:,w1]
 
+        if type(plot_masses)!=bool:
+            trk=MADYS.load_isochrones(model,self.filters,mass_range=plot_masses,age_range=[np.min(plot_ages),np.max(plot_ages)],**kwargs)        
+            tracks=trk[3]
+            trk_ages=trk[1]
+            trk_filters=trk[2]
+            trk_masses=trk[0]
+            if '-' in x_axis: 
+                w1,=np.where(trk_filters==col_n[0])
+                w2,=np.where(trk_filters==col_n[1])
+                col_th_t=tracks[:,:,w1]-tracks[:,:,w2]
+            else: 
+                w1,=np.where(trk_filters==x_axis)
+                col_th_t=tracks[:,:,w1]
+            if '-' in y_axis: 
+                w1,=np.where(trk_filters==mag_n[0])
+                w2,=np.where(trk_filters==mag_n[1])
+                mag_th_t=tracks[:,:,w1]-tracks[:,:,w2]
+            else: 
+                w1,=np.where(trk_filters==y_axis)
+                mag_th_t=tracks[:,:,w1]
 
         n=len(isochrones) #no. of grid masses
-        tot_iso=len(isochrones[0]) #no. of grid agesge
+        tot_iso=len(isochrones[0]) #no. of grid ages
         npo=MADYS.n_elements(x) #no. of stars
         nis=len(plot_ages) #no. of isochrones to be plotted
 
@@ -1774,7 +1817,7 @@ class MADYS(object):
         x_ext=MADYS.extinction(self.ebv,x_axis)
         y_ext=MADYS.extinction(self.ebv,y_axis)
 
-        arr=[x_range[0]+0.2*(x_range[1]-x_range[0]),y_range[0]+0.1*(y_range[1]-y_range[0]),-np.median(x_ext),-np.median(y_ext)]
+        arr=[xlim[0]+0.2*(xlim[1]-xlim[0]),ylim[0]+0.1*(ylim[1]-ylim[0]),-np.median(x_ext),-np.median(y_ext)]
         ax.quiver(arr[0],arr[1],arr[2],arr[3],label='dereddening',scale=1,scale_units='xy',angles='xy')
 
         x1=x
@@ -1783,24 +1826,25 @@ class MADYS(object):
         if type(plot_ages)!=bool:
             for i in range(len(plot_ages)):
                 ii=MADYS.closest(iso_ages,plot_ages[i])
-                plt.plot(col_th[:,ii],mag_th[:,ii],label=str(plot_ages[i])+' Myr')
+                ax.plot(col_th[:,ii],mag_th[:,ii],label=str(plot_ages[i])+' Myr')
 
         if type(plot_masses)!=bool:
             with np.errstate(divide='ignore',invalid='ignore'):
                 for i in range(len(plot_masses)):
-                    im=MADYS.closest(iso_masses,plot_masses[i])
-                    plt.plot(col_th[im,:],mag_th[im,:],linestyle='dashed',color='gray')
+                    im=MADYS.closest(trk_masses,plot_masses[i])
+                    ax.plot(col_th_t[im,:],mag_th_t[im,:],linestyle='dashed',color='gray')
                     c=0
-                    while (np.isfinite(col_th[im,c])==0) | (np.isfinite(mag_th[im,c])==0) | ((col_th[im,c]<x_range[0]) | (col_th[im,c]>x_range[1])) & ((mag_th[im,c]<y_range[0]) | (mag_th[im,c]>y_range[1])): 
+                    while (np.isfinite(col_th_t[im,c])==0) | (np.isfinite(mag_th_t[im,c])==0) | ((col_th_t[im,c]<xlim[0]) | (col_th_t[im,c]>xlim[1])) & ((mag_th_t[im,c]<ylim[0]) | (mag_th_t[im,c]>ylim[1])):
                         c+=1
-                        if c==len(col_th[im,:]): break
-                    if c<len(col_th[im,:]):
-                        plt.annotate(str(plot_masses[i]),(col_th[im,c],mag_th[im,c]),size='large')
+                        if c==len(col_th_t[im,:]): break
+                    if c<len(col_th_t[im,:]):
+                        an=ax.annotate(str(plot_masses[i]),(col_th_t[im,c],mag_th_t[im,c]),size='large')
+                        an.set_in_layout(False)
 
         if (type(groups)==type(None)):        
             if (type(x_error)==type(None)) & (type(y_error)==type(None)):
-                plt.scatter(x1, y1, s=50, facecolors='none', edgecolors='black')
-            else: plt.errorbar(x1, y1, yerr=y_error, xerr=x_error, fmt='o', color='black')
+                ax.scatter(x1, y1, s=50, facecolors='none', edgecolors='black')
+            else: ax.errorbar(x1, y1, yerr=y_error, xerr=x_error, fmt='o', color='black')
         else:
             nc=max(groups)
             colormap = plt.cm.gist_ncar
@@ -1809,19 +1853,20 @@ class MADYS(object):
                 w,=np.where(groups==j)
                 if len(w)>0:  
                     if (type(x_error)==type(None)) & (type(y_error)==type(None)):
-                        plt.scatter(x1[w], y1[w], s=50, facecolors='none', edgecolors=colorst[j], label=group_names[j])
-                    else: plt.errorbar(x1[w], y1[w], yerr=y_error[w], xerr=x_error[w], fmt='o', color=colorst[j], label=group_names[j])
+                        ax.scatter(x1[w], y1[w], s=50, facecolors='none', edgecolors=colorst[j], label=group_names[j])
+                    else: ax.errorbar(x1[w], y1[w], yerr=y_error[w], xerr=x_error[w], fmt='o', color=colorst[j], label=group_names[j])
 
         if label_points==True:
             po=(np.linspace(0,npo-1,num=npo,dtype=int)).astype('str')
             for i, txt in enumerate(po):
-                ax.annotate(txt, (x1[i], y1[i]))
+                an=ax.annotate(txt, (x1[i], y1[i]))
+                an.set_in_layout(False)
 
-        plt.ylim(y_range)
-        plt.xlim(x_range)
-        plt.xlabel(x_axis, fontsize=18)
-        plt.ylabel(y_axis, fontsize=18)
-        plt.legend()
+        ax.set_ylim(ylim)
+        ax.set_xlim(xlim)
+        ax.set_xlabel(x_axis, fontsize=18)
+        ax.set_ylabel(y_axis, fontsize=18)
+        ax.legend()
         if tofile==False:
             plt.show()
         elif tofile==True:
@@ -1833,7 +1878,213 @@ class MADYS(object):
             plt.close(fig)    
 
         return None     
+    
+    @staticmethod
+    def plot_isochrones(col,mag,model,ax,**kwargs):
 
+        def filter_model(model,col):
+            if model in ['bt_settl','starevol','spots','dartmouth','ames_cond',
+                         'ames_dusty','bt_nextgen','nextgen','bhac15','geneva',
+                         'nextgen','pm13']:
+                if col=='G': col2='G2'
+                elif col=='Gbp': col2='Gbp2'
+                elif col=='Grp': col2='Grp2'
+                elif col=='G-Gbp': col2='G2-Gbp2'
+                elif col=='Gbp-G': col2='Gbp2-G2'
+                elif col=='G-Grp': col2='G2-Gbp2'
+                elif col=='Grp-G': col2='Grp2-G2'
+                elif col=='Gbp-Grp': col2='Gbp2-Grp2'
+                elif col=='Grp-Gbp': col2='Grp2-Gbp2'
+                elif 'G-' in col: col2=col.replace('G-','G2-')            
+                elif col[-2:]=='-G': col2=col.replace('-G','-G2')
+                else: col2=col        
+            else: col2=col
+            return col2
+        
+        filters=[]
+        
+        if '-' in col:
+            col_n=filter_model(model,col).split('-')
+            filters.extend(col_n)
+        else:
+            filters.append(col)
+        if '-' in mag:
+            mag_n=filter_model(model,mag).split('-')
+            filters.extend(mag_n)
+        else:
+            filters.append(mag)
+        
+        filters=np.array(filters)
+        
+        if 'mass_range' in kwargs: mass_r=MADYS.get_mass_range(kwargs['mass_range'],model,dtype='mass')
+        else: mass_r=MADYS.get_mass_range([1e-6,1e+6],model)
+        
+        plot_ages = np.array(kwargs['plot_ages']) if 'plot_ages' in kwargs else np.array([1,3,5,10,20,30,100,200,500,1000])
+        plot_masses = kwargs['plot_masses'] if 'plot_masses' in kwargs else np.array([0.1,0.3,0.5,0.7,0.85,1.0,1.3,2])
+        
+        iso=MADYS.load_isochrones(model,filters,mass_range=mass_r,age_range=plot_ages,**kwargs)
+
+        x_axis=col
+        y_axis=mag
+                
+        isochrones=iso[3]
+        iso_ages=iso[1]
+        iso_filters=iso[2]
+        iso_masses=iso[0]
+
+        #changes names of Gaia_DR2 filters to EDR3
+        if 'G2' in iso_filters: 
+            w=MADYS.where_v(['G2','Gbp2','Grp2'],iso_filters)
+            iso_filters[w]=['G','Gbp','Grp']
+            
+        #finds color/magnitude isochrones to plot
+        if '-' in x_axis: 
+            col_n=x_axis.split('-')
+            w1,=np.where(iso_filters==col_n[0])
+            w2,=np.where(iso_filters==col_n[1])
+            col_th=isochrones[:,:,w1]-isochrones[:,:,w2]
+        else: 
+            w1,=np.where(iso_filters==x_axis)
+            col_th=isochrones[:,:,w1]
+        if '-' in y_axis: 
+            mag_n=y_axis.split('-')
+            w1,=np.where(iso_filters==mag_n[0])
+            w2,=np.where(iso_filters==mag_n[1])
+            mag_th=isochrones[:,:,w1]-isochrones[:,:,w2]
+        else: 
+            w1,=np.where(iso_filters==y_axis)
+            mag_th=isochrones[:,:,w1]
+
+        if type(plot_masses)!=bool:
+            trk=MADYS.load_isochrones(model,filters,mass_range=plot_masses,age_range=[np.min(plot_ages),np.max(plot_ages)],**kwargs)        
+            tracks=trk[3]
+            trk_ages=trk[1]
+            trk_filters=trk[2]
+            trk_masses=trk[0]
+            if '-' in x_axis: 
+                w1,=np.where(trk_filters==col_n[0])
+                w2,=np.where(trk_filters==col_n[1])
+                col_th_t=tracks[:,:,w1]-tracks[:,:,w2]
+            else: 
+                w1,=np.where(trk_filters==x_axis)
+                col_th_t=tracks[:,:,w1]
+            if '-' in y_axis: 
+                w1,=np.where(trk_filters==mag_n[0])
+                w2,=np.where(trk_filters==mag_n[1])
+                mag_th_t=tracks[:,:,w1]-tracks[:,:,w2]
+            else: 
+                w1,=np.where(trk_filters==y_axis)
+                mag_th_t=tracks[:,:,w1]
+
+        n=len(isochrones) #no. of grid masses
+        tot_iso=len(isochrones[0]) #no. of grid agesge
+        nis=len(plot_ages) #no. of isochrones to be plotted
+
+        if type(plot_ages)!=bool:
+            for i in range(len(plot_ages)):
+                ii=MADYS.closest(iso_ages,plot_ages[i])
+                ax.plot(col_th[:,ii],mag_th[:,ii],label=str(plot_ages[i])+' Myr')
+
+        if type(plot_masses)!=bool:
+            with np.errstate(divide='ignore',invalid='ignore'):
+                for i in range(len(plot_masses)):
+                    im=MADYS.closest(trk_masses,plot_masses[i])
+                    ax.plot(col_th_t[im,:],mag_th_t[im,:],linestyle='dashed',color='gray')
+                    c=0
+                    while (np.isfinite(col_th_t[im,c])==0) | (np.isfinite(mag_th_t[im,c])==0):
+                        c+=1
+                        if c==len(col_th_t[im,:]): break
+                    if c<len(col_th_t[im,:]):
+                        an=ax.annotate(str(plot_masses[i]),(col_th_t[im,c],mag_th_t[im,c]),size='large')
+                        an.set_in_layout(False)
+
+        return None     
+    
+
+    @staticmethod
+    def plot_photometry(col,mag,ax,data,errors=None,ids=None,**kwargs):
+        
+        if 'MADYS' in str(type(data)):
+            self=data
+            if '-' in col:
+                col_n=col.split('-')
+                c1,=np.where(self.filters==col_n[0])
+                c2,=np.where(self.filters==col_n[1])
+                col1,col1_err=self.abs_phot[:,c1],self.app_phot_err[:,c1]
+                col2,col2_err=self.abs_phot[:,c2],self.app_phot_err[:,c2]
+                col_data=col1-col2
+                col_err=np.sqrt(col1_err**2+col2_err**2)
+            else:
+                c1,=np.where(self.filters==filter_model(model,col))
+                col_data,col_err=self.abs_phot[:,c1],self.abs_phot_err[:,c1]
+            if '-' in mag:
+                mag_n=mag.split('-')
+                m1,=np.where(self.filters==mag_n[0])
+                m2,=np.where(self.filters==mag_n[1])
+                mag1,mag1_err=self.abs_phot[:,m1],self.app_phot_err[:,m1]
+                mag2,mag2_err=self.abs_phot[:,m2],self.app_phot_err[:,m2]
+                mag_data=mag1-mag2
+                mag_err=np.sqrt(mag1_err**2+mag2_err**2)
+            else:
+                m1,=np.where(self.filters==filter_model(model,mag))
+                mag_data,mag_err=self.abs_phot[:,m1],self.abs_phot_err[:,m1]
+        else:
+            col_data=data[0,:]
+            mag_data=data[1,:]
+            if type(errors)!=type(None):
+                col_err=errors[0,:]
+                mag_err=errors[1,:]
+            
+        
+        col_data=col_data.ravel()
+        mag_data=mag_data.ravel()
+        if type(errors)!=type(None):
+            col_err=col_err.ravel()
+            mag_err=mag_err.ravel()
+        else:
+            col_err=None
+            mag_err=None
+
+        if type(ids)!=type(None):
+            col_data=col_data[ids]
+            mag_data=mag_data[ids]
+            col_err=col_err[ids]
+            mag_err=mag_err[ids]
+                
+        x=col_data
+        y=mag_data
+        x_axis=col
+        y_axis=mag
+        
+        label_points = kwargs['label_points'] if 'label_points' in kwargs else True        
+        groups = kwargs['groups'] if 'groups' in kwargs else None
+        group_names = kwargs['group_names'] if 'group_names' in kwargs else None
+                
+
+        npo=MADYS.n_elements(x) #no. of stars
+
+        if (type(groups)==type(None)):        
+            if (type(col_err)==type(None)) & (type(mag_err)==type(None)):
+                ax.scatter(x, y, s=50, facecolors='none', edgecolors='black')
+            else: ax.errorbar(x, y, yerr=mag_err, xerr=col_err, fmt='o', color='black')
+        else:
+            nc=max(groups)
+            colormap = plt.cm.gist_ncar
+            colorst = [colormap(i) for i in np.linspace(0, 0.9,nc+1)]       
+            for j in range(nc+1):
+                w,=np.where(groups==j)
+                if len(w)>0:  
+                    if (type(col_err)==type(None)) & (type(mag_err)==type(None)):
+                        ax.scatter(x[w], y[w], s=50, facecolors='none', edgecolors=colorst[j], label=group_names[j])
+                    else: ax.errorbar(x[w], y[w], yerr=mag_err[w], xerr=col_err[w], fmt='o', color=colorst[j], label=group_names[j])
+
+        if label_points==True:
+            po=(np.linspace(0,npo-1,num=npo,dtype=int)).astype('str')
+            for i, txt in enumerate(po):
+                an=ax.annotate(txt, (x[i], y[i]))
+                an.set_in_layout(False)
+
+        return None     
         
     @staticmethod
     def dr2_correct_flux_excess_factor(phot_g_mean_mag, bp_rp, phot_bp_rp_excess_factor):
@@ -1981,7 +2232,6 @@ class MADYS(object):
                 w,=np.where(t['j_m'].mask==True)
 
                 if len(w)==0: return t
-                print('Stars without 2MASS photometry: ',len(w))
 
             #effettua una ricerca su WISE per queste stesse stelle
                 query_list=self.list_chunk(w) #SE WISE è GIà NELLE SURVEYS, EVITARE DI FARE QUESTA RICERCA E RECUPERARE I DATI GIà PRESENTI
@@ -2005,7 +2255,6 @@ class MADYS(object):
 
                 __, i1, i2 = np.intersect1d(id_res,l,return_indices=True) #cross-match tra t[w] (=stelle della vecchia ricerca senza 2MASS) e t1[w1] (=stelle della nuova ricerca con 2MASS)        
 
-            print('Stars without 2MASS photometry with ALLWISE cross-match: ',len(i1))
             if len(i1)>0:
             #ricerca le stelle t1[w1[i1]] sul catalogo ALLWISE principale
                 wise_ids = np.array(t1['allwise_id'][w1[i1]])
@@ -2108,18 +2357,15 @@ class MADYS(object):
                 names=['tmass_id','ph_qual','tmass_ra','tmass_dec','j_m', 'h_m','ks_m','j_msigcom', 'h_msigcom','ks_msigcom']
                 for i in names: t[i].mask[w[i2[i5[w_ncm]]]]=True
 
-                print("Recovered stars (2MASS source within 0.7''): ",len(i5)-len(w_ncm))
             else:
                 i5=[]
                 w_ncm=[]
 
             tt2=time.perf_counter()
-            print('Time for ALLWISE recovery: ',tt2-tt1,' s')
 
 
             w,=np.where(t['j_m'].mask==True)
             if len(w)==0: return t
-            print('Stars still without 2MASS: ',len(w))
 
             key1='_2MASS'
             l=[]
@@ -2176,9 +2422,6 @@ class MADYS(object):
             else: i2=[]
 
             tt3=time.perf_counter()
-            print("Recovered stars (2MASS cross-match in Simbad)",len(i2))
-            print('Total number of stars with recovered 2MASS photometry: ',len(i2)+len(i5)-len(w_ncm))
-            print('Time for individual Simbad query: ',tt3-tt2,' s')
 
         return t
     
@@ -2361,6 +2604,15 @@ class MADYS(object):
         else: ind = np.unravel_index(np.nanargmin(a, axis=None), a.shape)
 
         return a[ind],ind
+    
+    @staticmethod
+    def nansumwrapper(a, axis=None,**kwargs):
+        ma=np.isnan(a)==False
+        sa=np.nansum(ma,axis=axis) 
+        sm=np.nansum(a, axis=axis,**kwargs)
+        sm=np.where(sa==0,np.nan,sm)
+
+        return sm
 
     @staticmethod
     def file_search(files):
@@ -3137,9 +3389,15 @@ class MADYS(object):
 
         surveys=MADYS.filters_to_surveys(fnew)
         
-        n1=n_steps[0]
-        mnew=M_sun.value/M_jup.value*np.exp(np.log(0.999*mass_range[0])+(np.log(1.001*mass_range[1])-np.log(0.999*mass_range[0]))/(n1-1)*np.arange(n1))
+        
+        if isinstance(mass_range,list):
+            n1=n_steps[0]
+            mnew=M_sun.value/M_jup.value*np.exp(np.log(0.999*mass_range[0])+(np.log(1.001*mass_range[1])-np.log(0.999*mass_range[0]))/(n1-1)*np.arange(n1))
+        else:
+            mnew=M_sun.value/M_jup.value*np.sort(mass_range)
+            n1=len(mnew)
 
+            
         try: len(age_range)
         except TypeError:
             anew=age_range
@@ -3170,7 +3428,6 @@ class MADYS(object):
                     case=6                
             else: raise TypeError('Only scalar, list or numpy arrays are valid inputs for the keyword "age_range".')
         if model_code=='pm13': case=5
-            
                 
         iso_f=np.full(([n1,n2,nf]), np.nan) #final matrix    
         found=np.zeros(nf,dtype=bool)
@@ -3357,7 +3614,9 @@ class MADYS(object):
 
         if dtype=='mass':
             sample_r=[np.nanmin(data),np.nanmax(data)]
-            return MADYS.intersect_arr(mass_range,[sample_r[0],sample_r[1]])
+            m=MADYS.intersect_arr(mass_range,[sample_r[0],sample_r[1]])
+            if isinstance(m,list): return m
+            else: return m.tolist()
         else:
             m_G_data=np.array([[-5.8,84],[-5.2,52],[-4.8,27],[-3.5,15],[-2.6,10],[-1.19,5.4],[-0.99,5.1],
                            [-0.84,4.7],[-0.54,4.3],[-0.39,3.92],[-0.01,3.38],[0.515,2.75],[0.615,2.68],
@@ -3375,7 +3634,10 @@ class MADYS(object):
 
             G_m=interp1d(m_G_data[:,0],m_G_data[:,1],fill_value=(84,0.075),bounds_error=False)
             sample_r=G_m([np.nanmax(data),np.nanmin(data)])   
-            return MADYS.intersect_arr(mass_range,[0.6*sample_r[0],1.4*sample_r[1]])    
+            m=MADYS.intersect_arr(mass_range,[0.6*sample_r[0],1.4*sample_r[1]])  
+            
+            if isinstance(m,list): return m
+            else: return m.tolist()
     
     #################################################################
     # TO CREATE LOG FILES
@@ -3728,8 +3990,10 @@ class MADYS(object):
             plt.ylabel(r'$\log_{10}$(age)')
             plt.xlabel(r'mass ($M_\odot$)')
             plt.title(r'$\chi^2$ map for star '+str(i)+', '+str.upper(model))
-            if tofile: plt.savefig(tofile)
-            plt.show()    
+            if tofile: 
+                file=result['path']+'_chi2_map_star'+str(i)+'.png'
+                plt.savefig(file)
+            plt.show()
             p+=1
         return
 
@@ -3753,7 +4017,7 @@ class MADYS(object):
         return r,i_1,i_2
 
     @staticmethod
-    def ang_dist(ra1,dec1,ra2,dec2,error=False):      
+    def ang_dist(ra1,dec1,ra2,dec2,ra1_err=0.0,dec1_err=0.0,ra2_err=0.0,dec2_err=0.0,error=False):      
         try:
             ra1.unit
             dist=2*np.arcsin(np.sqrt(np.sin((dec2-dec1)/2.)**2+np.cos(dec2)*np.cos(dec1)*np.sin((ra2-ra1)/2.)**2)).to(u.deg)
@@ -3799,7 +4063,6 @@ class MADYS(object):
 
         n_chunks=1
         nst=len(id_list) if type(id_list)!=type(None) else len(self.GaiaID) #dev'essere self.GaiaID nel caso della ricerca principale
-        print('no. of stars: ',nst)
         done=np.zeros(nst,dtype=bool)
         nit=0
         data=[]
@@ -3811,7 +4074,6 @@ class MADYS(object):
                 query_list=self.list_chunk(todo_c,key_name=key_name,id_list=id_list,equality=equality,quote_mark=quote_mark)
                 qstr=query+query_list
                 try:
-                    print(qstr)
                     adql = QueryStr(qstr,verbose=False)
                     t=f(adql)
                     data.append(t)
