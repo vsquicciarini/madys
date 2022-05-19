@@ -487,23 +487,30 @@ def _read_model_PARSEC(path, fname, instrument, max_phase=3): #VS21
             cols.extend(names.split())
         line = file.readline()         #reads next line
     file.close()    
+    cols=np.array(cols)
 
     #create data frame
     data=pd.read_csv(path / fname,delim_whitespace=True,header=None,comment='#')
     data=data.iloc[:,2:] #slicing
     data2=data.to_numpy(dtype=float)    
+
+    w_m0,=np.where(cols=='Mass')
+    if len(w_m0)>0: temp=np.array(data2[:,w_m0])
+    data2[:,4:]=np.where(((data2[:,4:]<1001) & (data2[:,4:]>100)),np.nan,data2[:,4:])  #converts entries=999.999 to nan
+    if len(w_m0)>0: data2[:,w_m0]=temp
+    
     w_ch,=np.where(data2[1:,0]-data2[:-1,0]>0)
     w_cut=np.insert(w_ch+1,[0,len(w_ch)],[0,len(data2)]) #row indices of the isochrones
 
     #converts pandas to numpy
-    w_m,=np.where(np.array(cols)=='Mini')
-    w_a,=np.where(np.array(cols)=='logAge')
-    w_p,=np.where(np.array(cols)=='label')    
+    w_m,=np.where(cols=='Mini')
+    w_a,=np.where(cols=='logAge')
+    w_p,=np.where(cols=='label')    
     mass_range=[np.min(data2[:,w_m]),np.max(data2[:,w_m])]
     n_m=int(1.1*np.max(w_cut[1:]-w_cut[:-1]))
 
     #output values
-    values=np.array(cols[2:]) #exclude ages and metallicity
+    values=cols[2:] #exclude ages and metallicity
     ages=data2[w_cut[1:]-1,w_a]        
     masses=np.logspace(np.log10(mass_range[0]),np.log10(mass_range[1]),n_m)    
     dat=np.full((n_m, len(ages), len(values)+1), np.nan)
@@ -788,15 +795,16 @@ def _read_model_atmo2020(path, fname, instrument): #VS21
         data=pd.read_fwf(path / track_list[i],header=None,comment='#',infer_nrows=10000)
         w,=np.where((isnumber(data[0],finite=True)) & (isnumber(data[1],finite=True)) & (isnumber(data[2],finite=True)) & ((data[1]!='2') & (data[2]!='3')))
         data=data.iloc[w,:]
-        all_data.append(data.replace(0, np.nan)) #0 is used as missing value in these files but we want nan
+        all_data.append(data.astype(float))        
                 
     data=pd.concat(all_data)
+    data=data.mask(data==0) #0 is used as missing value in these files but we want nan
     cols[0]='mass'
     cols[1]='age'
     data.columns=cols
-    data.mass = data.mass.astype(float) * cst.M_sun / cst.M_jup
-    data.age = data.age.astype(float) * 1000
-    data['Radius']=data['Radius'].astype(float)*cst.R_sun / cst.R_jup
+    data.mass = data.mass * cst.M_sun / cst.M_jup
+    data.age = data.age * 1000
+    data['Radius']=data['Radius'] * cst.R_sun / cst.R_jup
     
     masses, ages, values, dat = _reshape_data(data)
               
@@ -1402,6 +1410,10 @@ def _read_model_SB12(path,fname,instrument): #V21
     data=pd.read_fwf(path / fname,header=None,comment='#')
     data=data.iloc[:,1:]
     data.columns = cols[1:]
+    data['hlogg']= np.log10(data.mass)-2*np.log10(data.hRad)+3.3961    
+    data['clogg']= np.log10(data.mass)-2*np.log10(data.cRad)+3.3961
+    cols.extend(['hlogg','clogg'])
+    data.columns = cols[1:] 
     
     masses,ages,values,dat=_reshape_data(data)
     return masses, ages, values, dat    
