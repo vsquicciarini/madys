@@ -1,18 +1,21 @@
 """
 
 MADYS
-Tool for age and mass determination of young stellar and substellar objects. Given a list of stars:
-- it retrieves and cross-matches photometry from Gaia and 2MASS;
+Tool for age and mass determination of young stellar and substellar objects.
+Given a list of stars, it:
+- retrieves and cross-matches photometry from several catalogs;
 - corrects for interstellar extinction;
 - assesses the quality of each photometric measurement;
-- uses reliable photometric data to derive ages and masses (and optionally, other physical parameters too) of individual stars.
-MADYS allows a selection of one among 17 theoretical models, many of which with several tunable parameters (metallicity, rotational velocity, etc).
-Check the provided manual for additional details on general working, customizable settings and allowed inputs.
+- uses reliable photometric data to derive physical parameters (notably ages and masses)
+of individual stars.
+MADYS allows a selection of one among 17 theoretical models, many of which with several
+customizable parameters (metallicity, rotational velocity, etc).
+Check the provided manual for additional details.
 
 Classes:
 - SampleObject
 - FitParams
-- IsochroneGrids
+- IsochroneGrid
 
 """
 
@@ -52,7 +55,7 @@ import h5py
 import math
 from mpl_toolkits.axes_grid1 import make_axes_locatable
 from tabulate import tabulate
-Vizier.TIMEOUT = 100000000 # rise the timeout for Vizier
+Vizier.TIMEOUT = 100000000
 from tap import (GaiaArchive, TAPVizieR, resolve, QueryStr, timeit)
 from json import JSONDecodeError
 gaia = GaiaArchive()
@@ -141,9 +144,9 @@ FILTERS={'bessell':{'B':0.4525,'V':0.5525,'U':0.3656,'Ux':0.3656,'Bx':0.4537,'R'
         }
 
 def closest(array,value):
-    '''Given an "array" and a (list of) "value"(s), finds the j(s) such that |array[j]-value|=min((array-value)).
+    """Given an "array" and a (list of) "value"(s), finds the j(s) such that |array[j]-value|=min((array-value)).
     "array" must be monotonic increasing. j=-1 or j=len(array) is returned
-    to indicate that ``value`` is out of range below and above respectively.'''
+    to indicate that "value" is out of range (below and above, respectively)."""
     n = len(array)
     nv = n_elements(value)
     if nv==1:
@@ -151,18 +154,17 @@ def closest(array,value):
             return 0
         elif (value > array[n-1]):
             return n-1
-        jl = 0# Initialize lower
-        ju = n-1# and upper limits.
-        while (ju-jl > 1):# If we are not yet done,
-            jm=(ju+jl) >> 1# compute a midpoint with a bitshift
+        jl = 0
+        ju = n-1
+        while (ju-jl > 1):
+            jm=(ju+jl) >> 1
             if (value >= array[jm]):
-                jl=jm# and replace either the lower limit
+                jl=jm
             else:
-                ju=jm# or the upper limit, as appropriate.
-            # Repeat until the test condition is satisfied.
-        if (value == array[0]):# edge cases at bottom
+                ju=jm
+        if (value == array[0]):
             return 0
-        elif (value == array[n-1]):# and top
+        elif (value == array[n-1]):
             return n-1
         else:
             jn=jl+np.argmin([value-array[jl],array[jl+1]-value])
@@ -191,11 +193,19 @@ def closest(array,value):
         return jn
     
 def n_elements(x):
+    
+    """Returns the number of elements in an array.
+    If x is a number (e.g., a float), returns 1."""
+    
     size = 1
     for dim in np.shape(x): size *= dim
     return size    
 
 def where_v(elements,array,approx=False):
+    
+    """Returns the index of the first occurrence of each of the "elements" in the
+    "array". If approx==True and array is ordered, the indices of closest matchs
+    are returned instead."""
 
     if isinstance(array,list): array=np.array(array)
     try:
@@ -224,6 +234,10 @@ def where_v(elements,array,approx=False):
         return ind
 
 def nansumwrapper(a, axis=None,**kwargs):
+
+    """Wrapper to np.nansum. Unlike np.nansum, returns np.nan (and
+    not 0) if all the elements of "a" are np.nan."""
+    
     ma=np.isnan(a)==False
     sa=np.nansum(ma,axis=axis) 
     sm=np.nansum(a, axis=axis,**kwargs)
@@ -233,6 +247,101 @@ def nansumwrapper(a, axis=None,**kwargs):
     
     
 class IsochroneGrid(object):
+
+    """
+    Class: madys.IsochroneGrid
+
+    Class that creates a set of theoretical isochrones.  
+    Input:
+    - model: string, required. Selected isochrone grid model. Use IsochroneGrid.info_models() for further information on available models.
+    - filters: list or numpy array, required. Required set of filters.
+    - mass_range: list or numpuy array, optional. It can be either:
+            1) a two-element list with minimum and maximum mass within the grid (M_sun);
+            2) a numpy array, giving the desired mass steps (M_sun) at which the model is evaluated. 
+      Default: [0.0, 1.4].
+    - age_range: list or numpy array, optional. It can be either:
+            1) a two-element list with minimum and maximum age to consider for the whole sample (Myr);
+            2) a 1D numpy array, so that the i-th age (Myr) is used as fixed age for the i-th star;
+            3) a 2D numpy array with 2 columns. The i-th row defines (lower_age,upper_age) range in which one or more solutions are found for the i-th star.
+            4) a 2D numpy array with 3 columns. The i-th row is used as (mean_age,lower_age,upper_age) for the i-th star; mean_age is used as in case 2), and [lower_age, upper_age] are used as in case 3).
+      Default: [1,1000].
+    - n_steps: list, optional. Number of (mass, age) steps of the interpolated grid. Default: [1000,500].
+    - n_try: int, optional. Number of Monte Carlo iteractions for each star. Default: 1000.
+    - feh: float, optional. Selects [Fe/H] of the isochrone set. Default: 0.00 (=solar metallicity).
+    - he: float, optional. Selects helium fraction Y of the isochrone set. Default: solar Y (depends on the model).    
+    - afe: float, optional. Selects alpha enhancement [a/Fe] of the isochrone set. Default: 0.00.
+    - v_vcrit: float, optional. Selects rotational velocity of the isochrone set. Default: 0.00 (non-rotating).
+    - fspot: float, optional. Selects fraction of stellar surface covered by star spots. Default: 0.00.
+    - B: int, optional. Set to 1 to turn on the magnetic field (only for Dartmouth models). Default: 0.
+    - fill_value: array-like or (array-like, array_like) or “extrapolate”, optional. How the interpolation over mass deals with values outside the original range. Default: np.nan. See scipy.interpolate.interp1d for details.
+    - logger: logger, optional. A logger returned by SampleObject.setup_custom_logger(). Default: None.
+    
+    Attributes:
+    - ages: numpy array. The n_a ages of the grid [Myr].
+    - masses: numpy array. The n_m masses of the grid [M_sun].
+    - filters: numpy array. List of the n_f filters in the grid.
+    - surveys: list. Surveys/instruments which the filters refer to.
+    - data: numpy array with shape (n_m,n_a,n_f). Isochrone grid.
+    - model: string. Selected isochrone grid model.
+    - model_code: string. Unique identifier of the isochrone grid.
+    - n_steps: two-element list: [n_m,n_a].
+    - mass_range: list or numpy array. See above.
+    - age_range: list or numpy array. See above.
+    - feh: float. See above.
+    - he: float. See above.  
+    - afe: float. See above.
+    - v_vcrit: float. See above.
+    - fspot: float. See above.
+    - B: int. See above.
+    
+    Built-in methods:
+
+    1) __eq__
+    Two IsochroneGrid instances are considered equal if their model_code are equal.
+
+    Methods:
+
+    1) plot_isochrones
+    A class method. Defines a IsochroneGrid object and draws the selected CMD.
+    Similar to SampleObject.CMD, but draws only the isochrones over an existing figure.
+        Input:
+        - col: string, required. Quantity to be plotted along the x axis (e.g.: 'G' or 'G-K')
+        - mag: string, required. Quantity to be plotted along the y axis (e.g.: 'G' or 'G-K')
+        - model: string, required. Chosen model of isochrone grids. Use SampleObject.info_models() for further information on the available models.
+        - ax: AxesSubplot, required. Axis object where the isochrones will be drawn upon.
+        - plot_ages: numpy array or bool, optional. It can be either:
+                - a numpy array containing the ages (in Myr) of the isochrones to be plotted;
+                - False, not to plot any isochrone.
+          Default: [1,3,5,10,20,30,100,200,500,1000].
+        - plot_masses: numpy array or bool, optional. It can be either:
+                - a numpy array containing the masses (in M_sun) of the tracks to be plotted.
+                - False, not to plot any track.
+          Default: 0.1,0.3,0.5,0.7,0.85,1.0,1.3,2].
+        - all valid keywords for IsochroneGrid().
+        
+    2) plot_iso_grid
+    A class method. Defines a IsochroneGrid object.
+    Plots theoretical magnitudes in a given band for a certain model, or the magnitude difference between two models.
+    The returned magnitudes are shown as f(age, mass), i.e. as a color map in the (age, mass) grid.
+        Input:
+        - col: string, required. Quantity to be plotted in a color scale as along the x axis (e.g.: 'G' or 'G-K').
+        - model: string or 2-element list, required. If a string, it shows the data for that model. If list, it shows the difference between model[0] and model[1].
+        - reverse_xaxis: bool, optional. Reverses the x axis. Default: False.
+        - reverse_yaxis: bool, optional. Reverses the y axis. Default: False.
+        - x_log: bool, optional. Sets the mass axis scale as logarithmic. Default: False.
+        - y_log: bool, optional. Sets the age axis scale as logarithmic. Default: False.
+        - tofile: string, optional. Full path of the output .png file. Default: False (no file is saved).
+        - all valid keywords for IsochroneGrid().
+
+    3) info_models
+    Prints info about available models.
+    Informs about 1) the calling sequence; 2) the customizable parameters; 3) age and mass range; 4) adopted solar metallicity and helium content; 5) literature reference.
+        Input:
+        - model: string, optional. If selected, searchs the corresponding model. If None, prints info about all the available models. Default: None.
+        - verbose: bool, optional. If True, prints all information about a specific or all models. If False, only raises an error if the model/the path is not found. Default: True.
+        Output: none.
+    
+    """    
     
     def __init__(self, model, filters, **kwargs):
         
@@ -756,10 +865,11 @@ class IsochroneGrid(object):
         elif 'b97' in model: mass_range=[0.001,0.01]
         elif model=='bhac15': mass_range=[0.01,1.4]
         elif model=='geneva': mass_range=[0.8,120]
-        elif model=='ames_cond': mass_range=[0.005,1.4]
-        elif model=='ames_dusty': mass_range=[0.005,1.4]
+        elif model=='ames_cond': mass_range=[0.0005,1.4]
+        elif model=='ames_dusty': mass_range=[0.0005,1.4]
         elif model=='nextgen': mass_range=[0.01,1.4]
         elif model=='sonora_bobcat': mass_range=[0.0005,0.1]
+        else: raise ValueError('model '+model+' not found!')
 
         if dtype=='mass':
             sample_r=[np.nanmin(data),np.nanmax(data)]
@@ -1232,6 +1342,24 @@ class IsochroneGrid(object):
                             elif 'pm13' in str.lower(path): f_mods.append('pm13')
                             continue
                         else: found=True
+                    else:
+                        if 'starevol' in str.lower(path): f_mods.append('starevol')
+                        elif 'atmo' in str.lower(path): f_mods.append('atmo2020')
+                        elif 'bhac15' in str.lower(path): f_mods.append('bhac15')
+                        elif 'mist' in str.lower(path): f_mods.append('mist')
+                        elif 'parsec' in str.lower(path): f_mods.append('parsec')
+                        elif 'cond' in str.lower(path): f_mods.append('ames_cond')
+                        elif 'dusty' in str.lower(path): f_mods.append('ames_dusty')
+                        elif 'nextgen' in str.lower(path): f_mods.append('nextgen')
+                        elif 'settl' in str.lower(path): f_mods.append('bt_settl')
+                        elif 'spots' in str.lower(path): f_mods.append('spots')
+                        elif 'dartmouth' in str.lower(path): f_mods.append('dartmouth')
+                        elif 'geneva' in str.lower(path): f_mods.append('geneva')
+                        elif 'sonora' in str.lower(path): f_mods.append('sonora_bobcat')
+                        elif 'yapsi' in str.lower(path): f_mods.append('yapsi')
+                        elif 'sb12' in str.lower(path): f_mods.append('sb12')
+                        elif 'b97' in str.lower(path): f_mods.append('b97')
+                        elif 'pm13' in str.lower(path): f_mods.append('pm13')                        
                     if verbose:
                         with open(info) as f:
                             print(f.read())
@@ -1326,6 +1454,7 @@ class IsochroneGrid(object):
             if found==False: 
                 mess='The inserted model does not exist. Check the spelling and try again. Available models: '+','.join(f_mods)
                 raise ValueError(mess)
+            elif found & (type(model)==type(None)): print(','.join(f_mods))
                 
     @staticmethod
     def split_if_nan(a):
@@ -1342,36 +1471,6 @@ class IsochroneGrid(object):
         else: return [np.max([np.min(x),np.min(y)]),np.min([np.max(x),np.max(y)])]
     
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 class SampleObject(object):
     
     """
@@ -1383,14 +1482,14 @@ class SampleObject(object):
     An instance can be initialized in two modes, differing in the shape of input data:
      (mode 1) uses just a list of targets;
      (mode 2) uses a Table containing both the target list and photometric data.
-    Parameters that are only used in mode 1 will be labeled with (1), and similarly for mode 2. Parameters common to both modes will be labeled with (1,2).
+    Parameters that are only used in mode 1 are labeled with (1), and similarly for mode 2. Parameters common to both modes are not labeled.
 
     Input:
     - file (1): string or list, required. It can be either:
         - a string, giving the full path of the file containing target names;
         - a list of IDs. Gaia IDs must begin by 'Gaia DR2 ' or 'Gaia EDR3'.
     - file (2): astropy Table, required. Table containing target names and photometric data. See documentation for examples of valid inputs.
-    - mock_file (2): string, required. Full path of the non-existing file where the Table would come from if in mode 1. Used to extract the working path and to name the outputs after it.
+    - mock_file (2): string, required if verbose>=1. Full path of the non-existing file where the Table would come from if in mode 1. Used to extract the working path and to name the outputs after it.
     - surveys (1): list, optional. List of surveys where to extract photometric data from. Default: ['gaia','2mass'].
     - id_type (1): string, required. Type of IDs provided: must be one among 'DR2','EDR3' or 'other'.
     - get_phot (1): bool or string, optional. Set to:
@@ -1398,29 +1497,53 @@ class SampleObject(object):
             -False: to recover photometric data from a previous execution; the filename and path must match the default one (see documentation).
             -string: full path of the file to load photometric data from. The file should come from a previous execution.
       Default: True.
-    - save_phot (1): bool, optional. Set to True to create a .csv file with the retrieved photometry. Default: True.
     - simbad_query (1): bool, optional. Set to True to query objects without a 2MASS cross-match in SIMBAD. It can significantly slow down data queries. Default: True if n<100, False otherwise.
-    - ext_map (1,2): string, optional. Extinction map used between 'leike' or 'stilism'. Default: 'leike'.
-    - ebv (1,2): float or numpy array, optional. If set, uses the i-th element of the array as E(B-V) for the i-th star. Default: not set, computes E(B-V) through the map instead.
+    - ext_map: string, optional. Extinction map used between 'leike' or 'stilism'. Default: 'leike'.
+    - ebv: float or numpy array, optional. If set, uses the i-th element of the array as E(B-V) for the i-th star. Default: not set, computes E(B-V) through the map instead.
     - max_tmass_q (1): worst 2MASS photometric flag ('ph_qual') still considered reliable. Possible values, ordered by decreasing quality: 'A','B','C','D','E','F','U','X'. For a given choice, excludes all measurements with a lower quality flag. Default: 'A'.
     - max_wise_q (1): worst ALLWISE photometric flag ('ph_qual2') still considered reliable. Possible values, ordered by decreasing quality: 'A','B','C','U','Z','X'. For a given choice, excludes all measurements with a lower quality flag. Default: 'A'.
+    - verbose: int, optional. Degree of verbosity of the various tasks performed by MADYS. It can be:
+        - 0: no file is saved, nothing is printed on the screen;
+        - 1: a .csv file with retrieved information is saved (1), few info are printed on the screen;
+        - 2: in addition to the output of 1, a log file is created;
+        - 3: in addition to the output of 2, .txt files are created when executing SampleObject.get_params().
+      Default: 2.
 
     Attributes:
-    - file: corresponding to either file (1) or mock_file (2).
-    - path: working path, where all inputs and outputs are present.
-    - log_file: name of the log_file. Open it for details on the process outcome.
-    - phot_table (1): Table containing all retrieved data.
-    - abs_phot: absolute magnitudes in the required filters.
-    - abs_phot_err: errors on absolute magnitudes in the required filters.
-    - filters: set of filters, given either by filters of Gaia DR2+EDR3 + 2MASS (1) or by column names (2).
-    - surveys: list of surveys used to extract photometric data.
+    - file: string. Corresponding to either file (1) or mock_file (2).
+    - path: string. Working path, where all inputs and outputs are present.
+    - log_file: string. Name of the log_file. Open it for details on the process outcome.
+    - phot_table (1): astropy Table. Contains all retrieved data.
+    - abs_phot: numpy array. Absolute magnitudes in the required filters.
+    - abs_phot_err: numpy array. Errors on absolute magnitudes in the required filters.
+    - par (1): numpy array. Parallaxes of the objects.
+    - par_err (1): numpy array. Errors on parallaxes.
+    - filters: list. Set of filters, given either by filters of Gaia DR2+EDR3 + 2MASS (1) or by column names (2).
+    - surveys: list. Surveys used to extract photometric data.
+    - mode: int. The execution mode.
+    - ID: astropy Table. Original set of IDs.
+    - GaiaID: astropy Table. Gaia IDs (original or recovered). If original, they can come from EDR3 or DR2. If recovered, they always come from DR2.
+    - log_file: Path object. Full path of the log file. Not set if verbose<2.
+
+    Built-in methods:
+
+    1) __getitem__
+    SampleObject instances can be indexed like numpy arrays.
+    See documentation for additional details.
+
+    2) __len__
+    The len of a sampleObject is equal to the number of objects in the original list.
+
+    3) __repr__
+    4) __str__
+
 
     Methods:
 
     1) get_params
     Estimates age, mass and (optionally) radius, Teff and logg for each object in the sample by comparison with isochrone grids.
         Input:
-        - model: string, required. Selected isochrone grid model. Use SampleObject.info_models() for further information on available models.
+        - model: string, required. Selected isochrone grid model. Use IsochroneSet.info_models() for further information on available models.
         - mass_range: list, optional. A two-element list with minimum and maximum mass within the grid (M_sun). Default: not set; the mass_range is the intersection between a rough mass estimate based on G magnitudes and the dynamical range of the model itself.
         - age_range: list or numpy array, optional. It can be either:
                 1) a two-element list with minimum and maximum age to consider for the whole sample (Myr);
@@ -1431,19 +1554,20 @@ class SampleObject(object):
         - n_steps: list, optional. Number of (mass, age) steps of the interpolated grid. Default: [1000,500].
         - n_try: int, optional. Number of Monte Carlo iteractions for each star. Default: 1000.
         - verbose: bool, optional. Set to True to save the results in a file. Default: True.
-        - feh: float, optional. Selects [Fe/H] of the isochrone set. Default: None (=0.00, solar metallicity).
-        - he: float, optional. Selects helium fraction Y of the isochrone set. Default: None (=solar Y).    
-        - afe: float, optional. Selects alpha enhancement [a/Fe] of the isochrone set. Default: None (=0.00).
-        - v_vcrit: float, optional. Selects rotational velocity of the isochrone set. Default: None (=0.00, non-rotating).
-        - fspot: float, optional. Selects fraction of stellar surface covered by star spots. Default: None (=0.00).
-        - B: int, optional. Set to 1 to turn on the magnetic field (only for Dartmouth models). Default: 0.
+        - feh: float or numpy array, optional. Selects [Fe/H] of the isochrone set. If numpy array, the i-th element refers to the i-th star. Default: 0.00 (solar metallicity).
+        - he: float, optional. Selects helium fraction Y of the isochrone set. If numpy array, the i-th element refers to the i-th star. Default: solar Y (different for each model).    
+        - afe: float, optional. Selects alpha enhancement [a/Fe] of the isochrone set. If numpy array, the i-th element refers to the i-th star. Default: 0.00.
+        - v_vcrit: float, optional. Selects rotational velocity of the isochrone set. If numpy array, the i-th element refers to the i-th star. Default: 0.00 (non-rotating).
+        - fspot: float, optional. Selects fraction of stellar surface covered by star spots. If numpy array, the i-th element refers to the i-th star. Default: 0.00.
+        - B: int, optional. Set to 1 to turn on the magnetic field (only for Dartmouth models). If numpy array, the i-th element refers to the i-th star. Default: 0.
         - fill_value: array-like or (array-like, array_like) or “extrapolate”, optional. How the interpolation over mass deals with values outside the original range. Default: np.nan. See scipy.interpolate.interp1d for details.
         - ph_cut: float, optional. Maximum  allowed photometric uncertainty [mag]. Data with a larger error will be ignored. Default: 0.2.
         - m_unit: string, optional. Unit of measurement of the resulting mass. Choose either 'm_sun' or 'm_jup'. Default: 'm_sun'.
         - phys_param: bool, optional. Set to True to estimate, in addition to mass and age, also radius, effective temperature, surface gravity and luminosity. Default: True.
         - save_maps: bool, optional. Set to True to save chi2 and weight maps for each star. Not recommended if n_star is big (let's say, >1000). Default: False.
+        - logger: logger, optional. A logger returned by SampleObject.setup_custom_logger(). Default: self.__logger.
         Output:
-        - a madys.params object.
+        - a madys.FitParams object.
 
     2) CMD
     Draws a color-magnitude diagram (CMD) containing both the measured photometry and a set of theoretical isochrones.
@@ -1459,12 +1583,7 @@ class SampleObject(object):
                 - a numpy array containing the masses (in M_sun) of the tracks to be plotted.
                 - False, not to plot any track.
           Default: 0.1,0.3,0.5,0.7,0.85,1.0,1.3,2].
-        - feh: float, optional. Selects [Fe/H] of the isochrone set. Default: None (=0.00, solar metallicity).
-        - afe: float, optional. Selects alpha enhancement [a/Fe] of the isochrone set. Default: None (=0.00).
-        - v_vcrit: float, optional. Selects rotational velocity of the isochrone set. Default: None (=0.00, non-rotating).
-        - fspot: float, optional. Selects fraction of stellar surface covered by star spots. Default: None (=0.00).
-        - B: int, optional. Set to 1 to turn on the magnetic field (only for Dartmouth models). Default: 0.
-        - he: float, optional. Selects helium fraction Y of the isochrone set. Default: None (=solar Y).    
+        - all valid keywords of a IsochroneGrid object, optional.
         - ids: list or numpy array of integers, optional. Array of indices, selects the subset of input data to be drawn.
         - xlim: list, optional. A two-element list with minimum and maximum value for the x axis.
         - ylim: list, optional. A two-element list with minimum and maximum value for the y axis.
@@ -1473,7 +1592,22 @@ class SampleObject(object):
         - label_points: bool, optional. Draws a label next to each point, specifying its row index. Default: True.
         - tofile: bool or string, optional. If True, saves the output to as .png image. To change the file name, provide a string as full path of the output file. Default: False.
 
-    3) interstellar_ext
+    3) plot_photometry
+    Similar to CMD, but draws only photometric data over an existing figure.
+        Input:
+        - col: string, required. Quantity to be plotted along the x axis (e.g.: 'G' or 'G-K').
+        - mag: string, required. Quantity to be plotted along the y axis (e.g.: 'G' or 'G-K').
+        - ax: AxesSubplot, required. Axis object where the isochrones will be drawn upon.
+        - data: SampleObject instance or numpy array, required. It can be either:
+                - a MADYS instance;
+                - a 2D numpy array; the first row will be plotted on the 'col' axis, the second row on the 'mag' axis.
+        - errors: numpy array, optional. Use it only if data is a numpy array. Contains the errors associated to data (first row: errors on 'col', second row: errors on 'mag').
+        - ids: list or numpy array of integers, optional. Array of indices, selects the subset of input data to be drawn.
+        - groups: list or numpy array of integers, optional. Draws different groups of stars in different colors. The i-th element is a number, indicating to which group the i-th star belongs. Default: None.
+        - group_list: list or numpy array of strings, optional. Names of the groups defined by the 'groups' keyword. No. of elements must match the no. of groups. Default: None.
+        - label_points: bool, optional. Draws a label next to each point, specifying its row index. Default: True.
+
+    4) interstellar_ext
     Computes the reddening/extinction in a custom band, given the position of a star.
     No parameter is strictly required, but at one between RA and l, one between dec and b, one between par and d must be supplied.
         Input:
@@ -1490,7 +1624,7 @@ class SampleObject(object):
         - ext: float or numpy array. Best estimate of reddening/extinction for each star.
         - err: float or numpy array, returned only if error==True. Uncertainty on the best estimate of reddening/extinction for each star.
 
-    4) extinction
+    5) extinction
     Converts one or more B-V color excess(es) into absorption(s) in the required photometric band.
         Input:
         - ebv: float or numpy array, required. Input color excess(es).
@@ -1498,7 +1632,7 @@ class SampleObject(object):
         Output:
         - ext: float or numpy array. Absorption(s) in the band 'col'.
 
-    5) app_to_abs_mag
+    6) app_to_abs_mag
     Turns one or more apparent magnitude(s) into absolute magnitude(s).
         Input:
         - app_mag: float, list or numpy array (1D or 2D), required. Input apparent magnitude(s).
@@ -1511,13 +1645,6 @@ class SampleObject(object):
         Output:
         - abs_mag: float or numpy array. Absolute magnitudes, same shape as app_mag.
         - abs_err: float or numpy array, returned only if app_mag_error!=None and parallax_error!=None. Propagated uncertainty on abs_mag.
-
-    6) info_models
-    Prints info about available models.
-    Informs about 1) the calling sequence; 2) the customizable parameters; 3) age and mass range; 4) adopted solar metallicity and helium content; 5) literature reference.
-        Input:
-        - model: string, optional. Use it to print info about a specific model. If None, prints info about all the available models. Default: None.
-        Output: none.
 
     7) plot_2D_ext
     Plots the integrated absorption in a given region of the sky, by creating a 2D projection at constant distance of an extinction map.
@@ -1565,56 +1692,6 @@ class SampleObject(object):
         - dist: float or numpy array. Distance between (each couple of) coordinates [deg].
         - err: float or numpy array, returned only if error==True. Uncertainty on the angular distance for (each couple of) coordinates [deg].
 
-    10) plot_isochrones
-    Similar to CMD, but draws only the isochrones over an existing figure.
-        Input:
-        - col: string, required. Quantity to be plotted along the x axis (e.g.: 'G' or 'G-K')
-        - mag: string, required. Quantity to be plotted along the y axis (e.g.: 'G' or 'G-K')
-        - model: string, required. Chosen model of isochrone grids. Use SampleObject.info_models() for further information on the available models.
-        - ax: AxesSubplot, required. Axis object where the isochrones will be drawn upon.
-        - plot_ages: numpy array or bool, optional. It can be either:
-                - a numpy array containing the ages (in Myr) of the isochrones to be plotted;
-                - False, not to plot any isochrone.
-          Default: [1,3,5,10,20,30,100,200,500,1000].
-        - plot_masses: numpy array or bool, optional. It can be either:
-                - a numpy array containing the masses (in M_sun) of the tracks to be plotted.
-                - False, not to plot any track.
-          Default: 0.1,0.3,0.5,0.7,0.85,1.0,1.3,2].
-        - feh: float, optional. Selects [Fe/H] of the isochrone set. Default: None (=0.00, solar metallicity).
-        - afe: float, optional. Selects alpha enhancement [a/Fe] of the isochrone set. Default: None (=0.00).
-        - v_vcrit: float, optional. Selects rotational velocity of the isochrone set. Default: None (=0.00, non-rotating).
-        - fspot: float, optional. Selects fraction of stellar surface covered by star spots. Default: None (=0.00).
-        - B: int, optional. Set to 1 to turn on the magnetic field (only for Dartmouth models). Default: 0.
-        - he: float, optional. Selects helium fraction Y of the isochrone set. Default: None (=solar Y).    
-
-    11) plot_photometry
-    Similar to CMD, but draws only photometric data over an existing figure.
-        Input:
-        - col: string, required. Quantity to be plotted along the x axis (e.g.: 'G' or 'G-K').
-        - mag: string, required. Quantity to be plotted along the y axis (e.g.: 'G' or 'G-K').
-        - ax: AxesSubplot, required. Axis object where the isochrones will be drawn upon.
-        - data: MADYS instance or numpy array, required. It can be either:
-                - a MADYS instance;
-                - a 2D numpy array; the first row will be plotted on the 'col' axis, the second row on the 'mag' axis.
-        - errors: numpy array, optional. Use it only if data is a numpy array. Contains the errors associated to data (first row: errors on 'col', second row: errors on 'mag').
-        - ids: list or numpy array of integers, optional. Array of indices, selects the subset of input data to be drawn.
-        - groups: list or numpy array of integers, optional. Draws different groups of stars in different colors. The i-th element is a number, indicating to which group the i-th star belongs. Default: None.
-        - group_list: list or numpy array of strings, optional. Names of the groups defined by the 'groups' keyword. No. of elements must match the no. of groups. Default: None.
-        - label_points: bool, optional. Draws a label next to each point, specifying its row index. Default: True.
-
-    12) plot_iso_grid
-    Plots theoretical magnitudes in a given band for a certain model, or the magnitude difference between two models.
-    The returned magnitudes are shown as f(age, mass), i.e. as a color map in the (age, mass) grid.
-        Input:
-        - col: string, required. Quantity to be plotted in a color scale as along the x axis (e.g.: 'G' or 'G-K').
-        - model: string or 2-element list, required. If a string, it shows the data for that model. If list, it shows the difference between model[0] and model[1].
-        - reverse_xaxis: bool, optional. Reverses the x axis. Default: False.
-        - reverse_yaxis: bool, optional. Reverses the y axis. Default: False.
-        - x_log: bool, optional. Sets the mass axis scale as logarithmic. Default: False.
-        - y_log: bool, optional. Sets the age axis scale as logarithmic. Default: False.
-        - tofile: string, optional. Full path of the output .png file. Default: False (no file is saved).
-        - all the keys of load_isochrones, optional. See load_isochrones for info.
-
     """
     
     def __init__(self, file, **kwargs):
@@ -1660,7 +1737,6 @@ class SampleObject(object):
             elif id_type not in ['DR2','EDR3','other']:
                 raise ValueError("Invalid value for 'id_type'. Select one among: 'DR2', 'EDR3', 'other'.")
             get_phot = kwargs['get_phot'] if 'get_phot' in kwargs else True
-            save_phot = kwargs['save_phot'] if 'save_phot' in kwargs else True
             
             if isinstance(file,list): self.ID=Table({'ID':file})
             else: self.ID=self.read_IDs()
@@ -1720,7 +1796,7 @@ class SampleObject(object):
             
             if get_phot==True: 
                 self.print_log('info','Starting data query...')
-                self.get_phot(save_phot,simbad_query)
+                self.get_phot(simbad_query)
                 self.print_log('info','Data query: ended.')                
             elif get_phot==False:
                 if self.verbose==0: raise ValueError("verbose set to 0 but get_phot=False. Set verbose to at least 1 or get_phot to True.")
@@ -1783,7 +1859,7 @@ class SampleObject(object):
                 tt0=time.perf_counter()
                 self.ebv=self.interstellar_ext(ra=ra,dec=dec,par=par,ext_map=ext_map,logger=self.__logger)
                 tt1=time.perf_counter()
-                if self.verbose>1: print('Time for the computation of extinctions: ',tt1-tt0,' s')
+                if self.verbose>1: print('Time for the computation of extinctions: '+'{:.2f}'.format(tt1-tt0)+' s')
                 self.print_log('info','Extinction type: computed using '+ext_map+' extinction map')
             self.abs_phot,self.abs_phot_err=self.app_to_abs_mag(self.app_phot,par,app_mag_error=self.app_phot_err,parallax_error=par_err,ebv=self.ebv,filters=self.filters)
             self.print_log('info','Input photometry: apparent, converted to absolute')
@@ -2144,7 +2220,7 @@ class SampleObject(object):
                     t=f(adql)
                     data.append(t)
                     done[todo_c]=True
-                except JSONDecodeError: 
+                except (JSONDecodeError, RuntimeError):
                     continue
             n_chunks*=2
             nit+=1
@@ -2154,7 +2230,7 @@ class SampleObject(object):
         else: t=data[0]
         return t
 
-    def get_phot(self, save_phot, simbad_query):
+    def get_phot(self, simbad_query):
         data=[]
         start = time.time()
 
@@ -2174,7 +2250,6 @@ class SampleObject(object):
                     t=gaia.query(adql)        
                     data.append(t)
                     done[todo_c]=True
-#                except JSONDecodeError:
                 except (JSONDecodeError, RuntimeError):
                     continue
             n_chunks*=2
@@ -2928,12 +3003,18 @@ class SampleObject(object):
         l_r=l[0]*l[1]
         sigma=np.full((l_r,ylen),np.nan)
         chi2_min=np.full(xlen,np.nan)
+        len_sample=len(self)
             
         with np.errstate(divide='ignore',invalid='ignore'):        
             if case==3:
                 sigma0=np.full(([l[0],ylen]),np.nan)
                 sigma=np.full(([l[0],l[1],ylen]),np.nan)
                 for i in range(xlen):
+                    self.done+=1
+                    if time.perf_counter()-self.t1>60:
+                        time_left=(time.perf_counter()-self.t0)/self.done*(len_sample-self.done)
+                        print('Program running. Done: '+str(self.done)+'/'+str(len_sample)+' ('+'{:.1f}'.format(self.done/len_sample*100)+ '%). Estimated time left: '+'{:.0f}'.format(time_left)+' s.')
+                        self.t1=time.perf_counter()
                     w,=np.where(SampleObject.is_phot_good(phot[i,:],phot_err[i,:],max_phot_err=self.ph_cut))
                     if len(w)==0: 
                         self.print_log('info','All magnitudes for star '+str(i)+' have an error beyond the maximum allowed threshold ('+str(self.ph_cut)+' mag): age and mass determinations was not possible.')
@@ -3004,6 +3085,11 @@ class SampleObject(object):
             elif case==1:
                 sigma=np.full(([l[0],1,ylen]),np.nan)
                 for i in range(xlen):
+                    self.done+=1
+                    if time.perf_counter()-self.t1>60:
+                        time_left=(time.perf_counter()-self.t0)/self.done*(len_sample-self.done)
+                        print('Program running. Done: '+str(self.done)+'/'+str(len_sample)+' ('+'{:.1f}'.format(self.done/len_sample*100)+ '%). Estimated time left: '+'{:.0f}'.format(time_left)+' s.')
+                        self.t1=time.perf_counter()
                     w,=np.where(SampleObject.is_phot_good(phot[i,:],phot_err[i,:],max_phot_err=self.ph_cut))
                     if len(w)==0: 
                         self.print_log('info','All magnitudes for star '+str(i)+' have an error beyond the maximum allowed threshold ('+str(self.ph_cut)+' mag): age and mass determinations was not possible.')
@@ -3101,6 +3187,11 @@ class SampleObject(object):
 
             else:
                 for i in range(xlen):
+                    self.done+=1
+                    if time.perf_counter()-self.t1>60:
+                        time_left=(time.perf_counter()-self.t0)/self.done*(len_sample-self.done)
+                        print('Program running. Done: '+str(self.done)+'/'+str(len_sample)+' ('+'{:.1f}'.format(self.done/len_sample*100)+ '%). Estimated time left: '+'{:.0f}'.format(time_left)+' s.')
+                        self.t1=time.perf_counter()
                     w,=np.where(SampleObject.is_phot_good(phot[i,:],phot_err[i,:],max_phot_err=self.ph_cut))
                     if len(w)==0: 
                         self.print_log('info','All magnitudes for star '+str(i)+' have an error beyond the maximum allowed threshold ('+str(self.ph_cut)+' mag): age and mass determinations was not possible.')
@@ -3341,7 +3432,7 @@ class SampleObject(object):
                     else: 
                         code[i]=4
                         all_sol.append({})
-                    print(i,m_fit[i],m_min[i],m_max[i],a_fit[i],a_min[i],a_max[i])
+#                    print(i,m_fit[i],m_min[i],m_max[i],a_fit[i],a_min[i],a_max[i])
 
                 dic={'ages':a_fit, 'ages_min':a_min, 'ages_max':a_max,
                  'masses':m_fit, 'masses_min':m_min, 'masses_max':m_max,
@@ -3383,7 +3474,7 @@ class SampleObject(object):
         l=list(self.GaiaID[self.GaiaID.columns[0].name])
         dic['objects']=np.array(l)        
         
-        return params(dic)
+        return FitParams(dic)
 
     def get_params(self,model,**kwargs):
         p=['feh','he','afe','v_vcrit','fspot','B']
@@ -3406,6 +3497,9 @@ class SampleObject(object):
 
         n_st=len(self)
         
+        self.t0=time.perf_counter()
+        self.t1=time.perf_counter()
+        self.done=0
         if skip==False:
             comb=np.zeros([len(self),6],dtype=int)
             w,=np.where(cust==1)
@@ -3431,6 +3525,8 @@ class SampleObject(object):
         else:
                 res=self.get_agemass(model,**kwargs)
 
+        print('Execution ended. Elapsed time: '+'{:.0f}'.format(time.perf_counter()-self.t0)+' s.')
+        del self.t0, self.t1, self.done
         if self.verbose==3: 
             filename=os.path.join(self.path,str(self.__sample_name+'_ages_'+model+'.txt'))
             res.to_file(filename)
@@ -3524,15 +3620,15 @@ class SampleObject(object):
             mag_data,mag_err=self.abs_phot[:,m1],self.abs_phot_err[:,m1]
             
         GK=where_v(np.array(['G','K']),self.filters)
-        if 'mass_range' in kwargs: mass_r=SampleObject.get_mass_range(kwargs['mass_range'],model,dtype='mass')
-        elif np.max(GK)<len(self.filters): mass_r=SampleObject.get_mass_range(self.abs_phot[:,GK],model)
-        else: mass_r=SampleObject.get_mass_range([1e-6,1e+6],model,dtype='mass')
+        if 'mass_range' in kwargs: mass_r=IsochroneGrid.get_mass_range(kwargs['mass_range'],model,dtype='mass')
+        elif np.max(GK)<len(self.filters): mass_r=IsochroneGrid.get_mass_range(self.abs_phot[:,GK],model)
+        else: mass_r=IsochroneGrid.get_mass_range([1e-6,1e+6],model,dtype='mass')
         kwargs['mass_range']=mass_r
             
         plot_ages = np.array(kwargs['plot_ages']) if 'plot_ages' in kwargs else np.array([1,3,5,10,20,30,100,200,500,1000])
         plot_masses = np.array(kwargs['plot_masses']) if 'plot_masses' in kwargs else np.array([0.1,0.3,0.5,0.7,0.85,1.0,1.3,2])
         
-        iso=SampleObject.load_isochrones(model,self.filters,logger=self.__logger,age_range=plot_ages,**kwargs)
+        iso=IsochroneGrid(model,self.filters,age_range=plot_ages,**kwargs)
 
         col_data=col_data.ravel()
         mag_data=mag_data.ravel()
@@ -3568,10 +3664,10 @@ class SampleObject(object):
         group_names = kwargs['group_names'] if 'group_names' in kwargs else None
         tofile = kwargs['tofile'] if 'tofile' in kwargs else False
         
-        isochrones=iso[3]
-        iso_ages=iso[1]
-        iso_filters=iso[2]
-        iso_masses=iso[0]        
+        isochrones=iso.data
+        iso_ages=iso.ages
+        iso_filters=iso.filters
+        iso_masses=iso.masses
 
         #changes names of Gaia_DR2 filters to EDR3
         if 'G2' in iso_filters: 
@@ -3608,11 +3704,11 @@ class SampleObject(object):
 
         if type(plot_masses)!=bool:
             kwargs['mass_range']=plot_masses
-            trk=SampleObject.load_isochrones(model,self.filters,age_range=[np.min(plot_ages),np.max(plot_ages)],**kwargs)
-            tracks=trk[3]
-            trk_ages=trk[1]
-            trk_filters=trk[2]
-            trk_masses=trk[0]
+            trk=IsochroneGrid(model,self.filters,age_range=[np.min(plot_ages),np.max(plot_ages)],**kwargs)
+            tracks=trk.data
+            trk_ages=trk.ages
+            trk_filters=trk.filters
+            trk_masses=trk.masses
             if 'G2' in trk_filters: 
                 w=where_v(['G2'],trk_filters)
                 trk_filters[w]=['G']
@@ -3713,7 +3809,7 @@ class SampleObject(object):
     @staticmethod
     def plot_photometry(col,mag,ax,data,errors=None,ids=None,**kwargs):
 
-        if 'MADYS' in str(type(data)):
+        if 'SampleObject' in str(type(data)):
             self=data
             if '-' in col:
                 col_n=col.split('-')
@@ -4219,43 +4315,28 @@ class SampleObject(object):
     
     @staticmethod
     def ang_dist(ra1,dec1,ra2,dec2,ra1_err=0.0,dec1_err=0.0,ra2_err=0.0,dec2_err=0.0,error=False):      
+        ra1,dec1,ra2,dec2=np.ma.filled(ra1,fill_value=np.nan),np.ma.filled(dec1,fill_value=np.nan),np.ma.filled(ra2,fill_value=np.nan),np.ma.filled(dec2,fill_value=np.nan)
         try:
             ra1.unit
-            dist=2*np.arcsin(np.sqrt(np.sin((dec2-dec1)/2.)**2+np.cos(dec2)*np.cos(dec1)*np.sin((ra2-ra1)/2.)**2)).to(u.deg)
-            if error:
-                a=dec2
-                b=dec1
-                d=ra2
-                e=ra1
-                a_err=dec2_err
-                b_err=dec1_err
-                d_err=ra2_err
-                e_err=ra1_err
-                ddec2=(np.sin(a-b)-2*np.cos(b)*np.sin(a)*np.sin((d-e)/2)**2)/(2*np.sqrt(-np.cos(a)*np.cos(b)*np.sin((d-e)/2)**2+np.cos((a-b)/2)**2)*np.sqrt(np.cos(a)*np.cos(b)*np.sin((d-e)/2)**2+np.sin((a-b)/2)**2))
-                ddec1=(np.sin(a-b)-2*np.cos(a)*np.sin(b)*np.sin((d-e)/2)**2)/(2*np.sqrt(-np.cos(a)*np.cos(b)*np.sin((d-e)/2)**2+np.cos((a-b)/2)**2)*np.sqrt(np.cos(a)*np.cos(b)*np.sin((d-e)/2)**2+np.sin((a-b)/2)**2))
-                dra2=(np.cos(a)*np.cos(b)*np.sin(d-e))/(2*np.sqrt(-np.cos(a)*np.cos(b)*np.sin((-e+d)/2)**2+np.cos((a-b)/2)**2)*np.sqrt(np.cos(a)*np.cos(b)*np.sin((d-e)/2)**2+np.sin((a-b)/2)**2))
-                dra1=-(np.cos(a)*np.cos(b)*np.sin(d-e))/(2*np.sqrt(-np.cos(a)*np.cos(b)*np.sin((-e+d)/2)**2+np.cos((a-b)/2)**2)*np.sqrt(np.cos(a)*np.cos(b)*np.sin((d-e)/2)**2+np.sin((a-b)/2)**2))
-                err=np.sqrt(dra1**2*e_err**2+dra2**2*d_err**2+ddec1**2*b_err**2+ddec2**2*a_err**2)
-                return dist.value,err.value
-            else: return dist.value    
-        except:
-            dist=2*np.arcsin(np.sqrt(np.sin((dec2-dec1)/2.*u.degree)**2+np.cos(dec2*u.degree)*np.cos(dec1*u.degree)*np.sin((ra2-ra1)/2.*u.degree)**2)).to(u.deg)
-            if error:
-                a=dec2*u.degree
-                b=dec1*u.degree
-                d=ra2*u.degree
-                e=ra1*u.degree
-                a_err=dec2_err*u.degree
-                b_err=dec1_err*u.degree
-                d_err=ra2_err*u.degree
-                e_err=ra1_err*u.degree
-                ddec2=(np.sin(a-b)-2*np.cos(b)*np.sin(a)*np.sin((d-e)/2)**2)/(2*np.sqrt(-np.cos(a)*np.cos(b)*np.sin((d-e)/2)**2+np.cos((a-b)/2)**2)*np.sqrt(np.cos(a)*np.cos(b)*np.sin((d-e)/2)**2+np.sin((a-b)/2)**2))
-                ddec1=(np.sin(a-b)-2*np.cos(a)*np.sin(b)*np.sin((d-e)/2)**2)/(2*np.sqrt(-np.cos(a)*np.cos(b)*np.sin((d-e)/2)**2+np.cos((a-b)/2)**2)*np.sqrt(np.cos(a)*np.cos(b)*np.sin((d-e)/2)**2+np.sin((a-b)/2)**2))
-                dra2=(np.cos(a)*np.cos(b)*np.sin(d-e))/(2*np.sqrt(-np.cos(a)*np.cos(b)*np.sin((-e+d)/2)**2+np.cos((a-b)/2)**2)*np.sqrt(np.cos(a)*np.cos(b)*np.sin((d-e)/2)**2+np.sin((a-b)/2)**2))
-                dra1=-(np.cos(a)*np.cos(b)*np.sin(d-e))/(2*np.sqrt(-np.cos(a)*np.cos(b)*np.sin((-e+d)/2)**2+np.cos((a-b)/2)**2)*np.sqrt(np.cos(a)*np.cos(b)*np.sin((d-e)/2)**2+np.sin((a-b)/2)**2))
-                err=np.sqrt(dra1**2*e_err**2+dra2**2*d_err**2+ddec1**2*b_err**2+ddec2**2*a_err**2)
-                return dist.value,err.value
-            else: return dist.value
+        except AttributeError:
+            ra1*=u.degree
+            dec1*=u.degree
+            ra2*=u.degree
+            dec2*=u.degree
+            dec2_err*=u.degree
+            dec1_err*=u.degree
+            ra2_err*=u.degree
+            ra1_err*=u.degree
+        dist=2*np.arcsin(np.sqrt(np.sin((dec2-dec1)/2.)**2+np.cos(dec2)*np.cos(dec1)*np.sin((ra2-ra1)/2.)**2)).to(u.deg)
+        if error:
+            ra1_err,dec1_err,ra2_err,dec2_err=np.ma.filled(ra1_err,fill_value=np.nan),np.ma.filled(dec1_err,fill_value=np.nan),np.ma.filled(ra2_err,fill_value=np.nan),np.ma.filled(dec2_err,fill_value=np.nan)
+            ddec2=(np.sin(dec2-dec1)-2*np.cos(dec1)*np.sin(dec2)*np.sin((ra2-ra1)/2)**2)/(2*np.sqrt(-np.cos(dec2)*np.cos(dec1)*np.sin((ra2-ra1)/2)**2+np.cos((dec2-dec1)/2)**2)*np.sqrt(np.cos(dec2)*np.cos(dec1)*np.sin((ra2-ra1)/2)**2+np.sin((dec2-dec1)/2)**2))
+            ddec1=(np.sin(dec2-dec1)-2*np.cos(dec2)*np.sin(dec1)*np.sin((ra2-ra1)/2)**2)/(2*np.sqrt(-np.cos(dec2)*np.cos(dec1)*np.sin((ra2-ra1)/2)**2+np.cos((dec2-dec1)/2)**2)*np.sqrt(np.cos(dec2)*np.cos(dec1)*np.sin((ra2-ra1)/2)**2+np.sin((dec2-dec1)/2)**2))
+            dra2=(np.cos(dec2)*np.cos(dec1)*np.sin(ra2-ra1))/(2*np.sqrt(-np.cos(dec2)*np.cos(dec1)*np.sin((ra2-ra1)/2)**2+np.cos((dec2-dec1)/2)**2)*np.sqrt(np.cos(dec2)*np.cos(dec1)*np.sin((ra2-ra1)/2)**2+np.sin((dec2-dec1)/2)**2))
+            dra1=-(np.cos(dec2)*np.cos(dec1)*np.sin(ra2-ra1))/(2*np.sqrt(-np.cos(dec2)*np.cos(dec1)*np.sin((ra2-ra1)/2)**2+np.cos((dec2-dec1)/2)**2)*np.sqrt(np.cos(dec2)*np.cos(dec1)*np.sin((ra2-ra1)/2)**2+np.sin((dec2-dec1)/2)**2))
+            err=np.sqrt(dra1**2*e_err**2+dra2**2*ra2_err**2+ddec1**2*dec1_err**2+ddec2**2*dec2_err**2)
+            return dist.value,err.value
+        else: return dist.value
     
     ############################################# help on the class ##########################################
     
@@ -4439,12 +4520,12 @@ class SampleObject(object):
             elif ltype=='error': self.__logger.error(message)
 
                 
-class params(object):
+class FitParams(object):
 
     """
-    Class: madys.params
+    Class: madys.FitParams
 
-    Class that contains the results of an analysis performed upon a sample object.
+    Class that contains the results of an analysis performed upon a SampleObject instance.
     Created when get_params() is executed upon a sample object.
     It can be accessed like a dictionary.
 
@@ -4482,9 +4563,49 @@ class params(object):
         - iso_age: numpy array. Values of all the age steps of the isochrone grid.
         - model: string. Name of the selected isochrone model.
 
+    Built-in methods:
+
+    1) __getitem__
+    FitParam instances can be indexed like pandas dataframes, i.e. with a numpy array/list/int or with a string containing the column name.
+    In the former case, the sample is cut according to the selected indices.
+    In the latter case, the corresponding key is returned.    
+    See documentation for additional details.
+
+    2) __setitem__
+    FitParam instances support item assignment.
+    See documentation for additional details.
+
+    3) __len__
+    The len of a sampleObject is equal to the number of objects in the original list.
+
+    4) __repr__
+    5) __str__
+
+
     Methods:
 
-    1) plot_maps
+    1) get_params
+    Estimates age, mass and (optionally) radius, Teff and logg for each object in the sample by comparison with isochrone grids.
+        Input:
+        - model: string, required. Selected isochrone grid model. Use IsochroneSet.info_models() for further information on available models.
+        - mass_range: list, optional. A two-element list with minimum and maximum mass within the grid (M_sun). Default: not set; the mass_range is the intersection between a rough mass estimate based on G magnitudes and the dynamical range of the model itself.
+
+    Methods:
+
+    1) empty_like
+    Starting from an existing instance, creates an empty FitParams instance with a given dimension.
+        Input:
+        - n: int, required. len() of the new instance.
+        Output:
+        - new: an empty FitParams instance.
+
+    2) to_file
+    Saves the instance in a .csv file.
+        Input:
+        - filename: string, required. Full path of output file.
+        Output: besides the .csv, no output is returned.
+    
+    3) plot_maps
     Plots (reduced chi2 / weight) maps of one or more stars as a f(mass,age) color map.
         Input:
         - indices: list, optional. Indices of the stars of interest, ordered as in the original list. Default: numpy.arange(n_stars), i.e. all stars.
@@ -4497,8 +4618,10 @@ class params(object):
     def __init__(self,dic):
         for i in dic.keys():
             self.__dict__[i]=dic[i]
+            
     def __len__(self):
         return len(self.ages)
+    
     def __getitem__(self,i):
         new=copy.deepcopy(self)
         if isinstance(i,str): return self.__dict__[i]
@@ -4511,6 +4634,7 @@ class params(object):
             except TypeError:
                 continue
         return new
+    
     def __setitem__(self,i,other):
         self.ages[i]=other.ages
         
@@ -4526,6 +4650,10 @@ class params(object):
             elif j=='iso_mass': self.__dict__[j]=other.__dict__[j]
             elif isinstance(self.__dict__[j],np.ndarray):
                 self.__dict__[j][i]=other.__dict__[j]
+
+    #def __str__(self):
+
+    #def __repr__(self):
                 
     def empty_like(self,n):
         new=copy.deepcopy(self)
@@ -4662,3 +4790,4 @@ class params(object):
             plt.show()
             p+=1
         return
+
