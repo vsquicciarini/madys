@@ -26,7 +26,9 @@ cd madys/
 python setup.py install
 ```
 
-Then download the latest version of the isochrones from zenodo, using [zenodo_get](https://github.com/dvolgyes/zenodo_get) (N.B. you will need at least 4.5GB of space for these files):
+Then download the latest version of the isochrones and extinction map from zenodo, using [zenodo_get](https://github.com/dvolgyes/zenodo_get) 
+
+(N.B. you will need at least 4.5GB of space for these files):
 ```sh
 pip install zenodo-get
 zenodo_get RECORD_ID_OR_DOI
