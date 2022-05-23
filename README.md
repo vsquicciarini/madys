@@ -17,3 +17,52 @@ This package relies on usual packages for data science and astronomy: [numpy](ht
 
 In addition, it also requires [astroquery](https://github.com/astropy/astroquery/) and [TAP Gaia Query](https://github.com/mfouesneau/tap).
 
+Installation:
+------------
+
+The current repository can be downloaded from zenodo, using [zenodo_get](https://github.com/dvolgyes/zenodo_get)
+
+```sh
+pip install zenodo-get
+zenodo_get RECORD_ID_OR_DOI
+tar -xvf madys-0.1.0.tar.gz
+```
+
+Note that the distro includes the latest version of the isochrones and extinction map, and therefore at least 4.5GB of space will be needed.
+
+Once the download is complete, the package can be installed using the setup.py file
+
+``` sh
+cd madys-0.1.0
+python3 setup.py install
+```
+
+Examples
+--------
+
+The package is not fully documented, but [examples]() are provided.
+
+If you find a bug or want to suggest improvements, please create a [ticket](https://github.com/vsquicciarini/madys/issues)
+
+
+Recent papers using `MADYS`:
+-----------------------
+* `A scaled-up planetary system around a supernova progenitor`, [Squicciarini et al. 2022 arXiv220502279S](https://ui.adsabs.harvard.edu/abs/2022arXiv220502279S/abstract)
+* `A wide-orbit giant planet in the high-mass b Centauri binary system`, [Janson et al. 2022 2021Natur.600..231J](https://ui.adsabs.harvard.edu/abs/2021Natur.600..231J/abstract)
+* `Unveiling the star formation history of the Upper Scorpius association through its kinematics`, [Squicciarini et al. 2022 2021MNRAS.507.1381S](https://ui.adsabs.harvard.edu/abs/2021MNRAS.507.1381S/abstract)
+* `New binaries from the SHINE survey`, [Bonavita et al. 2021arXiv210313706B](https://ui.adsabs.harvard.edu/abs/2021arXiv210313706B/abstract)
+* `BEAST begins: sample characteristics and survey performance of the B-star Exoplanet Abundance Study`,[Janson, Squicciarini et al. 2021A&A...646A.164J](https://ui.adsabs.harvard.edu/abs/2021A%26A...646A.164J/abstract)
+
+Author and contributors
+-----------------------
+[Vito Squicciarini](https://orcid.org/0000-0002-3122-6809), University of Padova, IT
+
+[Mariangela Bonavita](https://orcid.org/0000-0002-7520-8389), The Open University, UK
+
+We are grateful for your effort, and hope that these tools will contribute to your scientific work and discoveries. Please feel free to report any bug or possible improvement to the author(s).
+
+Attribution
+-----------------------
+Please cite [Squicciarini & Bonavita 2022]() whenever you publish results obtained with the Exo-DMC.
+Astrophysics Source Code Library reference [ascl:XXXX.XXXX]()
+
