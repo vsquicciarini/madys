@@ -40,7 +40,9 @@ python3 setup.py install
 Examples
 --------
 
-The package is not fully documented, but [examples]() are provided.
+The package is fully documented and a detailed description is provided in [Squicciarini & Bonavita 2022]()
+
+However, we recommend you check out the [examples]() provided for a better understanding of its usage.
 
 If you find a bug or want to suggest improvements, please create a [ticket](https://github.com/vsquicciarini/madys/issues)
 
