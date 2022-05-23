@@ -52,7 +52,7 @@ Examples
 
 The package is not fully documented, but [examples]() are provided.
 
-If you find a bug or want to suggest improvements, please create a [ticket]()
+If you find a bug or want to suggest improvements, please create a [ticket](https://github.com/vsquicciarini/madys/issues)
 
 
 Recent papers using `MADYS`: 
