@@ -49,6 +49,9 @@ If you find a bug or want to suggest improvements, please create a [ticket](http
 
 Recent papers using `MADYS`:
 -----------------------
+
+MADYS has already been used, in its various preliminary forms, for several publications, including: 
+
 * `A scaled-up planetary system around a supernova progenitor`, [Squicciarini et al. 2022 arXiv220502279S](https://ui.adsabs.harvard.edu/abs/2022arXiv220502279S/abstract)
 * `A wide-orbit giant planet in the high-mass b Centauri binary system`, [Janson et al. 2022 2021Natur.600..231J](https://ui.adsabs.harvard.edu/abs/2021Natur.600..231J/abstract)
 * `Unveiling the star formation history of the Upper Scorpius association through its kinematics`, [Squicciarini et al. 2022 2021MNRAS.507.1381S](https://ui.adsabs.harvard.edu/abs/2021MNRAS.507.1381S/abstract)
