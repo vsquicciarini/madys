@@ -1,7 +1,0 @@
-Model name: Geneva
-Reference: Haemmerlé et al., A&A 624, A137 (2019)
-Solar metallicity: Z=0.014
-Helium abundance: Y=0.266
-Mass range: [0.8,120] M_sun
-Age range: [0.1 Myr, 100 Myr]
-Filters: Bessell (U, B, V, R, I), 2MASS (J, H, K), Gaia DR2 (G, Gbp, Grp)

@@ -1,7 +1,0 @@
-Model name: SB12
-Reference: Spiegel & Burrows, ApJ, 745, 174 (2012)
-Solar metallicity: ?
-Helium abundance: ?
-Mass range: [1,10] M_jup = [0.001, 0.01] M_sun
-Age range: [1 Myr, 100 Myr]
-Filters: Bessell (J, H, K, L', M, N)

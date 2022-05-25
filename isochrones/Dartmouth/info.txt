@@ -1,8 +1,0 @@
-Model name: Dartmouth
-Reference: Feiden, A&A 593, A99 (2016)
-Solar metallicity: Z=0.01876
-Helium abundance: Y=0.2755
-Mass range: [0.105,1.05] M_sun
-Age range: [1 Myr, 10 Gyr]
-Filters: 2MASS (J, H, K), Gaia DR2 (G, Gbp, Grp), Bessell (B, V, R, I)
-Models: non-magnetic, magnetic

@@ -1,8 +1,0 @@
-Model name: PM13
-Reference: Pecaut & Mamajek, ApJS, 208, 9 (2013)
-Version: 2021.03.02
-Solar metallicity: -
-Helium abundance: -
-Mass range: [0.075,27] M_sun
-Age range: -
-Filters: Bessell (U, B, V, R, I), 2MASS (J, H, Ks), Gaia DR2 (G, Gbp, Grp), WISE (W1, W2, W3, W4)
