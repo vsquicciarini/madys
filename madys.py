@@ -1474,6 +1474,7 @@ class SampleObject(object):
         - a list of IDs. Gaia IDs must begin by 'Gaia DR2 ' or 'Gaia EDR3'.
     - file (2): astropy Table, required. Table containing target names and photometric data. See documentation for examples of valid inputs.
     - mock_file (2): string, required if verbose>=1. Full path of the non-existing file where the Table would come from if in mode 1. Used to extract the working path and to name the outputs after it.
+    - ext_map: string, required. Extinction map used. Select one among 'leike', 'stilism' and None.
     - surveys (1): list, optional. List of surveys where to extract photometric data from. Default: ['gaia','2mass'].
     - id_type (1): string, required. Type of IDs provided: must be one among 'DR2','EDR3' or 'other'.
     - get_phot (1): bool or string, optional. Set to:
@@ -1482,7 +1483,6 @@ class SampleObject(object):
             -string: full path of the file to load photometric data from. The file should come from a previous execution.
       Default: True.
     - simbad_query (1): bool, optional. Set to True to query objects without a 2MASS cross-match in SIMBAD. It can significantly slow down data queries. Default: True if n<100, False otherwise.
-    - ext_map: string, optional. Extinction map used between 'leike' or 'stilism'. Default: 'leike'.
     - ebv: float or numpy array, optional. If set, uses the i-th element of the array as E(B-V) for the i-th star. Default: not set, computes E(B-V) through the map instead.
     - max_tmass_q (1): worst 2MASS photometric flag ('ph_qual') still considered reliable. Possible values, ordered by decreasing quality: 'A','B','C','D','E','F','U','X'. For a given choice, excludes all measurements with a lower quality flag. Default: 'A'.
     - max_wise_q (1): worst ALLWISE photometric flag ('ph_qual2') still considered reliable. Possible values, ordered by decreasing quality: 'A','B','C','U','Z','X'. For a given choice, excludes all measurements with a lower quality flag. Default: 'A'.
