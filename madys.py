@@ -224,6 +224,17 @@ def nansumwrapper(a, axis=None,**kwargs):
 
     return sm
     
+def repr_table(table):
+
+    """Returns the correct __repr__ of an astropy Table."""
+    
+    aa={}
+    for col in list(table.columns): 
+        aa[col]=table[col].data
+    r=repr(aa)
+    r=r.replace('array','np.array')
+    return "Table("+r+")"
+
     
 class IsochroneGrid(object):
 
@@ -309,6 +320,9 @@ class IsochroneGrid(object):
         - reverse_yaxis: bool, optional. Reverses the y axis. Default: False.
         - x_log: bool, optional. Sets the mass axis scale as logarithmic. Default: False.
         - y_log: bool, optional. Sets the age axis scale as logarithmic. Default: False.
+        - levels: list, optional. Contour levels to be overplotted on the map. Default: not set.
+        - fontsize: string, optional. Size of ticks, labels of axes, contours, etc. Default: 15.
+        - cmap: string, optional. Color map of f(age,mass). Default: 'viridis_r'.
         - tofile: string, optional. Full path of the output .png file. Default: False (no file is saved).
         - all valid keywords for IsochroneGrid().
 
@@ -508,9 +522,8 @@ class IsochroneGrid(object):
     def __repr__(self):
         s="IsochroneGrid('"+self.model+"', "+repr(list(self.filters))+", "
         kwargs=['mass_range','age_range','n_steps','_IsochroneGrid__fill_value','feh','B','afe','v_vcrit','fspot','he']
-        default=[[0.1,1.4],[1,1000],[1000,500],np.nan,0.0,0,0.0,0.0,0.0,-99]
+#        default=[[0.1,1.4],[1,1000],[1000,500],np.nan,0.0,0,0.0,0.0,0.0,-99]
         for i in kwargs:
-            ##CONTINUA CON TIPO DEFAULT==TIPO I E DEFAULT==I (NON STAMPA LA KEYWORD CIOè)
             if isinstance(self.__dict__[i],list): 
                 l=[str(j) for j in self.__dict__[i]]
                 s+=i+'=['+','.join(l)+']'
@@ -1224,19 +1237,33 @@ class IsochroneGrid(object):
                 ia_min=i
             else: ia_min=0
 
+        fontsize=kwargs['fontsize'] if 'fontsize' in kwargs else 15
+        cmap=kwargs['cmap'] if 'cmap' in kwargs else 'viridis_r'
+        
         fig, ax = plt.subplots(figsize=(12,12))
-        ax.contour(iso_mass[im_min:im_max], iso_age[ia_min:ia_max], (data[im_min:im_max,ia_min:ia_max]).T, 100, cmap='viridis_r')
-        CS = ax.contourf(iso_mass[im_min:im_max], iso_age[ia_min:ia_max], (data[im_min:im_max,ia_min:ia_max]).T, 100, cmap='viridis_r')
-        cbar = fig.colorbar(CS)
-        ax.set_xlabel(r'mass [$M_\odot$]',fontsize=15)
-        ax.set_ylabel('age [Myr]',fontsize=15)
-        cbar.ax.set_ylabel(col,fontsize=15)
+        ax.contour(iso_mass[im_min:im_max], iso_age[ia_min:ia_max], (data[im_min:im_max,ia_min:ia_max]).T, 100, cmap=cmap)
+        CS = ax.contourf(iso_mass[im_min:im_max], iso_age[ia_min:ia_max], (data[im_min:im_max,ia_min:ia_max]).T, 100, cmap=cmap)
+
+        divider = make_axes_locatable(ax)
+        cax = divider.append_axes("right", size="5%", pad=0.05)
+        cbar = fig.colorbar(CS, cax=cax)
+
+        ax.set_xlabel(r'mass [$M_\odot$]',fontsize=fontsize)
+        ax.set_ylabel('age [Myr]',fontsize=fontsize)
+        cbar.ax.set_ylabel(col,fontsize=fontsize)
+        cbar.ax.tick_params(labelsize=fontsize)
+        ax.xaxis.set_tick_params(labelsize=fontsize)
+        ax.yaxis.set_tick_params(labelsize=fontsize)
         if reverse_xaxis: ax.invert_xaxis()
         if reverse_yaxis: ax.invert_yaxis()
         if 'x_log' in kwargs: 
             if kwargs['x_log']: ax.set_xscale('log')
         if 'y_log' in kwargs: 
             if kwargs['y_log']: ax.set_yscale('log')
+        if 'levels' in kwargs: 
+            CS2=ax.contour(CS,levels=kwargs['levels'], colors='white')
+            ax.clabel(CS2, CS2.levels, fmt='%1.2f',fontsize=fontsize)            
+            
         if type(tofile)!=type(None): plt.savefig(tofile)
         plt.show()
     
@@ -1653,6 +1680,9 @@ class SampleObject(object):
     
     def __init__(self, file, **kwargs):
         
+        self.__input = copy.deepcopy(kwargs)
+        self.__input['file']=file
+        
         self.verbose = kwargs['verbose'] if 'verbose' in kwargs else 2  
         
         if self.verbose>0:
@@ -1672,6 +1702,7 @@ class SampleObject(object):
 
         if isinstance(file,Table):            
             self.mode=2
+            self.phot_table = file
             col0=file.colnames
             kin=np.array(['parallax','parallax_err','ra','dec','id','ID','source_id','object_name'])
             col=np.setdiff1d(np.unique(np.char.replace(col0,'_err','')),kin)
@@ -1876,24 +1907,99 @@ class SampleObject(object):
     
     def __len__(self):
         return len(self.par)
-    
+
     def __repr__(self):
-        l=list(self.GaiaID[self.GaiaID.columns[0].name])
-        try:
-            path=self.path
-        except AttributeError:
-            path='not set'
+
         if self.mode==1:
-            return 'MADYS(path: %s, mode: %s, IDs: %s, id_type: %s)' % (path, self.mode, l, self.__id_type)
-        else:
-            return 'MADYS(path: %s, mode: %s, IDs: %s)' % (path, self.mode, l)
-  
-    def __str__(self):        
-        try:
-            path=self.path
-        except AttributeError:
-            path='not set'
-        return 'path: %s ; mode: %s' % (path, self.mode)       
+            s='SampleObject('
+            l=self._SampleObject__input['file']
+            if isinstance(l,list):
+                s+="['"+"','".join(l)+"'], "            
+            else:
+                s+="'"+l+"', "
+                s=s.replace('\\','/')
+            for i in self._SampleObject__input:
+                if i=='file': continue
+                elif i=='mock_file':
+                    s+=i+'='+"'"+self._SampleObject__input[i]+"'"
+                    s=s.replace('\\','/')
+                elif isinstance(self._SampleObject__input[i],str):
+                    s+=i+"='"+str(self._SampleObject__input[i])+"'"
+                elif isinstance(self._SampleObject__input[i],list): 
+                    l=[str(j) for j in self._SampleObject__input[i]]
+                    s+=i+'=['+','.join(l)+']'
+                elif isinstance(self._SampleObject__input[i],np.ndarray): s+=i+'=np.'+np.array_repr(self._SampleObject__input[i])
+                else: s+=i+'='+str(self._SampleObject__input[i])
+                s+=', '
+            if s.endswith(', '): s=s[:-2]
+            s+=')'
+            s=s.replace('=nan','=np.nan')  
+            return s
+        elif self.mode==2:
+            s='SampleObject('+repr_table(self.phot_table)+','
+            for i in self._SampleObject__input:
+                if isinstance(self._SampleObject__input[i],list): 
+                    l=[str(j) for j in self._SampleObject__input[i]]
+                    s+=i+'=['+','.join(l)+']'
+                elif isinstance(self._SampleObject__input[i],np.ndarray): s+=i+'=np.'+np.array_repr(self._SampleObject__input[i])
+                elif i=='file': continue
+                elif i=='mock_file':
+                    s+=i+'='+"'"+self._SampleObject__input[i]+"'"
+                    s=s.replace('\\','/')
+                else: s+=i+'='+str(self._SampleObject__input[i])
+                s+=', '
+            if s.endswith(', '): s=s[:-2]
+            s+=')'
+            s=s.replace('=nan','=np.nan')  
+            return s        
+        else: raise ValueError('Has the value for self.mode been modified? Restore it to 1 or 2.')
+
+    def __str__(self):
+
+        if self.mode==1:
+            s='A SampleObject instance, mode 1 \n'
+            l=self._SampleObject__input['file']
+            if isinstance(l,list):
+                s+='Input IDs: '+"['"+"','".join(l)+"'] \n"            
+            else:
+                s+="Input file: '"+l+"' \n"
+                s=s.replace('\\','/')
+            s+='Settings: '
+            for i in self._SampleObject__input:
+                if i=='file': continue
+                elif i=='mock_file':
+                    s+=i+'='+"'"+self._SampleObject__input[i]+"'"
+                    s=s.replace('\\','/')
+                elif isinstance(self._SampleObject__input[i],str):
+                    s+=i+"='"+str(self._SampleObject__input[i])+"'"
+                elif isinstance(self._SampleObject__input[i],list): 
+                    l=[str(j) for j in self._SampleObject__input[i]]
+                    s+=i+'=['+','.join(l)+']'
+                elif isinstance(self._SampleObject__input[i],np.ndarray): s+=i+'=np.'+np.array_repr(self._SampleObject__input[i])
+                else: s+=i+'='+str(self._SampleObject__input[i])
+                s+=', '
+            if s.endswith(', '): s=s[:-2]
+            s=s.replace('=nan','=np.nan')  
+            return s
+        elif self.mode==2:
+            s='A SampleObject instance, mode 2 \n'
+            s+='Input data: '+repr_table(self.phot_table)+' \n'
+            s+='Settings: '
+            for i in self._SampleObject__input:
+                if isinstance(self._SampleObject__input[i],list): 
+                    l=[str(j) for j in self._SampleObject__input[i]]
+                    s+=i+'=['+','.join(l)+']'
+                elif isinstance(self._SampleObject__input[i],np.ndarray): s+=i+'=np.'+np.array_repr(self._SampleObject__input[i])
+                elif i=='file': continue
+                elif i=='mock_file':
+                    s+=i+'='+"'"+self._SampleObject__input[i]+"'"
+                    s=s.replace('\\','/')
+                else: s+=i+'='+str(self._SampleObject__input[i])
+                s+=', '
+            if s.endswith(', '): s=s[:-2]
+            s=s.replace('=nan','=np.nan')  
+            return s        
+        else: raise ValueError('Has the value for self.mode been modified? Restore it to 1 or 2.')
     
     
     ############################################# catalog queries ############################################
@@ -4655,4 +4761,3 @@ class FitParams(object):
             plt.show()
             p+=1
         return
-
