@@ -959,39 +959,39 @@ class IsochroneGrid(object):
         return {'feh':feh,'he':he,'afe':afe,'v_vcrit':v_vcrit,'fspot':fspot,'B':B}
     
     ############################################# plotting functions #########################################
-    
+
+    @staticmethod
+    def _filter_model(model,col):
+        if model in ['bt_settl','starevol','spots','dartmouth','ames_cond',
+                     'ames_dusty','bt_nextgen','nextgen','bhac15','geneva',
+                     'nextgen','pm13']:
+            if col=='G': col2='G2'
+            elif col=='Gbp': col2='Gbp2'
+            elif col=='Grp': col2='Grp2'
+            elif col=='G-Gbp': col2='G2-Gbp2'
+            elif col=='Gbp-G': col2='Gbp2-G2'
+            elif col=='G-Grp': col2='G2-Gbp2'
+            elif col=='Grp-G': col2='Grp2-G2'
+            elif col=='Gbp-Grp': col2='Gbp2-Grp2'
+            elif col=='Grp-Gbp': col2='Grp2-Gbp2'
+            elif 'G-' in col: col2=col.replace('G-','G2-')            
+            elif col[-2:]=='-G': col2=col.replace('-G','-G2')
+            else: col2=col        
+        else: col2=col
+        return col2
     
     @classmethod
     def plot_isochrones(cls,col,mag,model,ax,**kwargs):
-
-        def _filter_model(model,col):
-            if model in ['bt_settl','starevol','spots','dartmouth','ames_cond',
-                         'ames_dusty','bt_nextgen','nextgen','bhac15','geneva',
-                         'nextgen','pm13']:
-                if col=='G': col2='G2'
-                elif col=='Gbp': col2='Gbp2'
-                elif col=='Grp': col2='Grp2'
-                elif col=='G-Gbp': col2='G2-Gbp2'
-                elif col=='Gbp-G': col2='Gbp2-G2'
-                elif col=='G-Grp': col2='G2-Gbp2'
-                elif col=='Grp-G': col2='Grp2-G2'
-                elif col=='Gbp-Grp': col2='Gbp2-Grp2'
-                elif col=='Grp-Gbp': col2='Grp2-Gbp2'
-                elif 'G-' in col: col2=col.replace('G-','G2-')            
-                elif col[-2:]=='-G': col2=col.replace('-G','-G2')
-                else: col2=col        
-            else: col2=col
-            return col2
         
         filters=[]
         
         if '-' in col:
-            col_n=_filter_model(model,col).split('-')
+            col_n=IsochroneGrid._filter_model(model,col).split('-')
             filters.extend(col_n)
         else:
             filters.append(col)
         if '-' in mag:
-            mag_n=_filter_model(model,mag).split('-')
+            mag_n=IsochroneGrid._filter_model(model,mag).split('-')
             filters.extend(mag_n)
         else:
             filters.append(mag)
@@ -1555,6 +1555,7 @@ class SampleObject(object):
 
     2) CMD
     Draws a color-magnitude diagram (CMD) containing both the measured photometry and a set of theoretical isochrones.
+    It's a combination of IsochroneGrid.plot_isochrones() and SampleObject.plot_photometry().
         Input:
         - col: string, required. Quantity to be plotted along the x axis (e.g.: 'G' or 'G-K')
         - mag: string, required. Quantity to be plotted along the y axis (e.g.: 'G' or 'G-K')
@@ -1574,6 +1575,7 @@ class SampleObject(object):
         - groups: list or numpy array of integers, optional. Draws different groups of stars in different colors. The i-th element is a number, indicating to which group the i-th star belongs. Default: None.
         - group_list: list or numpy array of strings, optional. Names of the groups defined by the 'groups' keyword. No. of elements must match the no. of groups. Default: None.
         - label_points: bool, optional. Draws a label next to each point, specifying its row index. Default: True.
+        - figsize: tuple or list, optional. Figure size. Default: (16,12).
         - tofile: bool or string, optional. If True, saves the output to as .png image. To change the file name, provide a string as full path of the output file. Default: False.
 
     3) plot_photometry
@@ -1590,6 +1592,10 @@ class SampleObject(object):
         - groups: list or numpy array of integers, optional. Draws different groups of stars in different colors. The i-th element is a number, indicating to which group the i-th star belongs. Default: None.
         - group_list: list or numpy array of strings, optional. Names of the groups defined by the 'groups' keyword. No. of elements must match the no. of groups. Default: None.
         - label_points: bool, optional. Draws a label next to each point, specifying its row index. Default: True.
+        - return_points: bool, optional. If True, returns the plotted points as arrays. Default: False.
+        Output:
+        - x: numpy array. x coordinates of the plotted points. Only returned if return_points=True.
+        - y: numpy array. y coordinates of the plotted points. Only returned if return_points=True.
 
     4) interstellar_ext
     Computes the reddening/extinction in a custom band, given the position of a star.
@@ -1678,10 +1684,13 @@ class SampleObject(object):
 
     """
     
-    def __init__(self, file, **kwargs):
+    def __init__(self, file, ext_map, **kwargs):
         
         self.__input = copy.deepcopy(kwargs)
         self.__input['file']=file
+        self.__input['ext_map']=ext_map
+        if ext_map not in [None,'leike','stilism']: raise ValueError("'ext_map' must be set to 'leike', 'stilism' or None.")
+        SampleObject._download_ext_map(ext_map)
         
         self.verbose = kwargs['verbose'] if 'verbose' in kwargs else 2  
         
@@ -1749,8 +1758,6 @@ class SampleObject(object):
             self.__logger = SampleObject._setup_custom_logger('madys',self.log_file)
         else: self.__logger = None
             
-        ext_map = kwargs['ext_map'] if 'ext_map' in kwargs else 'leike'
-        
         if isinstance(file,Table):
             self.abs_phot=np.full([nst,n],np.nan)
             self.abs_phot_err=np.full([nst,n],np.nan)
@@ -1770,11 +1777,15 @@ class SampleObject(object):
             elif ('ra' in col0) & ('dec' in col0) & ('parallax' in col0):
                 self.par=file['parallax']
                 self.ebv=SampleObject.interstellar_ext(ra=file['ra'],dec=file['dec'],par=self.par,ext_map=ext_map,logger=self.__logger)
-                self._print_log('info','Extinction type: computed using '+ext_map+' extinction map')
+                if type(ext_map)==type(None):
+                    self._print_log('info',"Extinction neglected, because 'ext_map' was set to None.")
+                else: self._print_log('info','Extinction type: computed using '+ext_map+' extinction map')
             elif ('l' in col0) & ('b' in col0) & ('parallax' in col0):
                 self.par=file['parallax']
                 self.ebv=SampleObject.interstellar_ext(l=file['l'],b=file['b'],par=self.par,ext_map=ext_map,logger=self.__logger)
-                self._print_log('info','Extinction type: computed using '+ext_map+' extinction map')
+                if type(ext_map)==type(None):
+                    self._print_log('info',"Extinction neglected, because 'ext_map' was set to None.")
+                else: self._print_log('info','Extinction type: computed using '+ext_map+' extinction map')
             if 'parallax' in col0:
                 self.par=file['parallax']
                 self.par_err=file['parallax_err']
@@ -1793,7 +1804,7 @@ class SampleObject(object):
             
             if get_phot==True: 
                 self._print_log('info','Starting data query...')
-                self.get_phot(simbad_query)
+                self._get_phot(simbad_query)
                 self._print_log('info','Data query: ended.')                
             elif get_phot==False:
                 if self.verbose==0: raise ValueError("verbose set to 0 but get_phot=False. Set verbose to at least 1 or get_phot to True.")
@@ -1863,7 +1874,9 @@ class SampleObject(object):
                     self.ebv=self.interstellar_ext(ra=ra,dec=dec,par=par,ext_map=ext_map,logger=self.__logger)
                     tt1=time.perf_counter()
                     if self.verbose>1: print('Time for the computation of extinctions: '+'{:.2f}'.format(tt1-tt0)+' s')
-                    self._print_log('info','Extinction type: computed using '+ext_map+' extinction map')
+                    if type(ext_map)==type(None):
+                        self._print_log('info',"Extinction neglected, because 'ext_map' was set to None.")
+                    else: self._print_log('info','Extinction type: computed using '+ext_map+' extinction map')
                     self.phot_table['ebv']=self.ebv
                 else:
                     self.ebv=self.phot_table['ebv']
@@ -1918,8 +1931,15 @@ class SampleObject(object):
             else:
                 s+="'"+l+"', "
                 s=s.replace('\\','/')
+            
+            ext_map=self._SampleObject__input['ext_map']
+            if type(ext_map)==type(None): ext_map_str=str(ext_map)
+            else: ext_map_str="'"+ext_map+"'"
+            s+=ext_map_str+', '
+                
             for i in self._SampleObject__input:
                 if i=='file': continue
+                elif i=='ext_map': continue
                 elif i=='mock_file':
                     s+=i+'='+"'"+self._SampleObject__input[i]+"'"
                     s=s.replace('\\','/')
@@ -1936,7 +1956,13 @@ class SampleObject(object):
             s=s.replace('=nan','=np.nan')  
             return s
         elif self.mode==2:
-            s='SampleObject('+repr_table(self.phot_table)+','
+            s='SampleObject('+repr_table(self.phot_table)+', '
+            
+            ext_map=self._SampleObject__input['ext_map']
+            if type(ext_map)==type(None): ext_map_str=str(ext_map)
+            else: ext_map_str="'"+ext_map+"'"
+            s+=ext_map_str+', '
+            
             for i in self._SampleObject__input:
                 if isinstance(self._SampleObject__input[i],list): 
                     l=[str(j) for j in self._SampleObject__input[i]]
@@ -1946,6 +1972,7 @@ class SampleObject(object):
                 elif i=='mock_file':
                     s+=i+'='+"'"+self._SampleObject__input[i]+"'"
                     s=s.replace('\\','/')
+                elif i=='ext_map': continue
                 else: s+=i+'='+str(self._SampleObject__input[i])
                 s+=', '
             if s.endswith(', '): s=s[:-2]
@@ -2318,7 +2345,7 @@ class SampleObject(object):
         else: t=data[0]
         return t
 
-    def get_phot(self, simbad_query):
+    def _get_phot(self, simbad_query):
         data=[]
         start = time.time()
 
@@ -3582,226 +3609,34 @@ class SampleObject(object):
     
     def CMD(self,col,mag,model,ids=None,**kwargs):
 
-        def _filter_model(model,col):
-            if model in ['bt_settl','starevol','spots','dartmouth','ames_cond',
-                         'ames_dusty','bt_nextgen','nextgen','bhac15','geneva',
-                         'nextgen','pm13']:
-                if col=='G': col2='G2'
-                elif col=='Gbp': col2='Gbp2'
-                elif col=='Grp': col2='Grp2'
-                elif col=='G-Gbp': col2='G2-Gbp2'
-                elif col=='Gbp-G': col2='Gbp2-G2'
-                elif col=='G-Grp': col2='G2-Gbp2'
-                elif col=='Grp-G': col2='Grp2-G2'
-                elif col=='Gbp-Grp': col2='Gbp2-Grp2'
-                elif col=='Grp-Gbp': col2='Grp2-Gbp2'
-                elif 'G-' in col: col2=col.replace('G-','G2-')            
-                elif col[-2:]=='-G': col2=col.replace('-G','-G2')
-                else: col2=col        
-            else: col2=col
-            return col2
-        
-        if '-' in col:
-            col_n=_filter_model(model,col).split('-')
-            c1,=np.where(self.filters==col_n[0])
-            c2,=np.where(self.filters==col_n[1])
-            col1,col1_err=self.abs_phot[:,c1],self.app_phot_err[:,c1]
-            col2,col2_err=self.abs_phot[:,c2],self.app_phot_err[:,c2]
-            col_data=col1-col2
-            col_err=np.sqrt(col1_err**2+col2_err**2)
-        else:
-            c1,=np.where(self.filters==_filter_model(model,col))
-            col_data,col_err=self.abs_phot[:,c1],self.abs_phot_err[:,c1]
-        if '-' in mag:
-            mag_n=_filter_model(model,mag).split('-')
-            m1,=np.where(self.filters==mag_n[0])
-            m2,=np.where(self.filters==mag_n[1])
-            mag1,mag1_err=self.abs_phot[:,m1],self.app_phot_err[:,m1]
-            mag2,mag2_err=self.abs_phot[:,m2],self.app_phot_err[:,m2]
-            mag_data=mag1-mag2
-            mag_err=np.sqrt(mag1_err**2+mag2_err**2)
-        else:
-            m1,=np.where(self.filters==_filter_model(model,mag))
-            mag_data,mag_err=self.abs_phot[:,m1],self.abs_phot_err[:,m1]
-            
-        GK=where_v(np.array(['G','K']),self.filters)
-        if 'mass_range' in kwargs: mass_r=IsochroneGrid._get_mass_range(kwargs['mass_range'],model,dtype='mass')
-        elif np.max(GK)<len(self.filters): mass_r=IsochroneGrid._get_mass_range(self.abs_phot[:,GK],model)
-        else: mass_r=IsochroneGrid._get_mass_range([1e-6,1e+6],model,dtype='mass')
-        kwargs['mass_range']=mass_r
-            
-        plot_ages = np.array(kwargs['plot_ages']) if 'plot_ages' in kwargs else np.array([1,3,5,10,20,30,100,200,500,1000])
-        plot_masses = np.array(kwargs['plot_masses']) if 'plot_masses' in kwargs else np.array([0.1,0.3,0.5,0.7,0.85,1.0,1.3,2])
-        
-        iso=IsochroneGrid(model,self.filters,age_range=plot_ages,**kwargs)
+        figsize = kwargs['figsize'] if 'figsize' in kwargs else (16,12)
 
-        col_data=col_data.ravel()
-        mag_data=mag_data.ravel()
-        col_err=col_err.ravel()
-        mag_err=mag_err.ravel()
+        fig, ax = plt.subplots(figsize=figsize)
+        IsochroneGrid.plot_isochrones(col,mag,model,ax,**kwargs)
 
-        if type(ids)!=type(None):
-            col_data=col_data[ids]
-            mag_data=mag_data[ids]
-            col_err=col_err[ids]
-            mag_err=mag_err[ids]
-            ebv1=self.ebv[ids]
-        else:
-            ebv1=self.ebv
-        
-        try:
-            len(col_err)
-            col_err=col_err.ravel()
-            mag_err=mag_err.ravel()
-        except TypeError:
-            pass
-        
-        x=col_data
-        y=mag_data
-        x_axis=col
-        y_axis=mag
-        ebv=ebv1
-        x_error=col_err
-        y_error=mag_err
-        
-        label_points = kwargs['label_points'] if 'label_points' in kwargs else True        
-        groups = kwargs['groups'] if 'groups' in kwargs else None
-        group_names = kwargs['group_names'] if 'group_names' in kwargs else None
+        col=IsochroneGrid._filter_model(model,col)
+        mag=IsochroneGrid._filter_model(model,mag)
+        errors = kwargs['errors'] if 'errors' in kwargs else None
+        ids = kwargs['ids'] if 'ids' in kwargs else None
         tofile = kwargs['tofile'] if 'tofile' in kwargs else False
-        
-        isochrones=iso.data
-        iso_ages=iso.ages
-        iso_filters=iso.filters
-        iso_masses=iso.masses
 
-        #changes names of Gaia_DR2 filters to EDR3
-        if 'G2' in iso_filters: 
-            w=where_v(['G2'],iso_filters)
-            iso_filters[w]=['G']
-        if 'Gbp2' in iso_filters: 
-            w=where_v(['Gbp2'],iso_filters)
-            iso_filters[w]=['Gbp']
-        if 'Grp2' in iso_filters: 
-            w=where_v(['Grp2'],iso_filters)
-            iso_filters[w]=['Grp']
+        x, y = SampleObject.plot_photometry(col,mag,ax,self,errors=None,ids=None,return_points=True,**kwargs)
 
         #axes ranges
-        xlim = kwargs['xlim'] if 'xlim' in kwargs else SampleObject._axis_range(x_axis,x)
-        ylim = kwargs['ylim'] if 'ylim' in kwargs else SampleObject._axis_range(y_axis,y)
-            
-        #finds color/magnitude isochrones to plot
-        if '-' in x_axis: 
-            col_n=x_axis.split('-')
-            w1,=np.where(iso_filters==col_n[0])
-            w2,=np.where(iso_filters==col_n[1])
-            col_th=isochrones[:,:,w1]-isochrones[:,:,w2]
-        else: 
-            w1,=np.where(iso_filters==x_axis)
-            col_th=isochrones[:,:,w1]
-        if '-' in y_axis: 
-            mag_n=y_axis.split('-')
-            w1,=np.where(iso_filters==mag_n[0])
-            w2,=np.where(iso_filters==mag_n[1])
-            mag_th=isochrones[:,:,w1]-isochrones[:,:,w2]
-        else: 
-            w1,=np.where(iso_filters==y_axis)
-            mag_th=isochrones[:,:,w1]
-
-        if type(plot_masses)!=bool:
-            kwargs['mass_range']=plot_masses
-            trk=IsochroneGrid(model,self.filters,age_range=[np.min(plot_ages),np.max(plot_ages)],**kwargs)
-            tracks=trk.data
-            trk_ages=trk.ages
-            trk_filters=trk.filters
-            trk_masses=trk.masses
-            if 'G2' in trk_filters: 
-                w=where_v(['G2'],trk_filters)
-                trk_filters[w]=['G']
-            if 'Gbp2' in trk_filters: 
-                w=where_v(['Gbp2'],trk_filters)
-                trk_filters[w]=['Gbp']
-            if 'Grp2' in trk_filters: 
-                w=where_v(['Grp2'],trk_filters)
-                trk_filters[w]=['Grp']                
-            if '-' in x_axis: 
-                w1,=np.where(trk_filters==col_n[0])
-                w2,=np.where(trk_filters==col_n[1])
-                col_th_t=tracks[:,:,w1]-tracks[:,:,w2]
-            else: 
-                w1,=np.where(trk_filters==x_axis)
-                col_th_t=tracks[:,:,w1]
-            if '-' in y_axis: 
-                w1,=np.where(trk_filters==mag_n[0])
-                w2,=np.where(trk_filters==mag_n[1])
-                mag_th_t=tracks[:,:,w1]-tracks[:,:,w2]
-            else: 
-                w1,=np.where(trk_filters==y_axis)
-                mag_th_t=tracks[:,:,w1]
-
-        n=len(isochrones)
-        tot_iso=len(isochrones[0])
-        npo=n_elements(x)
-        nis=len(plot_ages)
-
-        fig, ax = plt.subplots(figsize=(16,12))
-
-        x_ext=SampleObject.extinction(self.ebv,x_axis)
-        y_ext=SampleObject.extinction(self.ebv,y_axis)
-
-        arr=[xlim[0]+0.2*(xlim[1]-xlim[0]),ylim[0]+0.1*(ylim[1]-ylim[0]),-np.median(x_ext),-np.median(y_ext)]
-        ax.quiver(arr[0],arr[1],arr[2],arr[3],label='dereddening',scale=1,scale_units='xy',angles='xy')
-
-        x1=x
-        y1=y
-
-        if type(plot_ages)!=bool:
-            for i in range(len(plot_ages)):
-                ii=closest(iso_ages,plot_ages[i])
-                ax.plot(col_th[:,ii],mag_th[:,ii],label=str(plot_ages[i])+' Myr')
-
-        if type(plot_masses)!=bool:
-            with np.errstate(divide='ignore',invalid='ignore'):
-                for i in range(len(plot_masses)):
-                    im=closest(trk_masses,plot_masses[i])
-                    ax.plot(col_th_t[im,:],mag_th_t[im,:],linestyle='dashed',color='gray')
-                    c=0
-                    while (np.isfinite(col_th_t[im,c])==0) | (np.isfinite(mag_th_t[im,c])==0) | ((col_th_t[im,c]<xlim[0]) | (col_th_t[im,c]>xlim[1])) & ((mag_th_t[im,c]<ylim[0]) | (mag_th_t[im,c]>ylim[1])):
-                        c+=1
-                        if c==len(col_th_t[im,:]): break
-                    if c<len(col_th_t[im,:]):
-                        an=ax.annotate(str(plot_masses[i]),(col_th_t[im,c],mag_th_t[im,c]),size='large')
-                        an.set_in_layout(False)
-
-        if (type(groups)==type(None)):        
-            if (type(x_error)==type(None)) & (type(y_error)==type(None)):
-                ax.scatter(x1, y1, s=50, facecolors='none', edgecolors='black')
-            else: ax.errorbar(x1, y1, yerr=y_error, xerr=x_error, fmt='o', color='black')
-        else:
-            nc=max(groups)
-            colormap = plt.cm.gist_ncar
-            colorst = [colormap(i) for i in np.linspace(0, 0.9,nc+1)]       
-            for j in range(nc+1):
-                w,=np.where(groups==j)
-                if len(w)>0:  
-                    if (type(x_error)==type(None)) & (type(y_error)==type(None)):
-                        ax.scatter(x1[w], y1[w], s=50, facecolors='none', edgecolors=colorst[j], label=group_names[j])
-                    else: ax.errorbar(x1[w], y1[w], yerr=y_error[w], xerr=x_error[w], fmt='o', color=colorst[j], label=group_names[j])
-
-        if label_points==True:
-            po=(np.linspace(0,npo-1,num=npo,dtype=int)).astype('str')
-            for i, txt in enumerate(po):
-                an=ax.annotate(txt, (x1[i], y1[i]))
-                an.set_in_layout(False)
-
+        xlim = kwargs['xlim'] if 'xlim' in kwargs else SampleObject._axis_range(col,x)
+        ylim = kwargs['ylim'] if 'ylim' in kwargs else SampleObject._axis_range(mag,y)
         ax.set_ylim(ylim)
         ax.set_xlim(xlim)
-        ax.set_xlabel(x_axis, fontsize=18)
-        ax.set_ylabel(y_axis, fontsize=18)
+        ax.set_xlabel(col, fontsize=18)
+        ax.set_ylabel(mag, fontsize=18)
         ax.legend()
+
         if tofile==False:
             plt.show()
         elif tofile==True:
-            img_file=Path(self.path) / (self.__sample_name+'_'+col+'_'+mag+'_'+model+'.png')            
+            try:
+                img_file=Path(self.path) / (self.__sample_name+'_'+col+'_'+mag+'_'+model+'.png')
+            except AttributeError: raise ValueError("No working path was defined in the analysis. Please pass an explicit path of the output file as argument to 'tofile'.")
             plt.savefig(img_file)
             plt.close(fig)    
         else:
@@ -3905,7 +3740,9 @@ class SampleObject(object):
             for i, txt in enumerate(po):
                 an=ax.annotate(txt, (x[i], y[i]))
                 an.set_in_layout(False)
-        return None     
+                
+        if 'return_points' in kwargs:
+            if kwargs['return_points']==True: return x,y
     
     @staticmethod
     def plot_2D_ext(ra=None,dec=None,l=None,b=None,par=None,d=None,color='G',n=50,tofile=None,ext_map='leike',cmap='viridis',**kwargs):
@@ -3970,6 +3807,58 @@ class SampleObject(object):
         
         
     ############################################# extinction #################################################
+
+    @staticmethod
+    def _download_ext_map(ext_map):
+
+        if type(ext_map)==type(None): return
+        #dir = site.getsitepackages() # get path to the dir where the packages is installed
+        #path_ext=dir[0]+'/madys/extinction/' # set the path to extinction maps files
+        
+        path_ext=os.path.join(madys_path,'extinction')
+        if os.path.exists(path_ext) is False: os.mkdir(path_ext) # if the folder does not exist, it creates it 
+        opl = os.path.join(path_ext,'leike_mean_std.h5')
+        ops = os.path.join(path_ext,'stilism_feb2019.h5')
+
+        #if chosen map is not there it fetches it from cds
+        if ((ext_map == 'leike') & (os.path.exists(opl) is False)):
+            print('You selected the map by Leike et al. (2020), but the file '+opl+' seems missing. ')
+            while 1:
+                value = input("Do you want me to download the map (size=2.2 GB)? [Y/N]:\n")
+                if str.lower(value)=='y':
+                    print('Downloading the map...')
+                    break
+                elif str.lower(value)=='n': 
+                    break
+                else:
+                    print("Invalid choice. Please select 'Y' or 'N'.")        
+            if str.lower(value)=='n': raise KeyboardInterrupt('Please restart the program, setting ext_map=None.')
+            else:
+                urllib.request.urlretrieve('https://cdsarc.cds.unistra.fr/ftp/J/A+A/639/A138/mean_std.h5.gz', opl+'.gz')
+                with gzip.open(opl+'.gz', 'r') as f_in, open(opl, 'wb') as f_out: shutil.copyfileobj(f_in, f_out)
+                os.remove(opl+'.gz')
+                print('Extinction map correctly downloaded.')
+
+        if ((ext_map == 'stilism') & (os.path.exists(ops) is False)):
+            print('You selected the map by Lallement et al. (2019), but the file '+opl+' seems missing. ')
+            print('')
+            while 1:
+                value = input("Do you want me to download the map (size=770 MB)? [Y/N]:\n")
+                if str.lower(value)=='y':
+                    print('Downloading the map...')
+                    break
+                elif str.lower(value)=='n': 
+                    break
+                else:
+                    print("Invalid choice. Please select 'Y' or 'N'.")        
+            if str.lower(value)=='n': raise KeyboardInterrupt('Please restart the program, setting ext_map=None.')
+            else:
+                urllib.request.urlretrieve('http://cdsarc.u-strasbg.fr/ftp/J/A+A/625/A135/map3D_GAIAdr2_feb2019.h5.gz', ops+'.gz')
+                with gzip.open(ops+'.gz', 'r') as f_in, open(ops, 'wb') as f_out: shutil.copyfileobj(f_in, f_out)
+                os.remove(ops+'.gz')
+                print('Extinction map correctly downloaded.')
+    
+    
     
     @staticmethod
     def _wu_line_integrate(f,x0,x1,y0,y1,z0,z1,layer=None,star_id=None,logger=None):
@@ -4034,6 +3923,23 @@ class SampleObject(object):
     @staticmethod
     def interstellar_ext(ra=None,dec=None,l=None,b=None,par=None,d=None,ext_map='leike',color='B-V',error=False,logger=None):
 
+        if type(ra)==type(None) and type(l)==type(None): raise NameError('One between RA and l must be supplied!')
+        if type(dec)==type(None) and type(b)==type(None): raise NameError('One between dec and b must be supplied!')
+        if type(par)==type(None) and type(d)==type(None): raise NameError('One between parallax and distance must be supplied!')
+        if type(ra)!=type(None) and type(l)!=type(None): raise NameError('Only one between RA and l must be supplied!')
+        if type(dec)!=type(None) and type(b)!=type(None): raise NameError('Only one between dec and b must be supplied!')
+        if type(par)!=type(None) and type(d)!=type(None): raise NameError('Only one between parallax and distance must be supplied!')
+            
+        if type(ext_map)==type(None): 
+            if type(ra)!=type(None):
+                ext=np.zeros_like(ra)
+                if isinstance(ra,np.ndarray)==False: ext=0.0
+            elif type(l)!=type(None):
+                ext=np.zeros_like(l)
+                if isinstance(l,np.ndarray)==False: ext=0.0               
+            if error: return ext,ext
+            else: return ext
+        
         if (ext_map=='leike') & (error==False): fname='leike_mean_std.h5'
         elif (ext_map=='leike') & (error==True): fname='leike_samples.h5'
         if (ext_map=='stilism'): fname='stilism_feb2019.h5'
@@ -4065,13 +3971,6 @@ class SampleObject(object):
             y=np.arange(-3000.,3005.,5)
             z=np.arange(-400.,405.,5)    
             data = f['stilism']['cube_datas'][()]
-
-        if type(ra)==type(None) and type(l)==type(None): raise NameError('One between RA and l must be supplied!')
-        if type(dec)==type(None) and type(b)==type(None): raise NameError('One between dec and b must be supplied!')
-        if type(par)==type(None) and type(d)==type(None): raise NameError('One between parallax and distance must be supplied!')
-        if type(ra)!=type(None) and type(l)!=type(None): raise NameError('Only one between RA and l must be supplied!')
-        if type(dec)!=type(None) and type(b)!=type(None): raise NameError('Only one between dec and b must be supplied!')
-        if type(par)!=type(None) and type(d)!=type(None): raise NameError('Only one between parallax and distance must be supplied!')
 
         sun=[closest(x,0),closest(z,0)]
 
