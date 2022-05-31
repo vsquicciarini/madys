@@ -1,12 +1,32 @@
+"""
+
+MADYS
+Tool for age and mass determination of young stellar and substellar objects.
+Given a list of stars, it:
+- retrieves and cross-matches photometry from several catalogs;
+- corrects for interstellar extinction;
+- assesses the quality of each photometric measurement;
+- uses reliable photometric data to derive physical parameters (notably ages and masses)
+of individual stars.
+MADYS allows a selection of one among 17 theoretical models, many of which with several
+customizable parameters (metallicity, rotational velocity, etc).
+Check the provided manual for additional details.
+
+Classes:
+- SampleObject
+- FitParams
+- IsochroneGrid
+
+"""
+
 import sys
 import os
-madys_path=os.path.dirname(os.path.realpath(__file__))
 import copy
 import warnings
 import logging
 import numpy as np
 from pathlib import Path
-from evolution import *
+from .evolution import *
 from scipy.interpolate import interp1d, RectBivariateSpline
 from scipy.ndimage.measurements import label
 from scipy.ndimage import center_of_mass
@@ -20,16 +40,7 @@ from astropy.table import Table, Column, vstack, hstack, MaskedColumn
 from astropy.utils.exceptions import AstropyWarning
 from astroquery.simbad import Simbad
 from astroquery.vizier import Vizier
-import csv
-import h5py
-import math
-from mpl_toolkits.axes_grid1 import make_axes_locatable
-from tabulate import tabulate
 Vizier.TIMEOUT = 100000000
-from tap import (GaiaArchive, TAPVizieR, resolve, QueryStr, timeit)
-from json import JSONDecodeError
-gaia = GaiaArchive()
-vizier = TAPVizieR()
 class HiddenPrints:
     def __enter__(self):
         self._original_stdout = sys.stdout
@@ -40,7 +51,19 @@ class HiddenPrints:
         sys.stdout = self._original_stdout
 with HiddenPrints():
     from astroquery.gaia import Gaia
-
+import csv
+import h5py
+import math
+from mpl_toolkits.axes_grid1 import make_axes_locatable
+from tabulate import tabulate
+from tap import (GaiaArchive, TAPVizieR, resolve, QueryStr, timeit)
+from json import JSONDecodeError
+gaia = GaiaArchive()
+vizier = TAPVizieR()
+import gzip
+import site
+import urllib
+import shutil
 
 
 FILTERS={'bessell':{'B':0.4525,'V':0.5525,'U':0.3656,'Ux':0.3656,'Bx':0.4537,'R':0.6535,'I':0.8028,
@@ -338,10 +361,7 @@ class IsochroneGrid(object):
     
     def __init__(self, model, filters, **kwargs):
         
-        add_search_path(madys_path)
-        for x in os.walk(madys_path):
-            add_search_path(x[0])
-
+w
         logger=kwargs['logger'] if 'logger' in kwargs else None
         
         self.model=(str.lower(model)).replace('-','_')
@@ -1473,8 +1493,8 @@ class SampleObject(object):
         - a string, giving the full path of the file containing target names;
         - a list of IDs. Gaia IDs must begin by 'Gaia DR2 ' or 'Gaia EDR3'.
     - file (2): astropy Table, required. Table containing target names and photometric data. See documentation for examples of valid inputs.
-    - mock_file (2): string, required if verbose>=1. Full path of the non-existing file where the Table would come from if in mode 1. Used to extract the working path and to name the outputs after it.
     - ext_map: string, required. Extinction map used. Select one among 'leike', 'stilism' and None.
+    - mock_file (2): string, required if verbose>=1. Full path of the non-existing file where the Table would come from if in mode 1. Used to extract the working path and to name the outputs after it.
     - surveys (1): list, optional. List of surveys where to extract photometric data from. Default: ['gaia','2mass'].
     - id_type (1): string, required. Type of IDs provided: must be one among 'DR2','EDR3' or 'other'.
     - get_phot (1): bool or string, optional. Set to:
@@ -4550,7 +4570,27 @@ class FitParams(object):
             f.write(tabulate(np.column_stack((star_names,m_fit,m_min,m_max,a_fit,a_min,a_max,self.ebv)),
                              headers=['ID','MASS','MASS_MIN','MASS_MAX','AGE','AGE_MIN','AGE_MAX','E(B-V)'], tablefmt='plain', stralign='right', numalign='right', floatfmt=(None,".2f",".2f",".2f",".2f",".2f",".2f",".3f")))
         f.close()
-    
+
+    def to_table(self,**kwargs):
+        t={}
+        for i in ['objects', 'ages', 'ages_min', 'ages_max', 'masses', 'masses_min', 'masses_max', 'ebv', 'radii', 'radii_min', 'radii_max', 'logg', 'logg_min', 'logg_max', 'logL', 'logL_min', 'logL_max', 'Teff', 'Teff_min', 'Teff_max', 'fit_status']:
+            try:
+                t[i]=self[i]
+            except KeyError:
+                continue
+        tab=Table(t)
+        if 'round' in kwargs:
+            tab.round(kwargs['round'])
+
+        return tab
+
+    def pprint(self,mode='all',**kwargs):
+        tab=self.to_table(**kwargs)
+        if mode=='all':
+            return tab.pprint_all()    
+        elif mode=='in_notebook':
+            return tab.show_in_notebook(css='%3.1f')        
+        
     def plot_maps(self,indices=None,tofile=False,limits=None,dtype='chi2'):
 
         if type(indices)==type(None): indices=np.arange(len(self))
