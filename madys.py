@@ -1713,10 +1713,20 @@ class SampleObject(object):
         
         self.__input = copy.deepcopy(kwargs)
         self.__input['file']=file
-        self.__input['ext_map']=ext_map
-        if ext_map not in [None,'leike','stilism']: raise ValueError("'ext_map' must be set to 'leike', 'stilism' or None.")
-        SampleObject._download_ext_map(ext_map)
         
+        if 'ext_map' not in kwargs:
+            print("The keyword 'ext_map' must be set to 'leike', 'stilism' or None. ")
+            while 1:
+                ext_map = input("Please insert a value among 'leike', 'stilism' or 'None' (without quotation marks):\n")                
+                if ext_map not in ['None','leike','stilism']: 
+                    print("Invalid choice. Please insert a value among 'leike', 'stilism' or 'None' (without quotation marks):\n")
+                else: break
+        
+        if ext_map=='None': ext_map=None
+        if ext_map not in [None,'leike','stilism']: raise ValueError("'ext_map' must be set to 'leike', 'stilism' or None.")
+        self.__input['ext_map']=ext_map
+        SampleObject._download_ext_map(ext_map)
+
         self.verbose = kwargs['verbose'] if 'verbose' in kwargs else 2  
         
         if self.verbose>0:
