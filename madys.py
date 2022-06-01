@@ -1499,7 +1499,7 @@ class SampleObject(object):
         - a list of IDs. Gaia IDs must begin by 'Gaia DR2 ' or 'Gaia EDR3'.
     - file (2): astropy Table, required. Table containing target names and photometric data. See documentation for examples of valid inputs.
     - ext_map: string, required. Extinction map used. Select one among 'leike', 'stilism' and None.
-    - mock_file (2): string, required if verbose>=1. Full path of the non-existing file where the Table would come from if in mode 1. Used to extract the working path and to name the outputs after it.
+    - mock_file: string, optional. Only used if file is a list or a table. Full path of a fictitious file, used to extract the working path and to name the outputs after it. If not set and verbose>=1, verbose changes to 0.
     - surveys (1): list, optional. List of surveys where to extract photometric data from. Default: ['gaia','2mass'].
     - id_type (1): string, required. Type of IDs provided: must be one among 'DR2','EDR3' or 'other'.
     - get_phot (1): bool or string, optional. Set to:
@@ -1516,7 +1516,7 @@ class SampleObject(object):
         - 1: a .csv file with retrieved information is saved (1), few info are printed on the screen;
         - 2: in addition to the output of 1, a log file is created;
         - 3: in addition to the output of 2, .txt files are created when executing SampleObject.get_params().
-      Default: 2.
+      Default: 2. However, if file is a list or a table and mock_file is not set, it is forcingly set to 0.
 
     Attributes:
     - file: string. Corresponding to either file (1) or mock_file (2).
@@ -1735,7 +1735,10 @@ class SampleObject(object):
             if (isinstance(file,Table)) | (isinstance(file,list)):
                 try:
                     self.file = kwargs['mock_file']
-                except KeyError: raise KeyError("verbose is set to "+str(self.verbose)+" but 'mock_file' is not set.")
+                except KeyError:
+                    #raise KeyError("verbose is set to "+str(self.verbose)+" but 'mock_file' is not set.")
+                    self.verbose=0
+                    self.file=''
             else: self.file = file
             self.path = os.path.dirname(self.file)
             self._sample_name_ext()
@@ -4361,37 +4364,6 @@ class SampleObject(object):
         return a[ind],ind
 
     @staticmethod
-    def _file_search(files):
-        """
-        given one or more files, returns 1 if all of them exist, 0 otherwise
-        if n_elements(files)==1:
-
-        input:
-            files: a string, a list of strings or a numpy array of strings,
-                specifying the full path of the file(s) whose existence is questioned
-
-        usage:
-            c=[file1,file2,file3]
-            file_search(c)=1 if all files exist, 0 otherwise
-
-        notes:
-        case insensitive.
-
-        """
-        if (isinstance(files,str)) | (isinstance(files,Path)):
-            try:
-                open(files,'r')
-            except IOError:
-                return 0
-        else:
-            for i in range(n_elements(files)):
-                try:
-                    open(files[i],'r')
-                except IOError:
-                    return 0
-        return 1
-
-    @staticmethod
     def _complement_v(arr,n):
         compl=np.full(n,True)
         compl[arr]=False
@@ -4635,9 +4607,25 @@ class FitParams(object):
             raise ValueError('No weight map is returned under fitting mode '+str(self['fitting_mode']))
 
         if np.max(indices)>=len(self): raise IndexError('index '+str(int(np.max(indices)))+' is out of bounds for axis 0 with size '+str(len(self)))
+
+        try:
+            self[key]
+        except KeyError:
+            raise KeyError('No '+dtype+' maps present. Perhaps get_params was used with save_phot=False?')
             
         p=0
         for i in indices:
+            
+            print('Star '+str(i))
+                
+            try:
+                m_sol=self['all_solutions'][i]['masses']
+            except KeyError:
+                print('No solution was found for star '+str(i)+'. Check the log for details.')
+                p+=1
+                continue            
+            
+            chi2=self[key][i]            
             
             ### find unique elements in eval('isochrone_grid')
             th_model=eval(self['isochrone_grid'][i])
