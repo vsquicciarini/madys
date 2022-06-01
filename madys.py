@@ -361,7 +361,6 @@ class IsochroneGrid(object):
     
     def __init__(self, model, filters, **kwargs):
         
-w
         logger=kwargs['logger'] if 'logger' in kwargs else None
         
         self.model=(str.lower(model)).replace('-','_')
