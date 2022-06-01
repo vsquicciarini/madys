@@ -65,6 +65,8 @@ import site
 import urllib
 import shutil
 
+madys_path=os.path.dirname(os.path.realpath(__file__))
+
 
 FILTERS={'bessell':{'B':0.4525,'V':0.5525,'U':0.3656,'Ux':0.3656,'Bx':0.4537,'R':0.6535,'I':0.8028,
                     'B_J':1.22,'B_H':1.63,'B_K':2.19,'L':3.45,'Lp':3.80,'M':4.75,'N':10.4},
@@ -360,6 +362,10 @@ class IsochroneGrid(object):
     """    
     
     def __init__(self, model, filters, **kwargs):
+
+        add_search_path(madys_path)
+        for x in os.walk(madys_path):
+            add_search_path(x[0])        
         
         logger=kwargs['logger'] if 'logger' in kwargs else None
         
