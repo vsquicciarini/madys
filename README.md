@@ -20,22 +20,16 @@ In addition, it also requires [astroquery](https://github.com/astropy/astroquery
 Installation:
 ------------
 
-The current repository can be downloaded from zenodo, using [zenodo_get](https://github.com/dvolgyes/zenodo_get)
+The current repository can be installed using pip:
 
 ```sh
-pip install zenodo-get
-zenodo_get RECORD_ID_OR_DOI
-tar -xvf madys-0.1.0.tar.gz
+pip install madys
 ```
+Note that the current distro is an alpha version and only include a sub-set of isochrones.
+The full set will be available in the first full release, expected for July 2022.
 
-Note that the distro includes the latest version of the isochrones and extinction map, and therefore at least 4.5GB of space will be needed.
+Note that, when called for the first time, `MADYS` will download the latest version of the extinction maps (~3GB).
 
-Once the download is complete, the package can be installed using the setup.py file
-
-``` sh
-cd madys-0.1.0
-python3 setup.py install
-```
 
 Examples
 --------
