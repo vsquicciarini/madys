@@ -1709,7 +1709,7 @@ class SampleObject(object):
 
     """
     
-    def __init__(self, file, ext_map, **kwargs):
+    def __init__(self, file, **kwargs):
         
         self.__input = copy.deepcopy(kwargs)
         self.__input['file']=file
