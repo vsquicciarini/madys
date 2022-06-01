@@ -1721,6 +1721,8 @@ class SampleObject(object):
                 if ext_map not in ['None','leike','stilism']: 
                     print("Invalid choice. Please insert a value among 'leike', 'stilism' or 'None' (without quotation marks):\n")
                 else: break
+        else: ext_map=kwargs['ext_map']
+
         
         if ext_map=='None': ext_map=None
         if ext_map not in [None,'leike','stilism']: raise ValueError("'ext_map' must be set to 'leike', 'stilism' or None.")
@@ -2608,10 +2610,16 @@ class SampleObject(object):
                 cntr_old = np.array(t1['tmass_key'][w1[i1]])
                 __, i5, i6 = SampleObject._intersect1d_rep1(cntr_old,cntr_res)
 
-                if self.__id_type=='EDR3':
-                    dd=3600*SampleObject.ang_dist(t['ra'][w[i2[i5]]].value-(t['edr3_epoch'][w[i2[i5]]].value-2000)*t['edr3_pmra'][w[i2[i5]]].value/3.6e+6,t['dec'][w[i2[i5]]].value-(t['edr3_epoch'][w[i2[i5]]].value-2000)*t['edr3_pmdec'][w[i2[i5]]].value/3.6e+6,res['RAJ2000'][i6].value,res['DEJ2000'][i6].value)
-                else:
-                    dd=3600*SampleObject.ang_dist(t['dr2_ra'][w[i2[i5]]].value-(t['dr2_epoch'][w[i2[i5]]].value-2000)*t['dr2_pmra'][w[i2[i5]]].value/3.6e+6,t['dr2_dec'][w[i2[i5]]].value-(t['dr2_epoch'][w[i2[i5]]].value-2000)*t['dr2_pmdec'][w[i2[i5]]].value/3.6e+6,res['RAJ2000'][i6].value,res['DEJ2000'][i6].value)
+                try:
+                    if self.__id_type=='EDR3':
+                        dd=3600*SampleObject.ang_dist(t['ra'][w[i2[i5]]].value-(t['edr3_epoch'][w[i2[i5]]].value-2000)*t['edr3_pmra'][w[i2[i5]]].value/3.6e+6,t['dec'][w[i2[i5]]].value-(t['edr3_epoch'][w[i2[i5]]].value-2000)*t['edr3_pmdec'][w[i2[i5]]].value/3.6e+6,res['RAJ2000'][i6].value,res['DEJ2000'][i6].value)
+                    else:
+                        dd=3600*SampleObject.ang_dist(t['dr2_ra'][w[i2[i5]]].value-(t['dr2_epoch'][w[i2[i5]]].value-2000)*t['dr2_pmra'][w[i2[i5]]].value/3.6e+6,t['dr2_dec'][w[i2[i5]]].value-(t['dr2_epoch'][w[i2[i5]]].value-2000)*t['dr2_pmdec'][w[i2[i5]]].value/3.6e+6,res['RAJ2000'][i6].value,res['DEJ2000'][i6].value)
+                except AttributeError:
+                    if self.__id_type=='EDR3':
+                        dd=3600*SampleObject.ang_dist(t['ra'][w[i2[i5]]]-(t['edr3_epoch'][w[i2[i5]]]-2000)*t['edr3_pmra'][w[i2[i5]]]/3.6e+6,t['dec'][w[i2[i5]]]-(t['edr3_epoch'][w[i2[i5]]]-2000)*t['edr3_pmdec'][w[i2[i5]]]/3.6e+6,res['RAJ2000'][i6],res['DEJ2000'][i6])
+                    else:
+                        dd=3600*SampleObject.ang_dist(t['dr2_ra'][w[i2[i5]]]-(t['dr2_epoch'][w[i2[i5]]]-2000)*t['dr2_pmra'][w[i2[i5]]]/3.6e+6,t['dr2_dec'][w[i2[i5]]]-(t['dr2_epoch'][w[i2[i5]]]-2000)*t['dr2_pmdec'][w[i2[i5]]]/3.6e+6,res['RAJ2000'][i6],res['DEJ2000'][i6])
 
                 w_ncm,=np.where(dd>0.7)
 
