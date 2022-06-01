@@ -1499,7 +1499,7 @@ class SampleObject(object):
         - a list of IDs. Gaia IDs must begin by 'Gaia DR2 ' or 'Gaia EDR3'.
     - file (2): astropy Table, required. Table containing target names and photometric data. See documentation for examples of valid inputs.
     - ext_map: string, required. Extinction map used. Select one among 'leike', 'stilism' and None.
-    - mock_file (2): string, required if verbose>=1. Full path of the non-existing file where the Table would come from if in mode 1. Used to extract the working path and to name the outputs after it.
+    - mock_file: string, optional. Only used if file is a list or a table. Full path of a fictitious file, used to extract the working path and to name the outputs after it. If not set and verbose>=1, verbose changes to 0.
     - surveys (1): list, optional. List of surveys where to extract photometric data from. Default: ['gaia','2mass'].
     - id_type (1): string, required. Type of IDs provided: must be one among 'DR2','EDR3' or 'other'.
     - get_phot (1): bool or string, optional. Set to:
@@ -1516,7 +1516,7 @@ class SampleObject(object):
         - 1: a .csv file with retrieved information is saved (1), few info are printed on the screen;
         - 2: in addition to the output of 1, a log file is created;
         - 3: in addition to the output of 2, .txt files are created when executing SampleObject.get_params().
-      Default: 2.
+      Default: 2. However, if file is a list or a table and mock_file is not set, it is forcingly set to 0.
 
     Attributes:
     - file: string. Corresponding to either file (1) or mock_file (2).
@@ -1735,7 +1735,10 @@ class SampleObject(object):
             if (isinstance(file,Table)) | (isinstance(file,list)):
                 try:
                     self.file = kwargs['mock_file']
-                except KeyError: raise KeyError("verbose is set to "+str(self.verbose)+" but 'mock_file' is not set.")
+                except KeyError:
+                    #raise KeyError("verbose is set to "+str(self.verbose)+" but 'mock_file' is not set.")
+                    self.verbose=0
+                    self.file=''
             else: self.file = file
             self.path = os.path.dirname(self.file)
             self._sample_name_ext()
