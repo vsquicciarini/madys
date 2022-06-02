@@ -34,7 +34,7 @@ Note that, when using for the first time an extinction map, `MADYS` will downloa
 Examples
 --------
 
-The package is fully documented and a detailed description is provided in [Squicciarini & Bonavita 2022]()
+The package is fully documented and a detailed description is provided in [Squicciarini & Bonavita 2022]().
 
 However, we recommend you check out the [examples]() provided for a better understanding of its usage.
 
