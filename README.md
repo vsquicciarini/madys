@@ -6,16 +6,16 @@ Information
 -----------
 This repository includes the first version of `MADYS`: the Manifold Age Determination for Young Stars, a flexible Python tool for age and mass determination of young stellar and substellar objects. 
 
-In this first release, `MADYS` automatically retrieves and cross-matches photometry from several catalogs, estimates interstellar extinction, and derives age and mass estimates for individual stars through isochronal fitting.
+In this first release, `MADYS` automatically retrieves and cross-matches photometry from several catalogs, estimates interstellar extinction, and derives age and mass estimates for individual objects through isochronal fitting.
 
 Harmonizing the heterogeneity of publicly-available isochrone grids, the tool allows to choose amongst 17 models, many of which with customizable astrophysical parameters, with more than 100 isochrone grids available. Several dedicated plotting function are provided to allow a visual perception of the numerical output.
 
 Requirements
 ------------
 
-This package relies on usual packages for data science and astronomy: [numpy](https://numpy.org/), [scipy](https://www.scipy.org/), [pandas](https://pandas.pydata.org/), [matplotlib](https://matplotlib.org/) and [astropy](https://www.astropy.org/).
+This package relies on usual packages for data science and astronomy: [numpy](https://numpy.org/), [scipy](https://www.scipy.org/), [pandas](https://pandas.pydata.org/), [matplotlib](https://matplotlib.org/), [astropy](https://www.astropy.org/) and [h5py](https://www.h5py.org/).
 
-In addition, it also requires [astroquery](https://github.com/astropy/astroquery/) and [TAP Gaia Query](https://github.com/mfouesneau/tap).
+In addition, it also requires [astroquery](https://github.com/astropy/astroquery/), [tabulate](https://pypi.org/project/tabulate/) and [TAP Gaia Query](https://github.com/mfouesneau/tap). The last package might require the installation of [lxml](https://lxml.de/).
 
 Installation:
 ------------
@@ -28,7 +28,7 @@ pip install madys
 Note that the current distro is an alpha version and only include a sub-set of isochrones.
 The full set will be available in the first full release, expected for July 2022.
 
-Note that, when called for the first time, `MADYS` will download the latest version of the extinction maps (~3GB).
+Note that, when using for the first time an extinction map, `MADYS` will download the relative file (0.7 GB or 2.2 GB, depending on the map).
 
 
 Examples
