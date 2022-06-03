@@ -64,5 +64,5 @@ We are grateful for your effort, and hope that these tools will contribute to yo
 Attribution
 -----------------------
 Please cite [Squicciarini & Bonavita 2022]() whenever you publish results obtained with MADYS.
-Astrophysics Source Code Library reference [ascl:XXXX.XXXX]()
+
 
