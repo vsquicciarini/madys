@@ -8,7 +8,7 @@ This repository includes the first version of `MADYS`: the Manifold Age Determin
 
 In this first release, `MADYS` automatically retrieves and cross-matches photometry from several catalogs, estimates interstellar extinction, and derives age and mass estimates for individual objects through isochronal fitting.
 
-Harmonizing the heterogeneity of publicly-available isochrone grids, the tool allows to choose amongst 17 models, many of which with customizable astrophysical parameters, with more than 100 isochrone grids available. Several dedicated plotting function are provided to allow a visual perception of the numerical output.
+Harmonizing the heterogeneity of publicly-available isochrone grids, the tool allows to choose amongst 16 models, many of which with customizable astrophysical parameters, with more than 100 isochrone grids available. Several dedicated plotting function are provided to allow a visual perception of the numerical output.
 
 Requirements
 ------------
@@ -25,7 +25,7 @@ The current repository can be installed using pip:
 ```sh
 pip install madys
 ```
-Note that the current distro is an alpha version and only include a sub-set of isochrones.
+Note that the current distro is an alpha version and only include 6 out of 16 models: see [here](MADYS_examples.ipynb) for details.
 The full set will be available in the first full release, expected for July 2022.
 
 Note that, when using for the first time an extinction map, `MADYS` will download the relative file (0.7 GB or 2.2 GB, depending on the map).
