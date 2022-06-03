@@ -8,7 +8,7 @@ Given a list of stars, it:
 - assesses the quality of each photometric measurement;
 - uses reliable photometric data to derive physical parameters (notably ages and masses)
 of individual stars.
-MADYS allows a selection of one among 17 theoretical models, many of which with several
+MADYS allows a selection of one among 16 theoretical models, many of which with several
 customizable parameters (metallicity, rotational velocity, etc).
 Check the provided manual for additional details.
 
