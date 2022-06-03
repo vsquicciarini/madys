@@ -60,7 +60,6 @@ from json import JSONDecodeError
 gaia = GaiaArchive()
 vizier = TAPVizieR()
 import gzip
-import site
 import urllib
 import shutil
 
@@ -3863,8 +3862,6 @@ class SampleObject(object):
     def _download_ext_map(ext_map):
 
         if type(ext_map)==type(None): return
-        #dir = site.getsitepackages() # get path to the dir where the packages is installed
-        #path_ext=dir[0]+'/madys/extinction/' # set the path to extinction maps files
         
         path_ext=os.path.join(madys_path,'extinction')
         if os.path.exists(path_ext) is False: os.mkdir(path_ext) # if the folder does not exist, it creates it 
