@@ -13,9 +13,9 @@ Harmonizing the heterogeneity of publicly-available isochrone grids, the tool al
 Requirements
 ------------
 
-This package relies on usual packages for data science and astronomy: [numpy](https://numpy.org/), [scipy](https://www.scipy.org/), [pandas](https://pandas.pydata.org/), [matplotlib](https://matplotlib.org/), [astropy](https://www.astropy.org/) and [h5py](https://www.h5py.org/).
+This package relies on usual packages for data science and astronomy: [numpy](https://numpy.org/) (v1.18.1), [scipy](https://www.scipy.org/) (v1.6.1), [pandas](https://pandas.pydata.org/) (v1.1.4), [matplotlib](https://matplotlib.org/) (v3.3.4), [astropy](https://www.astropy.org/) (v4.3.1) and [h5py](https://www.h5py.org/) (v3.2.1).
 
-In addition, it also requires [astroquery](https://github.com/astropy/astroquery/), [tabulate](https://pypi.org/project/tabulate/) and [TAP Gaia Query](https://github.com/mfouesneau/tap). The last package might require the installation of [lxml](https://lxml.de/).
+In addition, it also requires [astroquery](https://github.com/astropy/astroquery/) (v0.4.2.dev0), [tabulate](https://pypi.org/project/tabulate/) (v0.8.9) and [TAP Gaia Query](https://github.com/mfouesneau/tap) (v0.1). The last package might require the installation of [lxml](https://lxml.de/) (v4.6.3).
 
 Installation:
 ------------
