@@ -1740,8 +1740,9 @@ class SampleObject(object):
                     self.verbose=0
                     self.file=''
             else: self.file = file
-            self.path = os.path.dirname(self.file)
-            self._sample_name_ext()
+            if self.verbose>0:
+                self.path = os.path.dirname(self.file)
+                self._sample_name_ext()
         else:
             if (isinstance(file,Table)) | (isinstance(file,list)): self.file = ''
             else: 
@@ -3975,6 +3976,8 @@ class SampleObject(object):
         if type(ra)!=type(None) and type(l)!=type(None): raise NameError('Only one between RA and l must be supplied!')
         if type(dec)!=type(None) and type(b)!=type(None): raise NameError('Only one between dec and b must be supplied!')
         if type(par)!=type(None) and type(d)!=type(None): raise NameError('Only one between parallax and distance must be supplied!')
+
+        SampleObject._download_ext_map(ext_map)
             
         if type(ext_map)==type(None): 
             if type(ra)!=type(None):
@@ -4503,7 +4506,10 @@ class FitParams(object):
             self.__dict__[i]=dic[i]
             
     def __len__(self):
-        return len(self.ages)
+        try:
+            return len(self.ages)
+        except TypeError:
+            return 1
     
     def __getitem__(self,i):
         new=copy.deepcopy(self)
@@ -4511,7 +4517,9 @@ class FitParams(object):
         for j in new.__dict__.keys():
             try:
                 if isinstance(new.__dict__[j],str): continue
-                else: new.__dict__[j]=new.__dict__[j][i]
+                elif isinstance(new.__dict__[j],list) & hasattr(i, '__len__') : 
+                    new.__dict__[j]=[self.__dict__[j][s] for s in i]
+                else: new.__dict__[j]=self.__dict__[j][i]
             except TypeError:
                 continue
         return new
@@ -4579,24 +4587,21 @@ class FitParams(object):
 
         return tab
 
-    def pprint(self,mode='all',**kwargs):
+    def pprint(self,mode=None,**kwargs):
         tab=self.to_table(**kwargs)
         if mode=='all':
             return tab.pprint_all()    
         elif mode=='in_notebook':
-            return tab.show_in_notebook(css='%3.1f')        
+            return tab.show_in_notebook(css='%3.1f')
+        else:
+            return tab
         
-    def plot_maps(self,indices=None,tofile=False,limits=None,dtype='chi2'):
+    def plot_maps(self,indices=None,tofile=False,dtype='chi2'):
 
         if type(indices)==type(None): indices=np.arange(len(self))
         
         try: len(indices)
         except TypeError: indices=np.array([indices])
-
-        if type(limits)!=type(None):
-            limits=np.array(limits)
-            if len(limits.shape)==1: limits=np.tile(limits, (len(indices), 1))
-
 
         if dtype=='chi2':key='chi2_maps'
         elif dtype=='weights':key='weight_maps'
@@ -4612,45 +4617,21 @@ class FitParams(object):
             self[key]
         except KeyError:
             raise KeyError('No '+dtype+' maps present. Perhaps get_params was used with save_phot=False?')
-            
-        p=0
-        for i in indices:
-            
-            print('Star '+str(i))
-                
-            try:
-                m_sol=self['all_solutions'][i]['masses']
-            except KeyError:
+
+        if hasattr(self['fit_status'],'__len__')==False:
+            if self['fit_status']!=0:
                 print('No solution was found for star '+str(i)+'. Check the log for details.')
-                p+=1
-                continue            
-            
-            chi2=self[key][i]            
-            
+                return
+            m_sol=self['all_solutions']['masses']
+                
+            chi2=self[key]        
+                
             ### find unique elements in eval('isochrone_grid')
-            th_model=eval(self['isochrone_grid'][i])
+            th_model=eval(self['isochrone_grid'])
             iso_mass=th_model.masses
             iso_age=th_model.ages
             model=th_model.model
             AA,MM = np.meshgrid(iso_age,iso_mass)
-            
-            
-            print('Star '+str(i))
-            try:
-                chi2=self[key][i]
-            except IndexError:
-                print('No solution was found for star '+str(i)+'. Check the log for details.')
-                p+=1
-                continue
-                
-            try:
-                m_sol=self['all_solutions'][i]['masses']
-            except KeyError:
-                print('No solution was found for star '+str(i)+'. Check the log for details.')
-                p+=1
-                continue
-
-            m_sol=self['all_solutions'][i]['masses']
 
             if dtype=='chi2':
                 best=np.nanmin(chi2)
@@ -4670,13 +4651,7 @@ class FitParams(object):
                     plt.plot([iso_mass[j],iso_mass[j]],[iso_age[0],iso_age[-1]],color='white',linewidth=0.3)
                 for j in range(len(iso_age)):
                     plt.plot([iso_mass[i70],iso_mass[i85]],[iso_age[j],iso_age[j]],color='white',linewidth=0.3)
-
-                if type(limits)!=type(None):
-                    if limits[p,0]!=None: plt.plot([limits[p,0],limits[p,0]],[iso_age[0],iso_age[-1]],color='white',linewidth=1)
-                    if limits[p,1]!=None: plt.plot([limits[p,1],limits[p,1]],[iso_age[0],iso_age[-1]],color='white',linewidth=1)
-                    if limits[p,2]!=None: plt.plot([iso_mass[i70],iso_mass[i85]],[limits[p,2],limits[p,2]],color='white',linewidth=1)
-                    if limits[p,3]!=None: plt.plot([iso_mass[i70],iso_mass[i85]],[limits[p,3],limits[p,3]],color='white',linewidth=1)
-                plt.title(r'$\chi^2$ map for star '+str(i)+', '+str.upper(model))
+                plt.title(r'$\chi^2$ map for star 0, '+str.upper(model))
             elif dtype=='weights':
                 best=np.nanmax(chi2)
                 arg_best=np.nanargmax(chi2)
@@ -4695,19 +4670,80 @@ class FitParams(object):
                     plt.plot([iso_mass[j],iso_mass[j]],[iso_age[0],iso_age[-1]],color='white',linewidth=0.3)
                 for j in range(len(iso_age)):
                     plt.plot([iso_mass[i70],iso_mass[i85]],[iso_age[j],iso_age[j]],color='white',linewidth=0.3)
-
-                if type(limits)!=type(None):
-                    if limits[p,0]!=None: plt.plot([limits[p,0],limits[p,0]],[iso_age[0],iso_age[-1]],color='white',linewidth=1)
-                    if limits[p,1]!=None: plt.plot([limits[p,1],limits[p,1]],[iso_age[0],iso_age[-1]],color='white',linewidth=1)
-                    if limits[p,2]!=None: plt.plot([iso_mass[i70],iso_mass[i85]],[limits[p,2],limits[p,2]],color='white',linewidth=1)
-                    if limits[p,3]!=None: plt.plot([iso_mass[i70],iso_mass[i85]],[limits[p,3],limits[p,3]],color='white',linewidth=1)
-                plt.title('weight map for star '+str(i)+', '+str.upper(model))
+                plt.title('weight map for star 0, '+str.upper(model))
 
             plt.ylabel(r'$\log_{10}$(age)')
             plt.xlabel(r'mass ($M_\odot$)')
             if tofile: 
-                file=self['path']+'_'+dtype+'_map_star'+str(i)+'.png'
+                file=self['path']+'_'+dtype+'_map_star0.png'
                 plt.savefig(file)
             plt.show()
-            p+=1
+        else:
+            p=0
+            for i in indices:
+                
+                try:
+                    m_sol=self['all_solutions'][i]['masses']
+                except KeyError:
+                    print('No solution was found for star '+str(i)+'. Check the log for details.')
+                    p+=1
+                    continue
+                
+                chi2=self[key][i]            
+                m_sol=self['all_solutions'][i]['masses']
+                
+                ### find unique elements in eval('isochrone_grid')
+                th_model=eval(self['isochrone_grid'][i])
+                iso_mass=th_model.masses
+                iso_age=th_model.ages
+                model=th_model.model
+                AA,MM = np.meshgrid(iso_age,iso_mass)
+
+                if dtype=='chi2':
+                    best=np.nanmin(chi2)
+                    arg_best=np.nanargmin(chi2)
+
+                    plt.figure(figsize=(12,12))
+                    levels = 10**np.linspace(np.log10(best), np.log10(best+15), 10)
+                    plt.contour(MM, AA, chi2, levels=levels, extend='both', cmap=cm.coolwarm_r) #to fix the aliasing bug in PDF rendering
+                    h = plt.contourf(MM, AA, chi2, levels=levels, extend='both', cmap=cm.coolwarm_r)
+                    CB = plt.colorbar(h,ticks=levels,format='%.1f')
+                    CB.set_label(r'$\chi^2$', rotation=270)
+                    m_range=[np.min(m_sol)*0.9,np.max(m_sol)*1.1]
+                    plt.xlim(m_range)
+                    plt.yscale('log')
+                    i70,i85=np.argmin(np.abs(iso_mass-m_range[0])),np.argmin(np.abs(iso_mass-m_range[1]))
+                    for j in range(i70,i85):
+                        plt.plot([iso_mass[j],iso_mass[j]],[iso_age[0],iso_age[-1]],color='white',linewidth=0.3)
+                    for j in range(len(iso_age)):
+                        plt.plot([iso_mass[i70],iso_mass[i85]],[iso_age[j],iso_age[j]],color='white',linewidth=0.3)
+                    plt.title(r'$\chi^2$ map for star '+str(i)+', '+str.upper(model))
+                elif dtype=='weights':
+                    best=np.nanmax(chi2)
+                    arg_best=np.nanargmax(chi2)
+
+                    plt.figure(figsize=(12,12))
+                    levels = np.linspace(0, best, 10)
+                    plt.contour(MM, AA, chi2, levels=levels, extend='both', cmap=cm.coolwarm) #to fix the aliasing bug in PDF renderin
+                    h = plt.contourf(MM, AA, chi2, levels=levels, extend='both', cmap=cm.coolwarm) #cmap=cm.coolwarm_r, extend='min') #100)
+                    CB = plt.colorbar(h,ticks=levels,format='%.3f')
+                    CB.set_label(r'$\chi^2$', rotation=270)
+                    m_range=[np.min(m_sol)*0.9,np.max(m_sol)*1.1]
+                    plt.xlim(m_range)
+                    plt.yscale('log')
+                    i70,i85=np.argmin(np.abs(iso_mass-m_range[0])),np.argmin(np.abs(iso_mass-m_range[1]))
+                    for j in range(i70,i85):
+                        plt.plot([iso_mass[j],iso_mass[j]],[iso_age[0],iso_age[-1]],color='white',linewidth=0.3)
+                    for j in range(len(iso_age)):
+                        plt.plot([iso_mass[i70],iso_mass[i85]],[iso_age[j],iso_age[j]],color='white',linewidth=0.3)
+                    plt.title('weight map for star '+str(i)+', '+str.upper(model))
+
+                plt.ylabel(r'$\log_{10}$(age)')
+                plt.xlabel(r'mass ($M_\odot$)')
+                if tofile: 
+                    file=self['path']+'_'+dtype+'_map_star'+str(i)+'.png'
+                    plt.savefig(file)
+                plt.show()
+                p+=1
+                
         return
