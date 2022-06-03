@@ -1,0 +1,1337 @@
+-------------------------------------------------------------------------
+Quantity name: 'B'
+Description: Johnson-Cousins B-band filter
+Reference: Bessell, PASP 102, 1181 (1990)
+Available in the following models: Dartmouth, Geneva, MIST, PARSEC, BT-Settl, SPOTS, STAREVOL, PM13
+-------------------------------------------------------------------------
+Quantity name: 'B_H'
+Description: Johnson-Cousins H-band filter
+Reference: Bessell & Brett, PASP 100, 1134 (1988)
+Available in the following models: PARSEC, SB12, BHAC15
+-------------------------------------------------------------------------
+Quantity name: 'B_J'
+Description: Johnson-Cousins J-band filter
+Reference: Bessell & Brett, PASP 100, 1134 (1988)
+Available in the following models: PARSEC, SB12, BHAC15
+-------------------------------------------------------------------------
+Quantity name: 'B_K'
+Description: Johnson-Cousins K-band filter
+Reference: Bessell & Brett, PASP 100, 1134 (1988)
+Available in the following models: PARSEC, SB12, BHAC15
+-------------------------------------------------------------------------
+Quantity name: 'Bx'
+Description: Johnson-Cousins B_X-band filter
+Reference: Bessell, PASP 102, 1181 (1990)
+Available in the following models: PARSEC
+-------------------------------------------------------------------------
+Quantity name: 'CFHT_H'
+Description: WIRCAM @ Canada-France-Hawaii Telescope H-band filter
+Reference: Puget et al., Proceedings of the SPIE, 5492, 978 (2004)
+Available in the following models: BHAC15
+-------------------------------------------------------------------------
+Quantity name: 'CFHT_J'
+Description: WIRCAM @ Canada-France-Hawaii Telescope J-band filter
+Reference: Puget et al., Proceedings of the SPIE, 5492, 978 (2004)
+Available in the following models: BHAC15
+-------------------------------------------------------------------------
+Quantity name: 'CFHT_K'
+Description: WIRCAM @ Canada-France-Hawaii Telescope Ks-band filter
+Reference: Puget et al., Proceedings of the SPIE, 5492, 978 (2004)
+Available in the following models: BHAC15
+-------------------------------------------------------------------------
+Quantity name: 'CFHT_Y'
+Description: WIRCAM @ Canada-France-Hawaii Telescope Y-band filter
+Reference: Puget et al., Proceedings of the SPIE, 5492, 978 (2004)
+Available in the following models: BHAC15
+-------------------------------------------------------------------------
+Quantity name: 'CFHT_Z'
+Description: WIRCAM @ Canada-France-Hawaii Telescope Z-band filter
+Reference: Puget et al., Proceedings of the SPIE, 5492, 978 (2004)
+Available in the following models: BHAC15
+-------------------------------------------------------------------------
+Quantity name: 'CFHT_CH4ON'
+Description: WIRCAM @ Canada-France-Hawaii Telescope CH4_on-band filter
+Reference: Puget et al., Proceedings of the SPIE, 5492, 978 (2004)
+Available in the following models: BHAC15
+-------------------------------------------------------------------------
+Quantity name: 'CFHT_CH4OFF'
+Description: WIRCAM @ Canada-France-Hawaii Telescope CH4_off-band filter
+Reference: Puget et al., Proceedings of the SPIE, 5492, 978 (2004)
+Available in the following models: BHAC15
+-------------------------------------------------------------------------
+Quantity name: 'D51'
+Description: Dunlap Observatory DD51 filter (510 nm)
+Reference: Brown et al., AJ 142, 112 (2011)
+Available in the following models: MIST
+-------------------------------------------------------------------------
+Quantity name: 'g'
+Description: Panstarrs DR1 g-band filter
+Reference: Magnier et al., ApJS, 251, 6 (2020)
+Available in the following models: BHAC15, PARSEC, AMES-Cond, AMES-Dusty, BT-Settl, NextGen
+-------------------------------------------------------------------------
+Quantity name: 'G'
+Description: Gaia Early Data Release 3 G-band filter
+Reference: Riello et al., A&A, 649, A3 (2021)
+Available in the following models: MIST, PARSEC
+-------------------------------------------------------------------------
+Quantity name: 'G2'
+Description: Gaia Data Release 2 G-band filter
+Reference: Evans et al., A&A, 616, A4 (2018)
+Available in the following models: BHAC15, Dartmouth, Geneva, MIST, PARSEC, AMES-Cond, AMES-Dusty, BT-Settl, NextGen, SPOTS, STAREVOL, PM13
+-------------------------------------------------------------------------
+Quantity name: 'Gbp'
+Description: Gaia Early Data Release 3 Gbp-band filter
+Reference: Riello et al., A&A, 649, A3 (2021)
+Available in the following models: MIST, PARSEC
+Gbp2: Gaia DR2 (BHAC15, Dartmouth, Geneva, MIST, PARSEC, AMES-Cond, AMES-Dusty, BT-Settl, NextGen, SPOTS, STAREVOL, PM13)
+-------------------------------------------------------------------------
+Quantity name: 'Gbp2'
+Description: Gaia Data Release 2 Gbp-band filter
+Reference: Evans et al., A&A, 616, A4 (2018)
+Available in the following models: BHAC15, Dartmouth, Geneva, MIST, PARSEC, AMES-Cond, AMES-Dusty, BT-Settl, NextGen, SPOTS, STAREVOL, PM13
+-------------------------------------------------------------------------
+Quantity name: 'Grp'
+Description: Gaia Early Data Release 3 Grp-band filter
+Reference: Riello et al., A&A, 649, A3 (2021)
+Available in the following models: MIST, PARSEC
+-------------------------------------------------------------------------
+Quantity name: 'Grp2'
+Description: Gaia Data Release 2 Grp-band filter
+Reference: Evans et al., A&A, 616, A4 (2018)
+Available in the following models: BHAC15, Dartmouth, Geneva, MIST, PARSEC, AMES-Cond, AMES-Dusty, BT-Settl, NextGen, SPOTS, STAREVOL, PM13
+-------------------------------------------------------------------------
+Quantity name: 'H'
+Description: 2MASS H-band filter
+Reference: Skrutskie et al., AJ 131, 1163 (2006)
+Available in the following models: BHAC15, Dartmouth, Geneva, MIST, PARSEC, AMES-Cond, AMES-Dusty, BT-Settl, NextGen, SB12, Sonora Bobcat, SPOTS, STAREVOL, PM13
+-------------------------------------------------------------------------
+Quantity name: 'H_F090M'
+Description: NICMOS1 @ Hubble Space Telescope F090M filter
+Reference: Viana et al., HST Instrument Handbook (2009)
+Available in the following models: AMES-Cond, AMES-Dusty
+-------------------------------------------------------------------------
+Quantity name: 'H_F110W'
+Description: NICMOS1/NICMOS2/NICMOS3/WFC3_IR @ Hubble Space Telescope F110W filter
+Reference: Viana et al., HST Instrument Handbook (2009), Kimble et al., SPIE 7010, 70101E (2008)
+Available in the following models: AMES-Cond, AMES-Dusty
+-------------------------------------------------------------------------
+Quantity name: 'H_F160W'
+Description: NICMOS1/NICMOS2/NICMOS3 @ Hubble Space Telescope F160W filter
+Reference: Viana et al., HST Instrument Handbook (2009)
+Available in the following models: AMES-Cond, AMES-Dusty
+-------------------------------------------------------------------------
+Quantity name: 'H_F165M'
+Description: NICMOS1 @ Hubble Space Telescope F165M filter
+Reference: Viana et al., HST Instrument Handbook (2009)
+Available in the following models: AMES-Cond, AMES-Dusty
+-------------------------------------------------------------------------
+Quantity name: 'H_F187W'
+Description: NICMOS2 @ Hubble Space Telescope F187W filter
+Reference: Viana et al., HST Instrument Handbook (2009)
+Available in the following models: AMES-Cond, AMES-Dusty
+-------------------------------------------------------------------------
+Quantity name: 'H_F205W'
+Description: NICMOS2 @ Hubble Space Telescope F205W filter
+Reference: Viana et al., HST Instrument Handbook (2009)
+Available in the following models: AMES-Cond, AMES-Dusty
+-------------------------------------------------------------------------
+Quantity name: 'H_F207M'
+Description: NICMOS2 @ Hubble Space Telescope F207M filter
+Reference: Viana et al., HST Instrument Handbook (2009)
+Available in the following models: AMES-Cond, AMES-Dusty
+-------------------------------------------------------------------------
+Quantity name: 'H_F222M'
+Description: NICMOS2/NICMOS3 @ Hubble Space Telescope F222M filter
+Reference: Viana et al., HST Instrument Handbook (2009)
+Available in the following models: AMES-Cond, AMES-Dusty
+-------------------------------------------------------------------------
+Quantity name: 'H_F237M'
+Description: NICMOS2 @ Hubble Space Telescope F237M filter
+Reference: Viana et al., HST Instrument Handbook (2009)
+Available in the following models: AMES-Cond, AMES-Dusty
+-------------------------------------------------------------------------
+Quantity name: 'H_F253M'
+Description: FOC (f/96 detector) @ Hubble Space Telescope F253M filter
+Reference: Paresce, Hubble Space Telescope: Faint object camera instrument handbook. Version 2.0 (1990)
+Available in the following models: AMES-Cond, AMES-Dusty
+-------------------------------------------------------------------------
+Quantity name: 'H_F300W'
+Description: WFPC2-PC @ Hubble Space Telescope F300W filter
+Reference: Holtzman et al., PASP 107, 1065 (1995)
+Available in the following models: AMES-Cond, AMES-Dusty
+-------------------------------------------------------------------------
+Quantity name: 'H_F336W'
+Description: WFC3_UVIS1/WFC3_UVIS2/WFPC1-PC/WFPC1-WF/WFPC2-PC @ Hubble Space Telescope F336W filter
+Reference: Kimble et al., SPIE 7010, 70101E (2008); Holtzman et al., PASP 107, 1065 (1995); Griffiths, Hubble Space Telescope: Wide field and planetary camera instrument handbook. Version 2.1 (1990)
+Available in the following models: AMES-Cond, AMES-Dusty
+-------------------------------------------------------------------------
+Quantity name: 'H_F346M'
+Description: FOC (f/96 detector) @ Hubble Space Telescope F346M filter
+Reference: Paresce, Hubble Space Telescope: Faint object camera instrument handbook. Version 2.0 (1990)
+Available in the following models: AMES-Cond, AMES-Dusty
+-------------------------------------------------------------------------
+Quantity name: 'H_F439W'
+Description: WFPC1-PC/WFPC1-WF @ Hubble Space Telescope F439W filter
+Reference: Griffiths, Hubble Space Telescope: Wide field and planetary camera instrument handbook. Version 2.1 (1990)
+Available in the following models: AMES-Cond, AMES-Dusty
+-------------------------------------------------------------------------
+Quantity name: 'H_F555W'
+Description: ACS_HRC/WFC3_UVIS1/WFC3_UVIS2/WFPC1-PC/WFPC1-WF/WFPC2-PC @ Hubble Space Telescope F555W filter
+Reference: Ford et al., Proc. SPIE 2807, 184 (1996); Kimble et al., SPIE 7010, 70101E (2008); Griffiths, Hubble Space Telescope: Wide field and planetary camera instrument handbook. Version 2.1 (1990); Holtzman et al., PASP 107, 1065 (1995)
+Available in the following models: AMES-Cond, AMES-Dusty
+-------------------------------------------------------------------------
+Quantity name: 'H_F606W'
+Description: ACS_HRC/ACS_WFC/WFC3_UVIS1/WFC3_UVIS2/WFPC1-PC/WFPC1-WF/WFPC2-PC @ Hubble Space Telescope F606W filter
+Reference: Ford et al., Proc. SPIE 2807, 184 (1996); Kimble et al., SPIE 7010, 70101E (2008); Griffiths, Hubble Space Telescope: Wide field and planetary camera instrument handbook. Version 2.1 (1990); Holtzman et al., PASP 107, 1065 (1995)
+Available in the following models: AMES-Cond, AMES-Dusty
+-------------------------------------------------------------------------
+Quantity name: 'H_F675W'
+Description: WFPC1-PC/WFPC1-WF/WFPC2-PC @ Hubble Space Telescope F675W filter
+Reference: Griffiths, Hubble Space Telescope: Wide field and planetary camera instrument handbook. Version 2.1 (1990); Holtzman et al., PASP 107, 1065 (1995)
+Available in the following models: AMES-Cond, AMES-Dusty
+-------------------------------------------------------------------------
+Quantity name: 'H_F785LP'
+Description: WFPC1-PC/WFPC1-WF/WFPC2-PC @ Hubble Space Telescope F785LP filter
+Reference: Griffiths, Hubble Space Telescope: Wide field and planetary camera instrument handbook. Version 2.1 (1990); Holtzman et al., PASP 107, 1065 (1995)
+Available in the following models: AMES-Cond, AMES-Dusty
+-------------------------------------------------------------------------
+Quantity name: 'H_F814W'
+Description: ACS_HRC/ACS_WFC/WFC3_UVIS1/WFC3_UVIS2/WFPC1-PC/WFPC1-WF @ Hubble Space Telescope F675W filter
+Reference: Ford et al., Proc. SPIE 2807, 184 (1996); Kimble et al., SPIE 7010, 70101E (2008); Griffiths, Hubble Space Telescope: Wide field and planetary camera instrument handbook. Version 2.1 (1990)
+Available in the following models: AMES-Cond, AMES-Dusty
+-------------------------------------------------------------------------
+Quantity name: 'Hp'
+Description: Hipparcos Hp-band filter
+Reference: Perryman et al., A&A 323, 49 (1997)
+Available in the following models: MIST
+-------------------------------------------------------------------------
+Quantity name: 'I'
+Description: Johnson-Cousins I-band filter
+Reference: Bessell, PASP 102, 1181 (1990)
+Available in the following models: Dartmouth, Geneva, MIST, PARSEC, BT-Settl, SPOTS, STAREVOL, PM13, BHAC15
+-------------------------------------------------------------------------
+Quantity name: 'i'
+Description: Panstarrs DR1 i-band filter
+Reference: Magnier et al., ApJS, 251, 6 (2020)
+Available in the following models: BHAC15, PARSEC, AMES-Cond, AMES-Dusty, BT-Settl, NextGen
+-------------------------------------------------------------------------
+Quantity name: 'I_c'
+Description: TESS I_c-band filter
+Reference: Ricker et al., JATIS 1, 014003 (2015)
+Available in the following models: MIST
+-------------------------------------------------------------------------
+Quantity name: 'IRAC1'
+Description: Spitzer IRAC-Channel 1 filter (3.6 micron)
+Reference: Fazio et al., ApJS, 154, 10 (2004)
+Available in the following models: ATMO2020, BHAC15, PARSEC
+-------------------------------------------------------------------------
+Quantity name: 'IRAC2'
+Description: Spitzer IRAC-Channel 2 filter (4.5 micron)
+Reference: Fazio et al., ApJS, 154, 10 (2004)
+Available in the following models: ATMO2020, BHAC15, PARSEC
+-------------------------------------------------------------------------
+Quantity name: 'IRAC3'
+Description: Spitzer IRAC-Channel 3 filter (5.8 micron)
+Reference: Fazio et al., ApJS, 154, 10 (2004)
+Available in the following models: BHAC15, PARSEC
+-------------------------------------------------------------------------
+Quantity name: 'IRAC4'
+Description: Spitzer IRAC-Channel 4 filter (8.0 micron)
+Reference: Fazio et al., ApJS, 154, 10 (2004)
+Available in the following models: BHAC15, PARSEC
+-------------------------------------------------------------------------
+Quantity name: 'IRSblue'
+Description: Spitzer IRS blue channel
+Reference: Houck, ApJS 154, 18 (2004)
+Available in the following models: BHAC15
+-------------------------------------------------------------------------
+Quantity name: 'IRSred'
+Description: Spitzer IRS red channel
+Reference: Houck, ApJS 154, 18 (2004)
+Available in the following models: BHAC15
+-------------------------------------------------------------------------
+Quantity name: 'J'
+Description: 2MASS J-band filter
+Reference: Skrutskie et al., AJ 131, 1163 (2006)
+Available in the following models: BHAC15, Dartmouth, Geneva, MIST, PARSEC, AMES-Cond, AMES-Dusty, BT-Settl, NextGen, SB12, Sonora Bobcat, SPOTS, STAREVOL, PM13
+-------------------------------------------------------------------------
+Quantity name: 'K'
+Description: 2MASS K-band filter
+Reference: Skrutskie et al., AJ 131, 1163 (2006)
+Available in the following models: BHAC15, Dartmouth, Geneva, MIST, PARSEC, AMES-Cond, AMES-Dusty, BT-Settl, NextGen, SB12, Sonora Bobcat, SPOTS, STAREVOL, PM13
+-------------------------------------------------------------------------
+Quantity name: 'Kp'
+Description: Kepler K_p-band filter
+Reference: Koch et al., ApJ 713, 79 (2010)
+Available in the following models: MIST
+-------------------------------------------------------------------------
+Quantity name: 'L'
+Description: Johnson-Cousins L-band filter
+Reference: Bessell & Brett, PASP 100, 1134 (1988)
+Available in the following models: PARSEC, BHAC15
+-------------------------------------------------------------------------
+Quantity name: 'logg'
+Description: surface gravity of the object [log10[gcm-2]]
+Reference: -
+Available in the following models: all
+-------------------------------------------------------------------------
+Quantity name: 'logL'
+Description: bolometric luminosity of the object [log10[L_sun]]
+Reference: -
+Available in the following models: all
+-------------------------------------------------------------------------
+Quantity name: 'Lp'
+Description: Johnson-Cousins L'-band filter
+Reference: Bessell & Brett, PASP 100, 1134 (1988)
+Available in the following models: PARSEC, SB12, BHAC15
+-------------------------------------------------------------------------
+Quantity name: 'M'
+Description: Johnson-Cousins K-band filter
+Reference: Bessell & Brett, PASP 100, 1134 (1988)
+Available in the following models: PARSEC, SB12, BHAC15
+-------------------------------------------------------------------------
+Quantity name: 'MIPS24'
+Description: Spitzer MIPS band at 24 micron
+Reference: Rieke et al., ApJS 154, 25 (2004)
+Available in the following models: BHAC15, PARSEC
+-------------------------------------------------------------------------
+Quantity name: 'MIPS70'
+Description: Spitzer MIPS band at 70 micron
+Reference: Rieke et al., ApJS 154, 25 (2004)
+Available in the following models: BHAC15, PARSEC
+-------------------------------------------------------------------------
+Quantity name: 'MIPS160'
+Description: Spitzer MIPS band at 160 micron
+Reference: Rieke et al., ApJS 154, 25 (2004)
+Available in the following models: BHAC15, PARSEC
+-------------------------------------------------------------------------
+Quantity name: 'MIRI_c_F1065C'
+Description: MIRI @ James Webb Space Telescope F1065C coronagraphic filter
+Reference: Rieke et al., PASP 127, 584 (2015)
+Available in the following models: ATMO2020
+-------------------------------------------------------------------------
+Quantity name: 'MIRI_c_F1140C'
+Description: MIRI @ James Webb Space Telescope F1140C coronagraphic filter
+Reference: Rieke et al., PASP 127, 584 (2015)
+Available in the following models: ATMO2020
+-------------------------------------------------------------------------
+Quantity name: 'MIRI_c_F1550C'
+Description: MIRI @ James Webb Space Telescope F1550C coronagraphic filter
+Reference: Rieke et al., PASP 127, 584 (2015)
+Available in the following models: ATMO2020
+-------------------------------------------------------------------------
+Quantity name: 'MIRI_c_F2300C'
+Description: MIRI @ James Webb Space Telescope F2300C coronagraphic filter
+Reference: Rieke et al., PASP 127, 584 (2015)
+Available in the following models: ATMO2020
+-------------------------------------------------------------------------
+Quantity name: 'MIRI_p_F560W'
+Description: MIRI @ James Webb Space Telescope F560W photometric filter
+Reference: Rieke et al., PASP 127, 584 (2015)
+Available in the following models: ATMO2020, BHAC15
+-------------------------------------------------------------------------
+Quantity name: 'MIRI_p_F770W'
+Description: MIRI @ James Webb Space Telescope F770W photometric filter
+Reference: Rieke et al., PASP 127, 584 (2015)
+Available in the following models: ATMO2020, BHAC15
+-------------------------------------------------------------------------
+Quantity name: 'MIRI_p_F1000W'
+Description: MIRI @ James Webb Space Telescope F1000W photometric filter
+Reference: Rieke et al., PASP 127, 584 (2015)
+Available in the following models: ATMO2020, BHAC15
+-------------------------------------------------------------------------
+Quantity name: 'MIRI_p_F1130W'
+Description: MIRI @ James Webb Space Telescope F1130W photometric filter
+Reference: Rieke et al., PASP 127, 584 (2015)
+Available in the following models: ATMO2020, BHAC15
+-------------------------------------------------------------------------
+Quantity name: 'MIRI_p_F1280W'
+Description: MIRI @ James Webb Space Telescope F1280W photometric filter
+Reference: Rieke et al., PASP 127, 584 (2015)
+Available in the following models: ATMO2020, BHAC15
+-------------------------------------------------------------------------
+Quantity name: 'MIRI_p_F1500W'
+Description: MIRI @ James Webb Space Telescope F1500W photometric filter
+Reference: Rieke et al., PASP 127, 584 (2015)
+Available in the following models: ATMO2020, BHAC15
+-------------------------------------------------------------------------
+Quantity name: 'MIRI_p_F1800W'
+Description: MIRI @ James Webb Space Telescope F1800W photometric filter
+Reference: Rieke et al., PASP 127, 584 (2015)
+Available in the following models: ATMO2020, BHAC15
+-------------------------------------------------------------------------
+Quantity name: 'MIRI_p_F2100W'
+Description: MIRI @ James Webb Space Telescope F2100W photometric filter
+Reference: Rieke et al., PASP 127, 584 (2015)
+Available in the following models: ATMO2020, BHAC15
+-------------------------------------------------------------------------
+Quantity name: 'MIRI_p_F2550W'
+Description: MIRI @ James Webb Space Telescope F2550W photometric filter
+Reference: Rieke et al., PASP 127, 584 (2015)
+Available in the following models: ATMO2020, BHAC15
+-------------------------------------------------------------------------
+Quantity name: 'MKO_H'
+Description: Mauna Key Observatory NIR H-band filter
+Reference: Tokunaga et al., PASP, 114, 180 (2002)
+Available in the following models: ATMO2020
+-------------------------------------------------------------------------
+Quantity name: 'MKO_J'
+Description: Mauna Key Observatory NIR J-band filter
+Reference: Tokunaga et al., PASP, 114, 180 (2002)
+Available in the following models: ATMO2020
+-------------------------------------------------------------------------
+Quantity name: 'MKO_K'
+Description: Mauna Key Observatory NIR K-band filter
+Reference: Tokunaga et al., PASP, 114, 180 (2002)
+Available in the following models: ATMO2020
+-------------------------------------------------------------------------
+Quantity name: 'MKO_Lp'
+Description: Mauna Key Observatory NIR L'-band filter
+Reference: Tokunaga et al., PASP, 114, 180 (2002)
+Available in the following models: ATMO2020
+-------------------------------------------------------------------------
+Quantity name: 'MKO_Mp'
+Description: Mauna Key Observatory NIR M'-band filter
+Reference: Tokunaga et al., PASP, 114, 180 (2002)
+Available in the following models: ATMO2020
+-------------------------------------------------------------------------
+Quantity name: 'MKO_Y'
+Description: Mauna Key Observatory NIR Y-band filter
+Reference: Hillenbrand et al., PASP, 114, 708 (2002)
+Available in the following models: ATMO2020
+-------------------------------------------------------------------------
+Quantity name: 'N'
+Description: Johnson-Cousins K-band filter
+Reference: Bessell & Brett, PASP 100, 1134 (1988)
+Available in the following models: PARSEC, SB12
+-------------------------------------------------------------------------
+Quantity name: 'NIRCAM_c210_F182M'
+Description: NIRCAM @ James Webb Space Telescope F182M filter with 210R mask
+Reference: Horner & Rieke, Proc. SPIE 5487, 628 (2004)
+Available in the following models: ATMO2020
+-------------------------------------------------------------------------
+Quantity name: 'NIRCAM_c210_F187N'
+Description: NIRCAM @ James Webb Space Telescope F187N filter with 210R mask
+Reference: Horner & Rieke, Proc. SPIE 5487, 628 (2004)
+Available in the following models: ATMO2020
+-------------------------------------------------------------------------
+Quantity name: 'NIRCAM_c210_F200W'
+Description: NIRCAM @ James Webb Space Telescope F200W filter with 210R mask
+Reference: Horner & Rieke, Proc. SPIE 5487, 628 (2004)
+Available in the following models: ATMO2020
+-------------------------------------------------------------------------
+Quantity name: 'NIRCAM_c210_F210M'
+Description: NIRCAM @ James Webb Space Telescope F210M filter with 210R mask
+Reference: Horner & Rieke, Proc. SPIE 5487, 628 (2004)
+Available in the following models: ATMO2020
+-------------------------------------------------------------------------
+Quantity name: 'NIRCAM_c210_F212N'
+Description: NIRCAM @ James Webb Space Telescope F212N filter with 210R mask
+Reference: Horner & Rieke, Proc. SPIE 5487, 628 (2004)
+Available in the following models: ATMO2020
+-------------------------------------------------------------------------
+Quantity name: 'NIRCAM_c335_F250M'
+Description: NIRCAM @ James Webb Space Telescope F250M filter with 335R mask
+Reference: Horner & Rieke, Proc. SPIE 5487, 628 (2004)
+Available in the following models: ATMO2020
+-------------------------------------------------------------------------
+Quantity name: 'NIRCAM_c335_F300M'
+Description: NIRCAM @ James Webb Space Telescope F300M filter with 335R mask
+Reference: Horner & Rieke, Proc. SPIE 5487, 628 (2004)
+Available in the following models: ATMO2020
+-------------------------------------------------------------------------
+Quantity name: 'NIRCAM_c335_F322W2'
+Description: NIRCAM @ James Webb Space Telescope F322W2 filter with 335R mask
+Reference: Horner & Rieke, Proc. SPIE 5487, 628 (2004)
+Available in the following models: ATMO2020
+-------------------------------------------------------------------------
+Quantity name: 'NIRCAM_c335_F335M'
+Description: NIRCAM @ James Webb Space Telescope F335M filter with 335R mask
+Reference: Horner & Rieke, Proc. SPIE 5487, 628 (2004)
+Available in the following models: ATMO2020
+-------------------------------------------------------------------------
+Quantity name: 'NIRCAM_c335_F356W'
+Description: NIRCAM @ James Webb Space Telescope F356W filter with 335R mask
+Reference: Horner & Rieke, Proc. SPIE 5487, 628 (2004)
+Available in the following models: ATMO2020
+-------------------------------------------------------------------------
+Quantity name: 'NIRCAM_c335_F360M'
+Description: NIRCAM @ James Webb Space Telescope F360M filter with 335R mask
+Reference: Horner & Rieke, Proc. SPIE 5487, 628 (2004)
+Available in the following models: ATMO2020
+-------------------------------------------------------------------------
+Quantity name: 'NIRCAM_c335_F410M'
+Description: NIRCAM @ James Webb Space Telescope F410M filter with 335R mask
+Reference: Horner & Rieke, Proc. SPIE 5487, 628 (2004)
+Available in the following models: ATMO2020
+-------------------------------------------------------------------------
+Quantity name: 'NIRCAM_c335_F430M'
+Description: NIRCAM @ James Webb Space Telescope F430M filter with 335R mask
+Reference: Horner & Rieke, Proc. SPIE 5487, 628 (2004)
+Available in the following models: ATMO2020
+-------------------------------------------------------------------------
+Quantity name: 'NIRCAM_c335_F444W'
+Description: NIRCAM @ James Webb Space Telescope F444W filter with 335R mask
+Reference: Horner & Rieke, Proc. SPIE 5487, 628 (2004)
+Available in the following models: ATMO2020
+-------------------------------------------------------------------------
+Quantity name: 'NIRCAM_c335_F460M'
+Description: NIRCAM @ James Webb Space Telescope F460M filter with 335R mask
+Reference: Horner & Rieke, Proc. SPIE 5487, 628 (2004)
+Available in the following models: ATMO2020
+-------------------------------------------------------------------------
+Quantity name: 'NIRCAM_c335_F480M'
+Description: NIRCAM @ James Webb Space Telescope F480M filter with 335R mask
+Reference: Horner & Rieke, Proc. SPIE 5487, 628 (2004)
+Available in the following models: ATMO2020
+-------------------------------------------------------------------------
+Quantity name: 'NIRCAM_c430_F250M'
+Description: NIRCAM @ James Webb Space Telescope F250M filter with 430R mask
+Reference: Horner & Rieke, Proc. SPIE 5487, 628 (2004)
+Available in the following models: ATMO2020
+-------------------------------------------------------------------------
+Quantity name: 'NIRCAM_c430_F300M'
+Description: NIRCAM @ James Webb Space Telescope F300M filter with 430R mask
+Reference: Horner & Rieke, Proc. SPIE 5487, 628 (2004)
+Available in the following models: ATMO2020
+-------------------------------------------------------------------------
+Quantity name: 'NIRCAM_c430_F322W2'
+Description: NIRCAM @ James Webb Space Telescope F322W2 filter with 430R mask
+Reference: Horner & Rieke, Proc. SPIE 5487, 628 (2004)
+Available in the following models: ATMO2020
+-------------------------------------------------------------------------
+Quantity name: 'NIRCAM_c430_F335M'
+Description: NIRCAM @ James Webb Space Telescope F335M filter with 430R mask
+Reference: Horner & Rieke, Proc. SPIE 5487, 628 (2004)
+Available in the following models: ATMO2020
+-------------------------------------------------------------------------
+Quantity name: 'NIRCAM_c430_F356W'
+Description: NIRCAM @ James Webb Space Telescope F356W filter with 430R mask
+Reference: Horner & Rieke, Proc. SPIE 5487, 628 (2004)
+Available in the following models: ATMO2020
+-------------------------------------------------------------------------
+Quantity name: 'NIRCAM_c430_F360M'
+Description: NIRCAM @ James Webb Space Telescope F360M filter with 430R mask
+Reference: Horner & Rieke, Proc. SPIE 5487, 628 (2004)
+Available in the following models: ATMO2020
+-------------------------------------------------------------------------
+Quantity name: 'NIRCAM_c430_F410M'
+Description: NIRCAM @ James Webb Space Telescope F410M filter with 430R mask
+Reference: Horner & Rieke, Proc. SPIE 5487, 628 (2004)
+Available in the following models: ATMO2020
+-------------------------------------------------------------------------
+Quantity name: 'NIRCAM_c430_F430M'
+Description: NIRCAM @ James Webb Space Telescope F430M filter with 430R mask
+Reference: Horner & Rieke, Proc. SPIE 5487, 628 (2004)
+Available in the following models: ATMO2020
+-------------------------------------------------------------------------
+Quantity name: 'NIRCAM_c430_F444W'
+Description: NIRCAM @ James Webb Space Telescope F444W filter with 430R mask
+Reference: Horner & Rieke, Proc. SPIE 5487, 628 (2004)
+Available in the following models: ATMO2020
+-------------------------------------------------------------------------
+Quantity name: 'NIRCAM_c430_F460M'
+Description: NIRCAM @ James Webb Space Telescope F460M filter with 430R mask
+Reference: Horner & Rieke, Proc. SPIE 5487, 628 (2004)
+Available in the following models: ATMO2020
+-------------------------------------------------------------------------
+Quantity name: 'NIRCAM_c430_F480M'
+Description: NIRCAM @ James Webb Space Telescope F480M filter with 430R mask
+Reference: Horner & Rieke, Proc. SPIE 5487, 628 (2004)
+Available in the following models: ATMO2020
+-------------------------------------------------------------------------
+Quantity name: 'NIRCAM_cLWB_F250M'
+Description: NIRCAM @ James Webb Space Telescope F250M filter with LWB mask
+Reference: Horner & Rieke, Proc. SPIE 5487, 628 (2004)
+Available in the following models: ATMO2020
+-------------------------------------------------------------------------
+Quantity name: 'NIRCAM_cLWB_F277W'
+Description: NIRCAM @ James Webb Space Telescope F277W filter with LWB mask
+Reference: Horner & Rieke, Proc. SPIE 5487, 628 (2004)
+Available in the following models: ATMO2020
+-------------------------------------------------------------------------
+Quantity name: 'NIRCAM_cLWB_F300M'
+Description: NIRCAM @ James Webb Space Telescope F300M filter with LWB mask
+Reference: Horner & Rieke, Proc. SPIE 5487, 628 (2004)
+Available in the following models: ATMO2020
+-------------------------------------------------------------------------
+Quantity name: 'NIRCAM_cLWB_F335M'
+Description: NIRCAM @ James Webb Space Telescope F335M filter with LWB mask
+Reference: Horner & Rieke, Proc. SPIE 5487, 628 (2004)
+Available in the following models: ATMO2020
+-------------------------------------------------------------------------
+Quantity name: 'NIRCAM_cLWB_F356W'
+Description: NIRCAM @ James Webb Space Telescope F356W filter with LWB mask
+Reference: Horner & Rieke, Proc. SPIE 5487, 628 (2004)
+Available in the following models: ATMO2020
+-------------------------------------------------------------------------
+Quantity name: 'NIRCAM_cLWB_F360M'
+Description: NIRCAM @ James Webb Space Telescope F360M filter with LWB mask
+Reference: Horner & Rieke, Proc. SPIE 5487, 628 (2004)
+Available in the following models: ATMO2020
+-------------------------------------------------------------------------
+Quantity name: 'NIRCAM_cLWB_F410M'
+Description: NIRCAM @ James Webb Space Telescope F410M filter with LWB mask
+Reference: Horner & Rieke, Proc. SPIE 5487, 628 (2004)
+Available in the following models: ATMO2020
+-------------------------------------------------------------------------
+Quantity name: 'NIRCAM_cLWB_F430M'
+Description: NIRCAM @ James Webb Space Telescope F430M filter with LWB mask
+Reference: Horner & Rieke, Proc. SPIE 5487, 628 (2004)
+Available in the following models: ATMO2020
+-------------------------------------------------------------------------
+Quantity name: 'NIRCAM_cLWB_F444W'
+Description: NIRCAM @ James Webb Space Telescope F444W filter with LWB mask
+Reference: Horner & Rieke, Proc. SPIE 5487, 628 (2004)
+Available in the following models: ATMO2020
+-------------------------------------------------------------------------
+Quantity name: 'NIRCAM_cLWB_F460M'
+Description: NIRCAM @ James Webb Space Telescope F460M filter with LWB mask
+Reference: Horner & Rieke, Proc. SPIE 5487, 628 (2004)
+Available in the following models: ATMO2020
+-------------------------------------------------------------------------
+Quantity name: 'NIRCAM_cLWB_F480M'
+Description: NIRCAM @ James Webb Space Telescope F480M filter with LWB mask
+Reference: Horner & Rieke, Proc. SPIE 5487, 628 (2004)
+Available in the following models: ATMO2020
+-------------------------------------------------------------------------
+Quantity name: 'NIRCAM_cSWB_F182M'
+Description: NIRCAM @ James Webb Space Telescope F182M filter with SWB mask
+Reference: Horner & Rieke, Proc. SPIE 5487, 628 (2004)
+Available in the following models: ATMO2020
+-------------------------------------------------------------------------
+Quantity name: 'NIRCAM_cSWB_F187N'
+Description: NIRCAM @ James Webb Space Telescope F187N filter with SWB mask
+Reference: Horner & Rieke, Proc. SPIE 5487, 628 (2004)
+Available in the following models: ATMO2020
+-------------------------------------------------------------------------
+Quantity name: 'NIRCAM_cSWB_F200W'
+Description: NIRCAM @ James Webb Space Telescope F200W filter with SWB mask
+Reference: Horner & Rieke, Proc. SPIE 5487, 628 (2004)
+Available in the following models: ATMO2020
+-------------------------------------------------------------------------
+Quantity name: 'NIRCAM_cSWB_F210M'
+Description: NIRCAM @ James Webb Space Telescope F210M filter with SWB mask
+Reference: Horner & Rieke, Proc. SPIE 5487, 628 (2004)
+Available in the following models: ATMO2020
+-------------------------------------------------------------------------
+Quantity name: 'NIRCAM_cSWB_F212N'
+Description: NIRCAM @ James Webb Space Telescope F212N filter with SWB mask
+Reference: Horner & Rieke, Proc. SPIE 5487, 628 (2004)
+Available in the following models: ATMO2020
+-------------------------------------------------------------------------
+Quantity name: 'NIRCAM_p_F070Wa'
+Description: NIRCAM @ James Webb Space Telescope F070W filter, module A
+Reference: Horner & Rieke, Proc. SPIE 5487, 628 (2004)
+Available in the following models: ATMO2020, BHAC15
+-------------------------------------------------------------------------
+Quantity name: 'NIRCAM_p_F070Wab'
+Description: NIRCAM @ James Webb Space Telescope F070W filter, module AB
+Reference: Horner & Rieke, Proc. SPIE 5487, 628 (2004)
+Available in the following models: ATMO2020, BHAC15
+-------------------------------------------------------------------------
+Quantity name: 'NIRCAM_p_F070Wb'
+Description: NIRCAM @ James Webb Space Telescope F070W filter, module B
+Reference: Horner & Rieke, Proc. SPIE 5487, 628 (2004)
+Available in the following models: ATMO2020, BHAC15
+-------------------------------------------------------------------------
+Quantity name: 'NIRCAM_p_F090Wa'
+Description: NIRCAM @ James Webb Space Telescope F090W filter, module A
+Reference: Horner & Rieke, Proc. SPIE 5487, 628 (2004)
+Available in the following models: ATMO2020, BHAC15
+-------------------------------------------------------------------------
+Quantity name: 'NIRCAM_p_F090Wab'
+Description: NIRCAM @ James Webb Space Telescope F090W filter, module AB
+Reference: Horner & Rieke, Proc. SPIE 5487, 628 (2004)
+Available in the following models: ATMO2020, BHAC15
+-------------------------------------------------------------------------
+Quantity name: 'NIRCAM_p_F090Wb'
+Description: NIRCAM @ James Webb Space Telescope F090W filter, module B
+Reference: Horner & Rieke, Proc. SPIE 5487, 628 (2004)
+Available in the following models: ATMO2020, BHAC15
+-------------------------------------------------------------------------
+Quantity name: 'NIRCAM_p_F115Wa'
+Description: NIRCAM @ James Webb Space Telescope F115W filter, module A
+Reference: Horner & Rieke, Proc. SPIE 5487, 628 (2004)
+Available in the following models: ATMO2020, BHAC15
+-------------------------------------------------------------------------
+Quantity name: 'NIRCAM_p_F115Wab'
+Description: NIRCAM @ James Webb Space Telescope F115W filter, module AB
+Reference: Horner & Rieke, Proc. SPIE 5487, 628 (2004)
+Available in the following models: ATMO2020, BHAC15
+-------------------------------------------------------------------------
+Quantity name: 'NIRCAM_p_F115Wb'
+Description: NIRCAM @ James Webb Space Telescope F115W filter, module B
+Reference: Horner & Rieke, Proc. SPIE 5487, 628 (2004)
+Available in the following models: ATMO2020, BHAC15
+-------------------------------------------------------------------------
+Quantity name: 'NIRCAM_p_F140Ma'
+Description: NIRCAM @ James Webb Space Telescope F140M filter, module A
+Reference: Horner & Rieke, Proc. SPIE 5487, 628 (2004)
+Available in the following models: ATMO2020, BHAC15
+-------------------------------------------------------------------------
+Quantity name: 'NIRCAM_p_F140Mab'
+Description: NIRCAM @ James Webb Space Telescope F140M filter, module AB
+Reference: Horner & Rieke, Proc. SPIE 5487, 628 (2004)
+Available in the following models: ATMO2020, BHAC15
+-------------------------------------------------------------------------
+Quantity name: 'NIRCAM_p_F140Mb'
+Description: NIRCAM @ James Webb Space Telescope F140M filter, module B
+Reference: Horner & Rieke, Proc. SPIE 5487, 628 (2004)
+Available in the following models: ATMO2020, BHAC15
+-------------------------------------------------------------------------
+Quantity name: 'NIRCAM_p_F150Wa'
+Description: NIRCAM @ James Webb Space Telescope F150W filter, module A
+Reference: Horner & Rieke, Proc. SPIE 5487, 628 (2004)
+Available in the following models: ATMO2020, BHAC15
+-------------------------------------------------------------------------
+Quantity name: 'NIRCAM_p_F150Wab'
+Description: NIRCAM @ James Webb Space Telescope F150W filter, module AB
+Reference: Horner & Rieke, Proc. SPIE 5487, 628 (2004)
+Available in the following models: ATMO2020, BHAC15
+-------------------------------------------------------------------------
+Quantity name: 'NIRCAM_p_F150Wb'
+Description: NIRCAM @ James Webb Space Telescope F150W filter, module B
+Reference: Horner & Rieke, Proc. SPIE 5487, 628 (2004)
+Available in the following models: ATMO2020, BHAC15
+-------------------------------------------------------------------------
+Quantity name: 'NIRCAM_p_F150W2a'
+Description: NIRCAM @ James Webb Space Telescope F150W2 filter, module A
+Reference: Horner & Rieke, Proc. SPIE 5487, 628 (2004)
+Available in the following models: ATMO2020, BHAC15
+-------------------------------------------------------------------------
+Quantity name: 'NIRCAM_p_F150W2ab'
+Description: NIRCAM @ James Webb Space Telescope F150W2 filter, module AB
+Reference: Horner & Rieke, Proc. SPIE 5487, 628 (2004)
+Available in the following models: ATMO2020, BHAC15
+-------------------------------------------------------------------------
+Quantity name: 'NIRCAM_p_F150W2b'
+Description: NIRCAM @ James Webb Space Telescope F150W2 filter, module B
+Reference: Horner & Rieke, Proc. SPIE 5487, 628 (2004)
+Available in the following models: ATMO2020, BHAC15
+-------------------------------------------------------------------------
+Quantity name: 'NIRCAM_p_F162Ma'
+Description: NIRCAM @ James Webb Space Telescope F162M filter, module A
+Reference: Horner & Rieke, Proc. SPIE 5487, 628 (2004)
+Available in the following models: ATMO2020, BHAC15
+-------------------------------------------------------------------------
+Quantity name: 'NIRCAM_p_F162Mab'
+Description: NIRCAM @ James Webb Space Telescope F162M filter, module AB
+Reference: Horner & Rieke, Proc. SPIE 5487, 628 (2004)
+Available in the following models: ATMO2020, BHAC15
+-------------------------------------------------------------------------
+Quantity name: 'NIRCAM_p_F162Mb'
+Description: NIRCAM @ James Webb Space Telescope F162M filter, module B
+Reference: Horner & Rieke, Proc. SPIE 5487, 628 (2004)
+Available in the following models: ATMO2020, BHAC15
+-------------------------------------------------------------------------
+Quantity name: 'NIRCAM_p_F164Na'
+Description: NIRCAM @ James Webb Space Telescope F164N filter, module A
+Reference: Horner & Rieke, Proc. SPIE 5487, 628 (2004)
+Available in the following models: ATMO2020, BHAC15
+-------------------------------------------------------------------------
+Quantity name: 'NIRCAM_p_F164Nab'
+Description: NIRCAM @ James Webb Space Telescope F164N filter, module AB
+Reference: Horner & Rieke, Proc. SPIE 5487, 628 (2004)
+Available in the following models: ATMO2020, BHAC15
+-------------------------------------------------------------------------
+Quantity name: 'NIRCAM_p_F164Nb'
+Description: NIRCAM @ James Webb Space Telescope F164N filter, module B
+Reference: Horner & Rieke, Proc. SPIE 5487, 628 (2004)
+Available in the following models: ATMO2020, BHAC15
+-------------------------------------------------------------------------
+Quantity name: 'NIRCAM_p_F182Ma'
+Description: NIRCAM @ James Webb Space Telescope F182M filter, module A
+Reference: Horner & Rieke, Proc. SPIE 5487, 628 (2004)
+Available in the following models: ATMO2020, BHAC15
+-------------------------------------------------------------------------
+Quantity name: 'NIRCAM_p_F182Mab'
+Description: NIRCAM @ James Webb Space Telescope F182M filter, module AB
+Reference: Horner & Rieke, Proc. SPIE 5487, 628 (2004)
+Available in the following models: ATMO2020, BHAC15
+-------------------------------------------------------------------------
+Quantity name: 'NIRCAM_p_F182Mb'
+Description: NIRCAM @ James Webb Space Telescope F182M filter, module B
+Reference: Horner & Rieke, Proc. SPIE 5487, 628 (2004)
+Available in the following models: ATMO2020, BHAC15
+-------------------------------------------------------------------------
+Quantity name: 'NIRCAM_p_F187Na'
+Description: NIRCAM @ James Webb Space Telescope F187N filter, module A
+Reference: Horner & Rieke, Proc. SPIE 5487, 628 (2004)
+Available in the following models: ATMO2020, BHAC15
+-------------------------------------------------------------------------
+Quantity name: 'NIRCAM_p_F187Nab'
+Description: NIRCAM @ James Webb Space Telescope F187N filter, module AB
+Reference: Horner & Rieke, Proc. SPIE 5487, 628 (2004)
+Available in the following models: ATMO2020, BHAC15
+-------------------------------------------------------------------------
+Quantity name: 'NIRCAM_p_F187Nb'
+Description: NIRCAM @ James Webb Space Telescope F187N filter, module B
+Reference: Horner & Rieke, Proc. SPIE 5487, 628 (2004)
+Available in the following models: ATMO2020, BHAC15
+-------------------------------------------------------------------------
+Quantity name: 'NIRCAM_p_F200Wa'
+Description: NIRCAM @ James Webb Space Telescope F200W filter, module A
+Reference: Horner & Rieke, Proc. SPIE 5487, 628 (2004)
+Available in the following models: ATMO2020, BHAC15
+-------------------------------------------------------------------------
+Quantity name: 'NIRCAM_p_F200Wab'
+Description: NIRCAM @ James Webb Space Telescope F200W filter, module AB
+Reference: Horner & Rieke, Proc. SPIE 5487, 628 (2004)
+Available in the following models: ATMO2020, BHAC15
+-------------------------------------------------------------------------
+Quantity name: 'NIRCAM_p_F200Wb'
+Description: NIRCAM @ James Webb Space Telescope F200W filter, module B
+Reference: Horner & Rieke, Proc. SPIE 5487, 628 (2004)
+Available in the following models: ATMO2020, BHAC15
+-------------------------------------------------------------------------
+Quantity name: 'NIRCAM_p_F210Ma'
+Description: NIRCAM @ James Webb Space Telescope F210M filter, module A
+Reference: Horner & Rieke, Proc. SPIE 5487, 628 (2004)
+Available in the following models: ATMO2020, BHAC15
+-------------------------------------------------------------------------
+Quantity name: 'NIRCAM_p_F210Mab'
+Description: NIRCAM @ James Webb Space Telescope F210M filter, module AB
+Reference: Horner & Rieke, Proc. SPIE 5487, 628 (2004)
+Available in the following models: ATMO2020, BHAC15
+-------------------------------------------------------------------------
+Quantity name: 'NIRCAM_p_F210Mb'
+Description: NIRCAM @ James Webb Space Telescope F210M filter, module B
+Reference: Horner & Rieke, Proc. SPIE 5487, 628 (2004)
+Available in the following models: ATMO2020, BHAC15
+-------------------------------------------------------------------------
+Quantity name: 'NIRCAM_p_F212Na'
+Description: NIRCAM @ James Webb Space Telescope F212N filter, module A
+Reference: Horner & Rieke, Proc. SPIE 5487, 628 (2004)
+Available in the following models: ATMO2020, BHAC15
+-------------------------------------------------------------------------
+Quantity name: 'NIRCAM_p_F212Nab'
+Description: NIRCAM @ James Webb Space Telescope F212N filter, module AB
+Reference: Horner & Rieke, Proc. SPIE 5487, 628 (2004)
+Available in the following models: ATMO2020, BHAC15
+-------------------------------------------------------------------------
+Quantity name: 'NIRCAM_p_F212Nb'
+Description: NIRCAM @ James Webb Space Telescope F212N filter, module B
+Reference: Horner & Rieke, Proc. SPIE 5487, 628 (2004)
+Available in the following models: ATMO2020, BHAC15
+-------------------------------------------------------------------------
+Quantity name: 'NIRCAM_p_F250Ma'
+Description: NIRCAM @ James Webb Space Telescope F250M filter, module A
+Reference: Horner & Rieke, Proc. SPIE 5487, 628 (2004)
+Available in the following models: ATMO2020, BHAC15
+-------------------------------------------------------------------------
+Quantity name: 'NIRCAM_p_F250Mab'
+Description: NIRCAM @ James Webb Space Telescope F250M filter, module AB
+Reference: Horner & Rieke, Proc. SPIE 5487, 628 (2004)
+Available in the following models: ATMO2020, BHAC15
+-------------------------------------------------------------------------
+Quantity name: 'NIRCAM_p_F250Mb'
+Description: NIRCAM @ James Webb Space Telescope F250M filter, module B
+Reference: Horner & Rieke, Proc. SPIE 5487, 628 (2004)
+Available in the following models: ATMO2020, BHAC15
+-------------------------------------------------------------------------
+Quantity name: 'NIRCAM_p_F277Wa'
+Description: NIRCAM @ James Webb Space Telescope F277W filter, module A
+Reference: Horner & Rieke, Proc. SPIE 5487, 628 (2004)
+Available in the following models: ATMO2020, BHAC15
+-------------------------------------------------------------------------
+Quantity name: 'NIRCAM_p_F277Wab'
+Description: NIRCAM @ James Webb Space Telescope F277W filter, module AB
+Reference: Horner & Rieke, Proc. SPIE 5487, 628 (2004)
+Available in the following models: ATMO2020, BHAC15
+-------------------------------------------------------------------------
+Quantity name: 'NIRCAM_p_F277Wb'
+Description: NIRCAM @ James Webb Space Telescope F277W filter, module B
+Reference: Horner & Rieke, Proc. SPIE 5487, 628 (2004)
+Available in the following models: ATMO2020, BHAC15
+-------------------------------------------------------------------------
+Quantity name: 'NIRCAM_p_F300Ma'
+Description: NIRCAM @ James Webb Space Telescope F300M filter, module A
+Reference: Horner & Rieke, Proc. SPIE 5487, 628 (2004)
+Available in the following models: ATMO2020, BHAC15
+-------------------------------------------------------------------------
+Quantity name: 'NIRCAM_p_F300Mab'
+Description: NIRCAM @ James Webb Space Telescope F300M filter, module AB
+Reference: Horner & Rieke, Proc. SPIE 5487, 628 (2004)
+Available in the following models: ATMO2020, BHAC15
+-------------------------------------------------------------------------
+Quantity name: 'NIRCAM_p_F300Mb'
+Description: NIRCAM @ James Webb Space Telescope F300M filter, module B
+Reference: Horner & Rieke, Proc. SPIE 5487, 628 (2004)
+Available in the following models: ATMO2020, BHAC15
+-------------------------------------------------------------------------
+Quantity name: 'NIRCAM_p_F322W2a'
+Description: NIRCAM @ James Webb Space Telescope F322W2 filter, module A
+Reference: Horner & Rieke, Proc. SPIE 5487, 628 (2004)
+Available in the following models: ATMO2020, BHAC15
+-------------------------------------------------------------------------
+Quantity name: 'NIRCAM_p_F322W2ab'
+Description: NIRCAM @ James Webb Space Telescope F322W2 filter, module AB
+Reference: Horner & Rieke, Proc. SPIE 5487, 628 (2004)
+Available in the following models: ATMO2020, BHAC15
+-------------------------------------------------------------------------
+Quantity name: 'NIRCAM_p_F322W2b'
+Description: NIRCAM @ James Webb Space Telescope F322W2 filter, module B
+Reference: Horner & Rieke, Proc. SPIE 5487, 628 (2004)
+Available in the following models: ATMO2020, BHAC15
+-------------------------------------------------------------------------
+Quantity name: 'NIRCAM_p_F323Na'
+Description: NIRCAM @ James Webb Space Telescope F323N filter, module A
+Reference: Horner & Rieke, Proc. SPIE 5487, 628 (2004)
+Available in the following models: ATMO2020, BHAC15
+-------------------------------------------------------------------------
+Quantity name: 'NIRCAM_p_F323Nab'
+Description: NIRCAM @ James Webb Space Telescope F323N filter, module AB
+Reference: Horner & Rieke, Proc. SPIE 5487, 628 (2004)
+Available in the following models: ATMO2020, BHAC15
+-------------------------------------------------------------------------
+Quantity name: 'NIRCAM_p_F323Nb'
+Description: NIRCAM @ James Webb Space Telescope F323N filter, module B
+Reference: Horner & Rieke, Proc. SPIE 5487, 628 (2004)
+Available in the following models: ATMO2020, BHAC15
+-------------------------------------------------------------------------
+Quantity name: 'NIRCAM_p_F335Ma'
+Description: NIRCAM @ James Webb Space Telescope F335M filter, module A
+Reference: Horner & Rieke, Proc. SPIE 5487, 628 (2004)
+Available in the following models: ATMO2020, BHAC15
+-------------------------------------------------------------------------
+Quantity name: 'NIRCAM_p_F335Mab'
+Description: NIRCAM @ James Webb Space Telescope F335M filter, module AB
+Reference: Horner & Rieke, Proc. SPIE 5487, 628 (2004)
+Available in the following models: ATMO2020, BHAC15
+-------------------------------------------------------------------------
+Quantity name: 'NIRCAM_p_F335Mb'
+Description: NIRCAM @ James Webb Space Telescope F335M filter, module B
+Reference: Horner & Rieke, Proc. SPIE 5487, 628 (2004)
+Available in the following models: ATMO2020, BHAC15
+-------------------------------------------------------------------------
+Quantity name: 'NIRCAM_p_F356Wa'
+Description: NIRCAM @ James Webb Space Telescope F356W filter, module A
+Reference: Horner & Rieke, Proc. SPIE 5487, 628 (2004)
+Available in the following models: ATMO2020, BHAC15
+-------------------------------------------------------------------------
+Quantity name: 'NIRCAM_p_F356Wab'
+Description: NIRCAM @ James Webb Space Telescope F356W filter, module AB
+Reference: Horner & Rieke, Proc. SPIE 5487, 628 (2004)
+Available in the following models: ATMO2020, BHAC15
+-------------------------------------------------------------------------
+Quantity name: 'NIRCAM_p_F356Wb'
+Description: NIRCAM @ James Webb Space Telescope F356W filter, module B
+Reference: Horner & Rieke, Proc. SPIE 5487, 628 (2004)
+Available in the following models: ATMO2020, BHAC15
+-------------------------------------------------------------------------
+Quantity name: 'NIRCAM_p_F360Ma'
+Description: NIRCAM @ James Webb Space Telescope F360M filter, module A
+Reference: Horner & Rieke, Proc. SPIE 5487, 628 (2004)
+Available in the following models: ATMO2020, BHAC15
+-------------------------------------------------------------------------
+Quantity name: 'NIRCAM_p_F360Mab'
+Description: NIRCAM @ James Webb Space Telescope F360M filter, module AB
+Reference: Horner & Rieke, Proc. SPIE 5487, 628 (2004)
+Available in the following models: ATMO2020, BHAC15
+-------------------------------------------------------------------------
+Quantity name: 'NIRCAM_p_F360Mb'
+Description: NIRCAM @ James Webb Space Telescope F360M filter, module B
+Reference: Horner & Rieke, Proc. SPIE 5487, 628 (2004)
+Available in the following models: ATMO2020, BHAC15
+-------------------------------------------------------------------------
+Quantity name: 'NIRCAM_p_F405Na'
+Description: NIRCAM @ James Webb Space Telescope F405N filter, module A
+Reference: Horner & Rieke, Proc. SPIE 5487, 628 (2004)
+Available in the following models: ATMO2020, BHAC15
+-------------------------------------------------------------------------
+Quantity name: 'NIRCAM_p_F405Nab'
+Description: NIRCAM @ James Webb Space Telescope F405N filter, module AB
+Reference: Horner & Rieke, Proc. SPIE 5487, 628 (2004)
+Available in the following models: ATMO2020, BHAC15
+-------------------------------------------------------------------------
+Quantity name: 'NIRCAM_p_F405Nb'
+Description: NIRCAM @ James Webb Space Telescope F405N filter, module B
+Reference: Horner & Rieke, Proc. SPIE 5487, 628 (2004)
+Available in the following models: ATMO2020, BHAC15
+-------------------------------------------------------------------------
+Quantity name: 'NIRCAM_p_F410Ma'
+Description: NIRCAM @ James Webb Space Telescope F410M filter, module A
+Reference: Horner & Rieke, Proc. SPIE 5487, 628 (2004)
+Available in the following models: ATMO2020, BHAC15
+-------------------------------------------------------------------------
+Quantity name: 'NIRCAM_p_F410Mab'
+Description: NIRCAM @ James Webb Space Telescope F410M filter, module AB
+Reference: Horner & Rieke, Proc. SPIE 5487, 628 (2004)
+Available in the following models: ATMO2020, BHAC15
+-------------------------------------------------------------------------
+Quantity name: 'NIRCAM_p_F410Mb'
+Description: NIRCAM @ James Webb Space Telescope F410M filter, module B
+Reference: Horner & Rieke, Proc. SPIE 5487, 628 (2004)
+Available in the following models: ATMO2020, BHAC15
+-------------------------------------------------------------------------
+Quantity name: 'NIRCAM_p_F430Ma'
+Description: NIRCAM @ James Webb Space Telescope F430M filter, module A
+Reference: Horner & Rieke, Proc. SPIE 5487, 628 (2004)
+Available in the following models: ATMO2020, BHAC15
+-------------------------------------------------------------------------
+Quantity name: 'NIRCAM_p_F430Mab'
+Description: NIRCAM @ James Webb Space Telescope F430M filter, module AB
+Reference: Horner & Rieke, Proc. SPIE 5487, 628 (2004)
+Available in the following models: ATMO2020, BHAC15
+-------------------------------------------------------------------------
+Quantity name: 'NIRCAM_p_F430Mb'
+Description: NIRCAM @ James Webb Space Telescope F430M filter, module B
+Reference: Horner & Rieke, Proc. SPIE 5487, 628 (2004)
+Available in the following models: ATMO2020, BHAC15
+-------------------------------------------------------------------------
+Quantity name: 'NIRCAM_p_F444Wa'
+Description: NIRCAM @ James Webb Space Telescope F444W filter, module A
+Reference: Horner & Rieke, Proc. SPIE 5487, 628 (2004)
+Available in the following models: ATMO2020, BHAC15
+-------------------------------------------------------------------------
+Quantity name: 'NIRCAM_p_F444Wab'
+Description: NIRCAM @ James Webb Space Telescope F444W filter, module AB
+Reference: Horner & Rieke, Proc. SPIE 5487, 628 (2004)
+Available in the following models: ATMO2020, BHAC15
+-------------------------------------------------------------------------
+Quantity name: 'NIRCAM_p_F444Wb'
+Description: NIRCAM @ James Webb Space Telescope F444W filter, module B
+Reference: Horner & Rieke, Proc. SPIE 5487, 628 (2004)
+Available in the following models: ATMO2020, BHAC15
+-------------------------------------------------------------------------
+Quantity name: 'NIRCAM_p_F460Ma'
+Description: NIRCAM @ James Webb Space Telescope F460M filter, module A
+Reference: Horner & Rieke, Proc. SPIE 5487, 628 (2004)
+Available in the following models: ATMO2020, BHAC15
+-------------------------------------------------------------------------
+Quantity name: 'NIRCAM_p_F460Mab'
+Description: NIRCAM @ James Webb Space Telescope F460M filter, module AB
+Reference: Horner & Rieke, Proc. SPIE 5487, 628 (2004)
+Available in the following models: ATMO2020, BHAC15
+-------------------------------------------------------------------------
+Quantity name: 'NIRCAM_p_F460Mb'
+Description: NIRCAM @ James Webb Space Telescope F460M filter, module B
+Reference: Horner & Rieke, Proc. SPIE 5487, 628 (2004)
+Available in the following models: ATMO2020, BHAC15
+-------------------------------------------------------------------------
+Quantity name: 'NIRCAM_p_F466Na'
+Description: NIRCAM @ James Webb Space Telescope F466N filter, module A
+Reference: Horner & Rieke, Proc. SPIE 5487, 628 (2004)
+Available in the following models: ATMO2020, BHAC15
+-------------------------------------------------------------------------
+Quantity name: 'NIRCAM_p_F466Nab'
+Description: NIRCAM @ James Webb Space Telescope F466N filter, module AB
+Reference: Horner & Rieke, Proc. SPIE 5487, 628 (2004)
+Available in the following models: ATMO2020, BHAC15
+-------------------------------------------------------------------------
+Quantity name: 'NIRCAM_p_F466Nb'
+Description: NIRCAM @ James Webb Space Telescope F466N filter, module B
+Reference: Horner & Rieke, Proc. SPIE 5487, 628 (2004)
+Available in the following models: ATMO2020, BHAC15
+-------------------------------------------------------------------------
+Quantity name: 'NIRCAM_p_F470Na'
+Description: NIRCAM @ James Webb Space Telescope F470N filter, module A
+Reference: Horner & Rieke, Proc. SPIE 5487, 628 (2004)
+Available in the following models: ATMO2020, BHAC15
+-------------------------------------------------------------------------
+Quantity name: 'NIRCAM_p_F470Nab'
+Description: NIRCAM @ James Webb Space Telescope F470N filter, module AB
+Reference: Horner & Rieke, Proc. SPIE 5487, 628 (2004)
+Available in the following models: ATMO2020, BHAC15
+-------------------------------------------------------------------------
+Quantity name: 'NIRCAM_p_F470Nb'
+Description: NIRCAM @ James Webb Space Telescope F470N filter, module B
+Reference: Horner & Rieke, Proc. SPIE 5487, 628 (2004)
+Available in the following models: ATMO2020, BHAC15
+-------------------------------------------------------------------------
+Quantity name: 'NIRCAM_p_F480Ma'
+Description: NIRCAM @ James Webb Space Telescope F480M filter, module A
+Reference: Horner & Rieke, Proc. SPIE 5487, 628 (2004)
+Available in the following models: ATMO2020, BHAC15
+-------------------------------------------------------------------------
+Quantity name: 'NIRCAM_p_F480Mab'
+Description: NIRCAM @ James Webb Space Telescope F480M filter, module AB
+Reference: Horner & Rieke, Proc. SPIE 5487, 628 (2004)
+Available in the following models: ATMO2020, BHAC15
+-------------------------------------------------------------------------
+Quantity name: 'NIRCAM_p_F480Mb'
+Description: NIRCAM @ James Webb Space Telescope F480M filter, module B
+Reference: Horner & Rieke, Proc. SPIE 5487, 628 (2004)
+Available in the following models: ATMO2020, BHAC15
+-------------------------------------------------------------------------
+Quantity name: 'NIRISS_c_F277W'
+Description: NIRISS @ James Webb Space Telescope F277W coronagraphic filter
+Reference: Doyon et al., SPIE 844, 84422R (2012) 
+Available in the following models: ATMO2020
+-------------------------------------------------------------------------
+Quantity name: 'NIRISS_c_F380M'
+Description: NIRISS @ James Webb Space Telescope F380M coronagraphic filter
+Reference: Doyon et al., SPIE 844, 84422R (2012) 
+Available in the following models: ATMO2020
+-------------------------------------------------------------------------
+Quantity name: 'NIRISS_c_F430M'
+Description: NIRISS @ James Webb Space Telescope F430M coronagraphic filter
+Reference: Doyon et al., SPIE 844, 84422R (2012) 
+Available in the following models: ATMO2020
+-------------------------------------------------------------------------
+Quantity name: 'NIRISS_c_F480M'
+Description: NIRISS @ James Webb Space Telescope F480M coronagraphic filter
+Reference: Doyon et al., SPIE 844, 84422R (2012) 
+Available in the following models: ATMO2020
+-------------------------------------------------------------------------
+Quantity name: 'NIRISS_p_F090W'
+Description: NIRISS @ James Webb Space Telescope F090W filter
+Reference: Doyon et al., SPIE 844, 84422R (2012) 
+Available in the following models: ATMO2020
+-------------------------------------------------------------------------
+Quantity name: 'NIRISS_p_F115W'
+Description: NIRISS @ James Webb Space Telescope F115W filter
+Reference: Doyon et al., SPIE 844, 84422R (2012) 
+Available in the following models: ATMO2020
+-------------------------------------------------------------------------
+Quantity name: 'NIRISS_p_F140M'
+Description: NIRISS @ James Webb Space Telescope F140M filter
+Reference: Doyon et al., SPIE 844, 84422R (2012) 
+Available in the following models: ATMO2020
+-------------------------------------------------------------------------
+Quantity name: 'NIRISS_p_F150W'
+Description: NIRISS @ James Webb Space Telescope F150W filter
+Reference: Doyon et al., SPIE 844, 84422R (2012) 
+Available in the following models: ATMO2020
+-------------------------------------------------------------------------
+Quantity name: 'NIRISS_p_F158M'
+Description: NIRISS @ James Webb Space Telescope F158M filter
+Reference: Doyon et al., SPIE 844, 84422R (2012) 
+Available in the following models: ATMO2020
+-------------------------------------------------------------------------
+Quantity name: 'NIRISS_p_F200W'
+Description: NIRISS @ James Webb Space Telescope F200W filter
+Reference: Doyon et al., SPIE 844, 84422R (2012) 
+Available in the following models: ATMO2020
+-------------------------------------------------------------------------
+Quantity name: 'NIRISS_p_F277W'
+Description: NIRISS @ James Webb Space Telescope F277W filter
+Reference: Doyon et al., SPIE 844, 84422R (2012) 
+Available in the following models: ATMO2020
+-------------------------------------------------------------------------
+Quantity name: 'NIRISS_p_F356W'
+Description: NIRISS @ James Webb Space Telescope F356W filter
+Reference: Doyon et al., SPIE 844, 84422R (2012) 
+Available in the following models: ATMO2020
+-------------------------------------------------------------------------
+Quantity name: 'NIRISS_p_F380M'
+Description: NIRISS @ James Webb Space Telescope F380M filter
+Reference: Doyon et al., SPIE 844, 84422R (2012) 
+Available in the following models: ATMO2020
+-------------------------------------------------------------------------
+Quantity name: 'NIRISS_p_F430M'
+Description: NIRISS @ James Webb Space Telescope F430M filter
+Reference: Doyon et al., SPIE 844, 84422R (2012) 
+Available in the following models: ATMO2020
+-------------------------------------------------------------------------
+Quantity name: 'NIRISS_p_F444W'
+Description: NIRISS @ James Webb Space Telescope F444W filter
+Reference: Doyon et al., SPIE 844, 84422R (2012) 
+Available in the following models: ATMO2020
+-------------------------------------------------------------------------
+Quantity name: 'NIRISS_p_F480M'
+Description: NIRISS @ James Webb Space Telescope F480M filter
+Reference: Doyon et al., SPIE 844, 84422R (2012) 
+Available in the following models: ATMO2020
+-------------------------------------------------------------------------
+Quantity name: 'R'
+Description: Johnson-Cousins R-band filter
+Reference: Bessell, PASP 102, 1181 (1990)
+Available in the following models: Dartmouth, Geneva, MIST, PARSEC, BT-Settl, SPOTS, STAREVOL, PM13, BHAC15
+-------------------------------------------------------------------------
+Quantity name: 'r'
+Description: Panstarrs DR1 r-band filter
+Reference: Magnier et al., ApJS, 251, 6 (2020)
+Available in the following models: BHAC15, PARSEC, AMES-Cond, AMES-Dusty, BT-Settl, NextGen
+-------------------------------------------------------------------------
+Quantity name: 'radius'
+Description: radius of the object [R_sun or R_jup]
+Reference: -
+Available in the following models: all
+-------------------------------------------------------------------------
+Quantity name: 'SM_g'
+Description: SkyMapper g-band filter
+Reference: Keller et al., PASA, 24, 1 (2007)
+Available in the following models: PARSEC
+-------------------------------------------------------------------------
+Quantity name: 'SM_i'
+Description: SkyMapper i-band filter
+Reference: Keller et al., PASA, 24, 1 (2007)
+Available in the following models: PARSEC
+-------------------------------------------------------------------------
+Quantity name: 'SM_r'
+Description: SkyMapper r-band filter
+Reference: Keller et al., PASA, 24, 1 (2007)
+Available in the following models: PARSEC
+-------------------------------------------------------------------------
+Quantity name: 'SM_u'
+Description: SkyMapper u-band filter
+Reference: Keller et al., PASA, 24, 1 (2007)
+Available in the following models: PARSEC
+-------------------------------------------------------------------------
+Quantity name: 'SM_v'
+Description: SkyMapper v-band filter
+Reference: Keller et al., PASA, 24, 1 (2007)
+Available in the following models: PARSEC
+-------------------------------------------------------------------------
+Quantity name: 'SM_z'
+Description: SkyMapper z-band filter
+Reference: Keller et al., PASA, 24, 1 (2007)
+Available in the following models: PARSEC
+-------------------------------------------------------------------------
+Quantity name: 'SPH_H'
+Description: SPHERE IRDIS @ VLT H-band filter
+Reference: Krol et al., Proc. SPIE 8168 (2011)
+Available in the following models: BHAC15, AMES-Cond, AMES-Dusty, BT-Settl, NextGen
+-------------------------------------------------------------------------
+Quantity name: 'SPH_H2'
+Description: SPHERE IRDIS @ VLT H2 filter (dual band: H2-H3)
+Reference: Krol et al., Proc. SPIE 8168 (2011)
+Available in the following models: BHAC15, AMES-Cond, AMES-Dusty, BT-Settl, NextGen
+-------------------------------------------------------------------------
+Quantity name: 'SPH_H3'
+Description: SPHERE IRDIS @ VLT H3 filter (dual band: H2-H3)
+Reference: Krol et al., Proc. SPIE 8168 (2011)
+Available in the following models: BHAC15, AMES-Cond, AMES-Dusty, BT-Settl, NextGen
+-------------------------------------------------------------------------
+Quantity name: 'SPH_H4'
+Description: SPHERE IRDIS @ VLT H4 filter (dual band: H3-H4)
+Reference: Krol et al., Proc. SPIE 8168 (2011)
+Available in the following models: BHAC15, AMES-Cond, AMES-Dusty, BT-Settl, NextGen
+-------------------------------------------------------------------------
+Quantity name: 'SPH_J'
+Description: SPHERE IRDIS @ VLT J-band filter
+Reference: Krol et al., Proc. SPIE 8168 (2011)
+Available in the following models: BHAC15, AMES-Cond, AMES-Dusty, BT-Settl, NextGen
+-------------------------------------------------------------------------
+Quantity name: 'SPH_J2'
+Description: SPHERE IRDIS @ VLT J2 filter (dual band: J2-J3)
+Reference: Krol et al., Proc. SPIE 8168 (2011)
+Available in the following models: BHAC15, AMES-Cond, AMES-Dusty, BT-Settl, NextGen
+-------------------------------------------------------------------------
+Quantity name: 'SPH_J3'
+Description: SPHERE IRDIS @ VLT J3 filter (dual band: J2-J3)
+Reference: Krol et al., Proc. SPIE 8168 (2011)
+Available in the following models: BHAC15, AMES-Cond, AMES-Dusty, BT-Settl, NextGen
+-------------------------------------------------------------------------
+Quantity name: 'SPH_K'
+Description: SPHERE IRDIS @ VLT Ks-band filter
+Reference: Krol et al., Proc. SPIE 8168 (2011)
+Available in the following models: BHAC15, AMES-Cond, AMES-Dusty, BT-Settl, NextGen
+-------------------------------------------------------------------------
+Quantity name: 'SPH_K1'
+Description: SPHERE IRDIS @ VLT K1 filter (dual band: K1-K2)
+Reference: Krol et al., Proc. SPIE 8168 (2011)
+Available in the following models: BHAC15, AMES-Cond, AMES-Dusty, BT-Settl, NextGen
+-------------------------------------------------------------------------
+Quantity name: 'SPH_K2'
+Description: SPHERE IRDIS @ VLT K2 filter (dual band: K1-K2)
+Reference: Krol et al., Proc. SPIE 8168 (2011)
+Available in the following models: BHAC15, AMES-Cond, AMES-Dusty, BT-Settl, NextGen
+-------------------------------------------------------------------------
+Quantity name: 'SPH_NDH'
+Description: SPHERE IRDIS @ VLT ND_H filter (dual band: ND_H-H23)
+Reference: Krol et al., Proc. SPIE 8168 (2011)
+Available in the following models: BHAC15, AMES-Cond, AMES-Dusty, BT-Settl, NextGen
+-------------------------------------------------------------------------
+Quantity name: 'SPH_Y'
+Description: SPHERE IRDIS @ VLT Y-band filter
+Reference: Krol et al., Proc. SPIE 8168 (2011)
+Available in the following models: BHAC15, AMES-Cond, AMES-Dusty, BT-Settl, NextGen
+-------------------------------------------------------------------------
+Quantity name: 'SPH_Y2'
+Description: SPHERE IRDIS @ VLT Y2 filter (dual band: Y2-Y3)
+Reference: Krol et al., Proc. SPIE 8168 (2011)
+Available in the following models: BHAC15, AMES-Cond, AMES-Dusty, BT-Settl, NextGen
+-------------------------------------------------------------------------
+Quantity name: 'SPH_Y3'
+Description: SPHERE IRDIS @ VLT Y3 filter (dual band: Y2-Y3)
+Reference: Krol et al., Proc. SPIE 8168 (2011)
+Available in the following models: BHAC15, AMES-Cond, AMES-Dusty, BT-Settl, NextGen
+-------------------------------------------------------------------------
+Quantity name: 'T_B'
+Description: Tycho B-band filter
+Reference: Høg et al., A&A 355, L27 (2000)
+Available in the following models: MIST
+-------------------------------------------------------------------------
+Quantity name: 'Teff'
+Description: effective temperature of the object [K]
+Reference: -
+Available in the following models: all
+-------------------------------------------------------------------------
+Quantity name: 'T_V'
+Description: Tycho V-band filter
+Reference: Høg et al., A&A 355, L27 (2000)
+Available in the following models: MIST
+-------------------------------------------------------------------------
+Quantity name: 'U'
+Description: Johnson-Cousins U-band filter
+Reference: Bessell, PASP 102, 1181 (1990)
+Available in the following models: Geneva, MIST, BT-Settl, STAREVOL, PM13
+-------------------------------------------------------------------------
+Quantity name: 'Ux'
+Description: Johnson-Cousins U_X-band filter
+Reference: Bessell, PASP 102, 1181 (1990)
+Available in the following models: PARSEC
+-------------------------------------------------------------------------
+Quantity name: 'UKIDSS_h'
+Description: UKIRT Infrared Deep Sky Survey h-band filter
+Reference: Lawrence et al., MNRAS 379, 1599 (2007)
+Available in the following models: BHAC15
+-------------------------------------------------------------------------
+Quantity name: 'UKIDSS_j'
+Description: UKIRT Infrared Deep Sky Survey j-band filter
+Reference: Lawrence et al., MNRAS 379, 1599 (2007)
+Available in the following models: BHAC15
+-------------------------------------------------------------------------
+Quantity name: 'UKIDSS_k'
+Description: UKIRT Infrared Deep Sky Survey k-band filter
+Reference: Lawrence et al., MNRAS 379, 1599 (2007)
+Available in the following models: BHAC15
+-------------------------------------------------------------------------
+Quantity name: 'UKIDSS_y'
+Description: UKIRT Infrared Deep Sky Survey h-band filter
+Reference: Lawrence et al., MNRAS 379, 1599 (2007)
+Available in the following models: BHAC15
+-------------------------------------------------------------------------
+Quantity name: 'UKIDSS_z'
+Description: UKIRT Infrared Deep Sky Survey h-band filter
+Reference: Lawrence et al., MNRAS 379, 1599 (2007)
+Available in the following models: BHAC15
+-------------------------------------------------------------------------
+Quantity name: 'V'
+Description: Johnson-Cousins V-band filter
+Reference: Bessell, PASP 102, 1181 (1990)
+Available in the following models: Dartmouth, Geneva, MIST, PARSEC, BT-Settl, SPOTS, STAREVOL, PM13, BHAC15
+-------------------------------------------------------------------------
+Quantity name: 'W1'
+Description: Wide-field Infrared Survey Explorer (WISE) W1-band filter
+Reference: Wright et al., AJ 140, 1868 (2010)
+Available in the following models: ATMO2020, MIST, PARSEC, AMES-Cond, AMES-Dusty, BT-Settl, NextGen, Sonora Bobcat, SPOTS, PM13
+-------------------------------------------------------------------------
+Quantity name: 'W2'
+Description: Wide-field Infrared Survey Explorer (WISE) W2-band filter
+Reference: Wright et al., AJ 140, 1868 (2010)
+Available in the following models: ATMO2020, MIST, PARSEC, AMES-Cond, AMES-Dusty, BT-Settl, NextGen, Sonora Bobcat, PM13
+-------------------------------------------------------------------------
+Quantity name: 'W3'
+Description: Wide-field Infrared Survey Explorer (WISE) W1-band filter
+Reference: Wright et al., AJ 140, 1868 (2010)
+Available in the following models: ATMO2020, MIST, PARSEC, AMES-Cond, AMES-Dusty, BT-Settl, NextGen, Sonora Bobcat, PM13
+-------------------------------------------------------------------------
+Quantity name: 'W4'
+Description: Wide-field Infrared Survey Explorer (WISE) W1-band filter
+Reference: Wright et al., AJ 140, 1868 (2010)
+Available in the following models: ATMO2020, MIST, PARSEC, AMES-Cond, AMES-Dusty, BT-Settl, NextGen, Sonora Bobcat, PM13
+-------------------------------------------------------------------------
+Quantity name: 'y'
+Description: Panstarrs DR1 y-band filter
+Reference: Magnier et al., ApJS, 251, 6 (2020)
+Available in the following models: BHAC15, PARSEC, AMES-Cond, AMES-Dusty, BT-Settl, NextGen
+-------------------------------------------------------------------------
+Quantity name: 'z'
+Description: Panstarrs DR1 z-band filter
+Reference: Magnier et al., ApJS, 251, 6 (2020)
+Available in the following models: BHAC15, PARSEC, AMES-Cond, AMES-Dusty, BT-Settl, NextGen
+-------------------------------------------------------------------------
