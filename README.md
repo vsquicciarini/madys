@@ -34,9 +34,9 @@ Note that, when using for the first time an extinction map, `MADYS` will downloa
 Examples
 --------
 
-The package is fully documented and a detailed description is provided in [Squicciarini & Bonavita 2022]().
+The package is fully documented and a detailed description of its features, together with several examples of the kind of scientific results that can be obtained with it, is provided in [Squicciarini & Bonavita 2022]().
 
-However, we recommend you check out the [examples](MADYS_examples.ipynb) provided for a better understanding of its usage.
+However, we recommend you check out the [notebooks](https://github.com/vsquicciarini/madys/blob/main/notebooks/) provided, for a better understanding of its usage.
 
 If you find a bug or want to suggest improvements, please create a [ticket](https://github.com/vsquicciarini/madys/issues)
 
@@ -47,10 +47,11 @@ Recent papers using `MADYS`:
 MADYS has already been used, in its various preliminary forms, for several publications, including: 
 
 * `A scaled-up planetary system around a supernova progenitor`, [Squicciarini et al. 2022 arXiv220502279S](https://ui.adsabs.harvard.edu/abs/2022arXiv220502279S/abstract)
-* `A wide-orbit giant planet in the high-mass b Centauri binary system`, [Janson et al. 2022 2021Natur.600..231J](https://ui.adsabs.harvard.edu/abs/2021Natur.600..231J/abstract)
-* `Unveiling the star formation history of the Upper Scorpius association through its kinematics`, [Squicciarini et al. 2022 2021MNRAS.507.1381S](https://ui.adsabs.harvard.edu/abs/2021MNRAS.507.1381S/abstract)
-* `New binaries from the SHINE survey`, [Bonavita et al. 2021arXiv210313706B](https://ui.adsabs.harvard.edu/abs/2021arXiv210313706B/abstract)
-* `BEAST begins: sample characteristics and survey performance of the B-star Exoplanet Abundance Study`,[Janson, Squicciarini et al. 2021A&A...646A.164J](https://ui.adsabs.harvard.edu/abs/2021A%26A...646A.164J/abstract)
+* `Results from The COPAINS Pilot Survey: four new brown dwarfs and a high companion detection rate for accelerating stars`, [Bonavita et al. 2022 arXiv220502213B](https://ui.adsabs.harvard.edu/abs/2022arXiv220502213B/abstract)
+* `A wide-orbit giant planet in the high-mass b Centauri binary system`, [Janson et al. 2021 Natur.600..231J](https://ui.adsabs.harvard.edu/abs/2021Natur.600..231J/abstract)
+* `Unveiling the star formation history of the Upper Scorpius association through its kinematics`, [Squicciarini et al. 2021 MNRAS.507.1381S](https://ui.adsabs.harvard.edu/abs/2021MNRAS.507.1381S/abstract)
+* `New binaries from the SHINE survey`, [Bonavita et al. 2021 arXiv210313706B](https://ui.adsabs.harvard.edu/abs/2021arXiv210313706B/abstract)
+* `BEAST begins: sample characteristics and survey performance of the B-star Exoplanet Abundance Study`,[Janson, Squicciarini et al. 2021 A&A...646A.164J](https://ui.adsabs.harvard.edu/abs/2021A%26A...646A.164J/abstract)
 
 Author and contributors
 -----------------------
