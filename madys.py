@@ -26,7 +26,6 @@ import warnings
 import logging
 import numpy as np
 from pathlib import Path
-from .evolution import *
 from scipy.interpolate import interp1d, RectBivariateSpline
 from scipy.ndimage.measurements import label
 from scipy.ndimage import center_of_mass
@@ -64,6 +63,11 @@ import gzip
 import site
 import urllib
 import shutil
+
+try:
+    from .evolution import *
+except ImportError:
+    from evolution import *
 
 madys_path=os.path.dirname(os.path.realpath(__file__))
 
