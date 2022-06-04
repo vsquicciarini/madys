@@ -25,7 +25,7 @@ The current repository can be installed using pip:
 ```sh
 pip install madys
 ```
-Note that the current distro is an alpha version and only include 6 out of 16 models: see [here](MADYS_examples.ipynb) for details.
+Note that the current distro is an alpha version and only include 6 out of 16 models: see [here](examples/MADYS_examples.ipynb) for details.
 The full set will be available in the first full release, expected for July 2022.
 
 Note that, when using for the first time an extinction map, `MADYS` will download the relative file (0.7 GB or 2.2 GB, depending on the map).
