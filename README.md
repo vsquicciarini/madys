@@ -36,7 +36,7 @@ Examples
 
 The package is fully documented and a detailed description of its features, together with several examples of the kind of scientific results that can be obtained with it, is provided in [Squicciarini & Bonavita 2022]().
 
-However, we recommend you check out the [notebook](https://github.com/vsquicciarini/madys/blob/main/examples/) provided, for a better understanding of its usage.
+However, we recommend you check out the [examples](https://github.com/vsquicciarini/madys/blob/main/examples/) provided, for a better understanding of its usage.
 
 If you find a bug or want to suggest improvements, please create a [ticket](https://github.com/vsquicciarini/madys/issues)
 
