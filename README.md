@@ -4,11 +4,17 @@ Manifold Age Determination for Young Stars (MADYS)
 
 Information
 -----------
-This repository includes the first version of `MADYS`: the Manifold Age Determination for Young Stars, a flexible Python tool for age and mass determination of young stellar and substellar objects. 
+This repository includes the first version of `MADYS`: the Manifold Age Determination for Young Stars, a flexible Python tool for age and mass determination of young stellar and substellar objects.
 
-In this first release, `MADYS` automatically retrieves and cross-matches photometry from several catalogs, estimates interstellar extinction, and derives age and mass estimates for individual objects through isochronal fitting.
+`MADYS` automatically retrieves and cross-matches photometry from several catalogs, estimates interstellar extinction, and derives age and mass estimates for individual objects through isochronal fitting.
 
-Harmonizing the heterogeneity of publicly-available isochrone grids, the tool allows to choose amongst 16 models, many of which with customizable astrophysical parameters, with more than 100 isochrone grids available. Several dedicated plotting function are provided to allow a visual perception of the numerical output.
+Harmonising the heterogeneity of publicly-available isochrone grids, the tool allows to choose amongst several models, many of which with customisable astrophysical parameters
+
+Note that, since this is an alpha version, it only includes a sub-set of isochrones.
+The full set, with 16 models and more than 100 isochrone grids, will be included the first full release, expected for July 2022.
+
+Several dedicated plotting function are provided to allow a visual perception of the numerical output.
+
 
 Requirements
 ------------
@@ -25,8 +31,6 @@ The current repository can be installed using pip:
 ```sh
 pip install madys
 ```
-Note that the current distro is an alpha version and only include 6 out of 16 models: see [here](examples/MADYS_examples.ipynb) for details.
-The full set will be available in the first full release, expected for July 2022.
 
 Note that, when using for the first time an extinction map, `MADYS` will download the relative file (0.7 GB or 2.2 GB, depending on the map).
 
@@ -47,7 +51,7 @@ Recent papers using `MADYS`:
 MADYS has already been used, in its various preliminary forms, for several publications, including: 
 
 * `A scaled-up planetary system around a supernova progenitor`, [Squicciarini et al. 2022 arXiv220502279S](https://ui.adsabs.harvard.edu/abs/2022arXiv220502279S/abstract)
-* `Results from The COPAINS Pilot Survey: four new brown dwarfs and a high companion detection rate for accelerating stars`, [Bonavita et al. 2022 arXiv220502213B](https://ui.adsabs.harvard.edu/abs/2022arXiv220502213B/abstract)
+* `Results from The COPAINS Pilot Survey: four new brown dwarfs and a high companion detection rate for accelerating stars`, [Bonavita et al. 2022 MNRAS.513.5588B](https://ui.adsabs.harvard.edu/abs/2022MNRAS.513.5588B/abstract)
 * `A wide-orbit giant planet in the high-mass b Centauri binary system`, [Janson et al. 2021 Natur.600..231J](https://ui.adsabs.harvard.edu/abs/2021Natur.600..231J/abstract)
 * `Unveiling the star formation history of the Upper Scorpius association through its kinematics`, [Squicciarini et al. 2021 MNRAS.507.1381S](https://ui.adsabs.harvard.edu/abs/2021MNRAS.507.1381S/abstract)
 * `New binaries from the SHINE survey`, [Bonavita et al. 2021 arXiv210313706B](https://ui.adsabs.harvard.edu/abs/2021arXiv210313706B/abstract)
