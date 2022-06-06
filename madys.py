@@ -1466,7 +1466,7 @@ class IsochroneGrid(object):
             if found==False: 
                 mess='The inserted model does not exist. Check the spelling and try again. Available models: '+','.join(f_mods)
                 raise ValueError(mess)
-            elif found & (type(model)==type(None)): print(','.join(f_mods))
+#            elif found & (type(model)==type(None)): print(','.join(f_mods))
                 
     @staticmethod
     def _split_if_nan(a):
