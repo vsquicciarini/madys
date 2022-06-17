@@ -44,7 +44,7 @@ In addition, it also requires [astroquery](https://github.com/astropy/astroquery
 
 Known issues
 ------------
-Catalog queries are mediated by the [TAP Gaia Query](https://github.com/mfouesneau/tap) package (tap). The command 
+Catalog queries are mediated by the [TAP Gaia Query](https://github.com/mfouesneau/tap) package (tap). The command:
 
 ```sh
 pip install tap
@@ -72,12 +72,12 @@ Recent papers using `MADYS`:
 
 `MADYS` has already been used, in its various preliminary forms, for several publications, including: 
 
-* `A scaled-up planetary system around a supernova progenitor`, [Squicciarini et al. 2022 arXiv220502279S](https://ui.adsabs.harvard.edu/abs/2022arXiv220502279S/abstract)
-* `Results from The COPAINS Pilot Survey: four new brown dwarfs and a high companion detection rate for accelerating stars`, [Bonavita et al. 2022 MNRAS.513.5588B](https://ui.adsabs.harvard.edu/abs/2022MNRAS.513.5588B/abstract)
-* `A wide-orbit giant planet in the high-mass b Centauri binary system`, [Janson et al. 2021 Natur.600..231J](https://ui.adsabs.harvard.edu/abs/2021Natur.600..231J/abstract)
-* `Unveiling the star formation history of the Upper Scorpius association through its kinematics`, [Squicciarini et al. 2021 MNRAS.507.1381S](https://ui.adsabs.harvard.edu/abs/2021MNRAS.507.1381S/abstract)
-* `New binaries from the SHINE survey`, [Bonavita et al. 2021 arXiv210313706B](https://ui.adsabs.harvard.edu/abs/2021arXiv210313706B/abstract)
-* `BEAST begins: sample characteristics and survey performance of the B-star Exoplanet Abundance Study`,[Janson, Squicciarini et al. 2021 A&A...646A.164J](https://ui.adsabs.harvard.edu/abs/2021A%26A...646A.164J/abstract)
+* `A scaled-up planetary system around a supernova progenitor`, [Squicciarini et al. 2022, arXiv220502279S](https://ui.adsabs.harvard.edu/abs/2022arXiv220502279S/abstract)
+* `Results from The COPAINS Pilot Survey: four new brown dwarfs and a high companion detection rate for accelerating stars`, [Bonavita et al. 2022, MNRAS.513.5588B](https://ui.adsabs.harvard.edu/abs/2022MNRAS.513.5588B/abstract)
+* `A wide-orbit giant planet in the high-mass b Centauri binary system`, [Janson et al. 2021, Natur.600..231J](https://ui.adsabs.harvard.edu/abs/2021Natur.600..231J/abstract)
+* `Unveiling the star formation history of the Upper Scorpius association through its kinematics`, [Squicciarini et al. 2021, MNRAS.507.1381S](https://ui.adsabs.harvard.edu/abs/2021MNRAS.507.1381S/abstract)
+* `New binaries from the SHINE survey`, [Bonavita et al. 2021, arXiv210313706B](https://ui.adsabs.harvard.edu/abs/2021arXiv210313706B/abstract)
+* `BEAST begins: sample characteristics and survey performance of the B-star Exoplanet Abundance Study`,[Janson, Squicciarini et al. 2021, A&A...646A.164J](https://ui.adsabs.harvard.edu/abs/2021A%26A...646A.164J/abstract)
 
 Authors
 -----------------------
