@@ -32,7 +32,7 @@ The current repository can be installed using pip:
 pip install madys
 ```
 
-Note that, when using for the first time an extinction map, `MADYS` will download the relative file (0.7 GB or 2.2 GB, depending on the map).
+Note that, when using for the first time an extinction map, `MADYS` will download the relevant file (0.7 GB or 2.2 GB, depending on the map).
 
 
 Examples
@@ -48,7 +48,7 @@ If you find a bug or want to suggest improvements, please create a [ticket](http
 Recent papers using `MADYS`:
 -----------------------
 
-MADYS has already been used, in its various preliminary forms, for several publications, including: 
+`MADYS` has already been used, in its various preliminary forms, for several publications, including: 
 
 * `A scaled-up planetary system around a supernova progenitor`, [Squicciarini et al. 2022 arXiv220502279S](https://ui.adsabs.harvard.edu/abs/2022arXiv220502279S/abstract)
 * `Results from The COPAINS Pilot Survey: four new brown dwarfs and a high companion detection rate for accelerating stars`, [Bonavita et al. 2022 MNRAS.513.5588B](https://ui.adsabs.harvard.edu/abs/2022MNRAS.513.5588B/abstract)
@@ -57,16 +57,16 @@ MADYS has already been used, in its various preliminary forms, for several publi
 * `New binaries from the SHINE survey`, [Bonavita et al. 2021 arXiv210313706B](https://ui.adsabs.harvard.edu/abs/2021arXiv210313706B/abstract)
 * `BEAST begins: sample characteristics and survey performance of the B-star Exoplanet Abundance Study`,[Janson, Squicciarini et al. 2021 A&A...646A.164J](https://ui.adsabs.harvard.edu/abs/2021A%26A...646A.164J/abstract)
 
-Author and contributors
+Authors
 -----------------------
 [Vito Squicciarini](https://orcid.org/0000-0002-3122-6809), University of Padova, IT
 
 [Mariangela Bonavita](https://orcid.org/0000-0002-7520-8389), The Open University, UK
 
-We are grateful for your effort, and hope that these tools will contribute to your scientific work and discoveries. Please feel free to report any bug or possible improvement to the author(s).
+We are grateful for your effort, and hope that these tools will contribute to your scientific work and discoveries. Please feel free to report any bug or possible improvement to the authors.
 
 Attribution
 -----------------------
-Please cite [Squicciarini & Bonavita 2022 arXiv:2206.02446](https://arxiv.org/abs/2206.02446) whenever you publish results obtained with MADYS.
+Please cite [Squicciarini & Bonavita 2022 arXiv:2206.02446](https://arxiv.org/abs/2206.02446) whenever you publish results obtained with `MADYS`.
 
 
