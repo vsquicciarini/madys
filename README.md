@@ -2,7 +2,7 @@
 Manifold Age Determination for Young Stars (MADYS) 
 ==========
 
-Information
+Description
 -----------
 This repository includes the first version of `MADYS`: the Manifold Age Determination for Young Stars, a flexible Python tool for age and mass determination of young stellar and substellar objects.
 
@@ -33,6 +33,21 @@ pip install madys
 ```
 
 Note that, when using for the first time an extinction map, `MADYS` will download the relevant file (0.7 GB or 2.2 GB, depending on the map).
+
+
+Known issues
+------------
+Catalog queries are mediated by the [TAP Gaia Query](https://github.com/mfouesneau/tap) package (tap). The command 
+
+```sh
+pip install tap
+```
+
+must not be executed, because it would download **a different**, although eponymous, package. The right command to install the package is instead:
+
+```sh
+pip install  git+https://github.com/mfouesneau/tap
+```
 
 
 Examples
