@@ -60,7 +60,7 @@ pip install  git+https://github.com/mfouesneau/tap
 Examples
 --------
 
-The package is fully documented and a detailed description of its features, together with several examples of the kind of scientific results that can be obtained with it, is provided in [Squicciarini & Bonavita 2022 arXiv:2206.02446](https://arxiv.org/abs/2206.02446)
+The package is fully documented and a detailed description of its features, together with several examples of the kind of scientific results that can be obtained with it, is provided in [Squicciarini & Bonavita 2022 arXiv:2206.02446](https://arxiv.org/abs/2206.02446).
 
 However, we recommend you check out the [examples](https://github.com/vsquicciarini/madys/blob/main/examples/) provided, for a better understanding of its usage.
 
