@@ -8,12 +8,14 @@ This repository includes the first version of `MADYS`: the Manifold Age Determin
 
 `MADYS` automatically retrieves and cross-matches photometry from several catalogs, estimates interstellar extinction, and derives age and mass estimates for individual objects through isochronal fitting.
 
-Harmonising the heterogeneity of publicly-available isochrone grids, the tool allows to choose amongst several models, many of which with customisable astrophysical parameters
+Harmonising the heterogeneity of publicly-available isochrone grids, the tool allows to choose amongst several models, many of which with customisable astrophysical parameters. Particular attention has been dedicated to the categorization of these models, labeled through a four-level taxonomical classification.
 
 Note that, since this is an alpha version, it only includes a sub-set of isochrones.
 The full set, with 16 models and more than 100 isochrone grids, will be included the first full release, expected for July 2022.
 
-Several dedicated plotting function are provided to allow a visual perception of the numerical output.
+Despite our efforts, the model list is far from being complete. If you wish a new model to be included in a new version of `MADYS`, feel free to get in contact with us.
+
+A thorough description of photometric filters featured in `MADYS` is provided; finally, several dedicated plotting functions are included to allow a visual perception of the numerical output.
 
 
 Latest news:
