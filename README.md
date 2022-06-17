@@ -16,12 +16,10 @@ The full set, with 16 models and more than 100 isochrone grids, will be included
 Several dedicated plotting function are provided to allow a visual perception of the numerical output.
 
 
-Requirements
+Latest news:
 ------------
+Jun 17, 2022 - Gaia DR3 now available! The new catalog replaces, for all intents and purposes, Gaia EDR3.
 
-This package relies on usual packages for data science and astronomy: [numpy](https://numpy.org/) (v1.18.1), [scipy](https://www.scipy.org/) (v1.6.1), [pandas](https://pandas.pydata.org/) (v1.1.4), [matplotlib](https://matplotlib.org/) (v3.3.4), [astropy](https://www.astropy.org/) (v4.3.1) and [h5py](https://www.h5py.org/) (v3.2.1).
-
-In addition, it also requires [astroquery](https://github.com/astropy/astroquery/) (v0.4.2.dev0), [tabulate](https://pypi.org/project/tabulate/) (v0.8.9) and [TAP Gaia Query](https://github.com/mfouesneau/tap) (v0.1). The last package might require the installation of [lxml](https://lxml.de/) (v4.6.3).
 
 Installation:
 ------------
@@ -33,6 +31,13 @@ pip install madys
 ```
 
 Note that, when using for the first time an extinction map, `MADYS` will download the relevant file (0.7 GB or 2.2 GB, depending on the map).
+
+Requirements
+------------
+
+This package relies on usual packages for data science and astronomy: [numpy](https://numpy.org/) (v1.18.1), [scipy](https://www.scipy.org/) (v1.6.1), [pandas](https://pandas.pydata.org/) (v1.1.4), [matplotlib](https://matplotlib.org/) (v3.3.4), [astropy](https://www.astropy.org/) (v4.3.1) and [h5py](https://www.h5py.org/) (v3.2.1).
+
+In addition, it also requires [astroquery](https://github.com/astropy/astroquery/) (v0.4.2.dev0), [tabulate](https://pypi.org/project/tabulate/) (v0.8.9) and [TAP Gaia Query](https://github.com/mfouesneau/tap) (v0.1). The last package might require the installation of [lxml](https://lxml.de/) (v4.6.3).
 
 
 Known issues
@@ -57,7 +62,7 @@ The package is fully documented and a detailed description of its features, toge
 
 However, we recommend you check out the [examples](https://github.com/vsquicciarini/madys/blob/main/examples/) provided, for a better understanding of its usage.
 
-If you find a bug or want to suggest improvements, please create a [ticket](https://github.com/vsquicciarini/madys/issues)
+If you find a bug or want to suggest improvements, please create a [ticket](https://github.com/vsquicciarini/madys/issues).
 
 
 Recent papers using `MADYS`:
