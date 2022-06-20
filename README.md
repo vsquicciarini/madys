@@ -11,17 +11,16 @@ This repository includes the first version of `MADYS`: the Manifold Age Determin
 Harmonising the heterogeneity of publicly-available isochrone grids, the tool allows to choose amongst several models, many of which with customisable astrophysical parameters. Particular attention has been dedicated to the categorization of these models, labeled through a four-level taxonomical classification.
 
 Note that, since this is an alpha version, it only includes a sub-set of isochrones.
-The full set, with 16 models and more than 100 isochrone grids, will be included the first full release, expected for July 2022.
+The full set, with 17 models and more than 100 isochrone grids, will be included the first full release, expected for July 2022.
 
 Despite our efforts, the model list is far from being complete. If you wish a new model to be included in a new version of `MADYS`, feel free to get in contact with us.
 
 A thorough description of photometric filters featured in `MADYS` is provided; finally, several dedicated plotting functions are included to allow a visual perception of the numerical output.
 
-
 Latest news:
 ------------
+Jun 20, 2022 - BEX models (Linder et al. 2019) added to the list of available models.
 Jun 17, 2022 - Gaia DR3 now available! The new catalog replaces, for all intents and purposes, Gaia EDR3.
-
 
 Installation:
 ------------
@@ -34,6 +33,19 @@ pip install madys
 
 Note that, when using for the first time an extinction map, `MADYS` will download the relevant file (0.7 GB or 2.2 GB, depending on the map).
 
+
+Known issues
+------------
+Catalog queries are mediated by the [TAP Gaia Query](https://github.com/mfouesneau/tap) package (tap). 
+
+If you import madys from the command line, the module is automatically installed if not found. However, **this does not work from Jupyter Notebook**. We suggest to directly install the package from pip, through:
+
+```sh
+pip install  git+https://github.com/mbonav/tapGaia 
+```
+the first time you are using our tool.  
+
+
 Requirements
 ------------
 
@@ -43,21 +55,6 @@ In addition, it also requires [astroquery](https://github.com/astropy/astroquery
 
 It also requires [TAP Gaia Query](https://github.com/mbonav/tapGaia) (v0.1). The last package might require the installation of [lxml](https://lxml.de/) (v4.6.3).
 
-
-Known issues
-------------
-Catalog queries are mediated by the [TAP Gaia Query](https://github.com/mfouesneau/tap) package (tap). The command:
-
-```sh
-pip install tap
-```
-
-must not be executed, because it would download **a different**, although eponymous, package. The right command to install the package is instead:
-
-```sh
-pip install  git+https://github.com/mbonav/tapGaia 
-```
-This is a branch of the [https://github.com/mfouesneau/tap](https://github.com/mfouesneau/tap) package, renamed tapGaia to avoid confusion.  
 
 Examples
 --------
