@@ -26,7 +26,7 @@ Jun 17, 2022 - Gaia DR3 now available! The new catalog replaces, for all intents
 
 Installation:
 ------------
-Catalog queries are mediated by the [TAP Gaia Query](https://github.com/mfouesneau/tap) package (tap) that can be installed as
+Catalog queries are mediated by the [TAP Gaia Query](https://github.com/mfouesneau/tap) package (tap). If you import madys from the command line, the module is automatically installed if not found. However, **this does not work from Jupyter Notebook**. We suggest to manually install the package from pip, through:
 
 ```sh
 pip install git+https://github.com/mfouesneau/tap
