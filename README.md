@@ -39,7 +39,9 @@ Requirements
 
 This package relies on usual packages for data science and astronomy: [numpy](https://numpy.org/) (v1.18.1), [scipy](https://www.scipy.org/) (v1.6.1), [pandas](https://pandas.pydata.org/) (v1.1.4), [matplotlib](https://matplotlib.org/) (v3.3.4), [astropy](https://www.astropy.org/) (v4.3.1) and [h5py](https://www.h5py.org/) (v3.2.1).
 
-In addition, it also requires [astroquery](https://github.com/astropy/astroquery/) (v0.4.2.dev0), [tabulate](https://pypi.org/project/tabulate/) (v0.8.9) and [TAP Gaia Query](https://github.com/mfouesneau/tap) (v0.1). The last package might require the installation of [lxml](https://lxml.de/) (v4.6.3).
+In addition, it also requires [astroquery](https://github.com/astropy/astroquery/) (v0.4.2.dev0) and [tabulate](https://pypi.org/project/tabulate/) (v0.8.9) 
+
+It also requires [TAP Gaia Query](https://github.com/mbonav/tapGaia) (v0.1). The last package might require the installation of [lxml](https://lxml.de/) (v4.6.3).
 
 
 Known issues
@@ -53,7 +55,7 @@ pip install tap
 must not be executed, because it would download **a different**, although eponymous, package. The right command to install the package is instead:
 
 ```sh
-pip install  git+https://github.com/mfouesneau/tap
+pip install  git+https://github.com/mbonav/tapGaia 
 ```
 
 
