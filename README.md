@@ -57,7 +57,7 @@ must not be executed, because it would download **a different**, although eponym
 ```sh
 pip install  git+https://github.com/mbonav/tapGaia 
 ```
-
+This is a branch of the [https://github.com/mfouesneau/tap](https://github.com/mfouesneau/tap) package, renamed tapGaia to avoid confusion.  
 
 Examples
 --------
