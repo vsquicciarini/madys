@@ -23,28 +23,24 @@ Jun 20, 2022 - BEX models (Linder et al. 2019) added to the list of available mo
 
 Jun 17, 2022 - Gaia DR3 now available! The new catalog replaces, for all intents and purposes, Gaia EDR3.
 
+
 Installation:
 ------------
+Catalog queries are mediated by the [TAP Gaia Query](https://github.com/mfouesneau/tap) package (tap) that can be installed as
 
-The current repository can be installed using pip:
+```sh
+pip install git+https://github.com/mfouesneau/tap
+```
+Please make sure you use the command above, as just using `pip install tap` will download **a different**, although eponymous, package. 
+
+Note that TAP Gaia Query might require the installation of [lxml](https://lxml.de/) (v4.6.3).
+
+Once TAP Gaia Query is installed, the current `MADYS` repository can be installed using pip:
 
 ```sh
 pip install madys
 ```
-
 Note that, when using for the first time an extinction map, `MADYS` will download the relevant file (0.7 GB or 2.2 GB, depending on the map).
-
-
-Known issues
-------------
-Catalog queries are mediated by the [TAP Gaia Query](https://github.com/mfouesneau/tap) package (tap). 
-
-If you import madys from the command line, the module is automatically installed if not found. However, **this does not work from Jupyter Notebook**. We suggest to directly install the package from pip, through:
-
-```sh
-pip install  git+https://github.com/mbonav/tapGaia 
-```
-the first time you are using our tool.  
 
 
 Requirements
