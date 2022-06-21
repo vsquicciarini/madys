@@ -56,7 +56,7 @@ except ModuleNotFoundError:
     from tap import (GaiaArchive, TAPVizieR, QueryStr)
 gaia = GaiaArchive()
 vizier = TAPVizieR()
-    
+
 
 def closest(array,value):
     """Given an "array" and a (list of) "value"(s), finds the j(s) such that |array[j]-value|=min((array-value)).
@@ -105,9 +105,9 @@ def closest(array,value):
                 else:
                     jn[i]=jl+np.argmin([value[i]-array[jl],array[jl+1]-value[i]])
         return jn
-    
+
 def where_v(elements,array,approx=False):
-    
+
     """Returns the index of the first occurrence of each of the "elements" in the
     "array". If approx==True and array is ordered, the indices of closest matchs
     are returned instead."""
@@ -120,7 +120,7 @@ def where_v(elements,array,approx=False):
     except TypeError: dim=0
 
     if approx==True:
-        if dim==0: 
+        if dim==0:
             w=closest(array,elements)
             return w
         ind=np.zeros(len(elements),dtype=np.int16)
@@ -128,7 +128,7 @@ def where_v(elements,array,approx=False):
             ind[i]=closest(array,elements[i])
         return ind
     else:
-        if dim==0: 
+        if dim==0:
             w,=np.where(array==elements)
             return w
         ind=np.zeros(len(elements),dtype=np.int16)
@@ -142,20 +142,20 @@ def nansumwrapper(a, axis=None,**kwargs):
 
     """Wrapper to np.nansum. Unlike np.nansum, returns np.nan (and
     not 0) if all the elements of "a" are np.nan."""
-    
+
     ma=np.isnan(a)==False
-    sa=np.nansum(ma,axis=axis) 
+    sa=np.nansum(ma,axis=axis)
     sm=np.nansum(a, axis=axis,**kwargs)
     sm=np.where(sa==0,np.nan,sm)
 
     return sm
-    
+
 def repr_table(table):
 
     """Returns the correct __repr__ of an astropy Table."""
-    
+
     aa={}
-    for col in list(table.columns): 
+    for col in list(table.columns):
         aa[col]=table[col].data
     r=repr(aa)
     r=r.replace('array','np.array')
@@ -181,19 +181,19 @@ class ModelHandler(object):
     Input:
     - model_grid: string, required. Selected isochrone grid model. Use ModelHandler.available() to return a list of available models.
     - resolve: bool, optional. If True, searchs for the location of the correct file. If False, it recovers it from the dictionary 'stored_data'. Default: False.
-    
+
     Attributes:
     - file: string. Full path of the local file corresponding to model_grid;
     - age_range: 2-element list. Minimum and maximum age of the grid [Myr].
     - mass_range: 2-element list. Minimum and maximum age mass of the grid [M_sun].
     - header: string. Verbose description of the model_grid.
     - feh: float. [Fe/H] of the grid.
-    - he: float. Helium content of the grid.    
+    - he: float. Helium content of the grid.
     - afe: float. Alpha enhancement [a/Fe] of the grid.
     - v_vcrit: float. Rotational velocity of the grid.
     - fspot: float. Fraction of stellar surface covered by star spots.
     - B: int. Whether magnetic fields are included (1) or not (0) in the grid.
-    
+
     Built-in methods:
 
     1) __repr__
@@ -210,7 +210,7 @@ class ModelHandler(object):
         - filters: numpy array. List of the n_f filters in the grid.
         - dic: dictionary. Contains all the metadata of the file, excluding the headers.
         - data: numpy array with shape (n_m,n_a,n_f). Isochrone grid.
-        
+
     2) available
     A class method.
     Prints info about locally available models.
@@ -234,15 +234,15 @@ class ModelHandler(object):
     3) download_model
     A static method. Given a model grid, it downloads it.
     The file is downloaded from Zenodo and put into the correct local directory.
-    The model list is automatically updated: there's no need to restart the program. 
+    The model list is automatically updated: there's no need to restart the program.
         Input:
         - model_grid: string, required. Model grid to be downloaded.
         Output: none.
-    
-    """    
-    
+
+    """
+
     def __init__(self,model_grid,resolve=False):
-        
+
         self.model_grid = model_grid
         if resolve:
             found = False
@@ -263,18 +263,18 @@ class ModelHandler(object):
             except KeyError:
                 raise ValueError('Model {0} not found. Are you sure it is in your search path?'.format(model_grid))
         attrs = self._get_attributes()
-        self.B, self.afe, self.feh = attrs['B'], attrs['afe'], attrs['feh']        
+        self.B, self.afe, self.feh = attrs['B'], attrs['afe'], attrs['feh']
         self.fspot, self.he = attrs['fspot'], attrs['he']
         self.header = self._get_header()
         self.mass_range, self.age_range = self._get_agemass_ranges()
-        
+
     def __repr__(self):
         return self.header[0]
-    
+
     def _get_header(self):
         with h5py.File(self.file,"r") as f:
-            try: 
-                return f.attrs['header'],f.attrs['version_header'] 
+            try:
+                return f.attrs['header'],f.attrs['version_header']
             except KeyError:
                 return f.attrs['header'],""""""
 
@@ -285,7 +285,7 @@ class ModelHandler(object):
                 if (i=='header') | (i=='version_header'): continue
                 dic[i]=f.attrs[i]
             return dic
-        
+
     def _get_agemass_ranges(self):
         with h5py.File(self.file,"r") as f:
             m = f.get('masses')[:]
@@ -312,10 +312,10 @@ class ModelHandler(object):
             stored_data['models']['data'][self.model_grid] = data
 
             return stored_data['models']['data'][self.model_grid]
-    
+
     @classmethod
     def available(cls,key=None,verbose=True):
-        
+
         attrs_list, header_list, version_header_list = [], [], []
         mass_list, age_list = [], []
         for root, dirs, files in os.walk(madys_path):
@@ -330,23 +330,27 @@ class ModelHandler(object):
                     age_list.append(model_grid._get_agemass_ranges()[1])
         model_families=[attr['model_family'] for attr in attrs_list]
         model_suites=[attr['model_suite'] for attr in attrs_list]
-        model_versions=[attr['model_version'] for attr in attrs_list]        
+        model_versions=[attr['model_version'] for attr in attrs_list]
         feh_list=np.array([attr['feh'] for attr in attrs_list])
         he_list=np.array([attr['he'] for attr in attrs_list])
         afe_list=np.array([attr['afe'] for attr in attrs_list])
         B_list=np.array([attr['B'] for attr in attrs_list])
         v_vcrit_list=np.array([attr['v_vcrit'] for attr in attrs_list])
         fspot_list=np.array([attr['fspot'] for attr in attrs_list])
-        
+
         unique_names=np.unique(model_suites)
         __, i1, i2 = np.intersect1d(unique_names,model_suites,return_indices=True)
 
         if type(key)==type(None):
             print('Available models for MADYS: ')
             print('')
-            for i in i2: 
+            for i in i2:
                 print(header_list[i][:-1])
-                print('# Mass range (M_sun): '+str(list(np.around(mass_list[i],4))))
+                d=4
+                while np.sum(np.around(mass_list[i],d)==0)>0:
+                    d+=1
+                    if d==8: break
+                print('# Mass range (M_sun): '+str(list(np.around(mass_list[i],d))))
                 print('# Age range (Myr): '+str(list(np.around(age_list[i],1))))
                 w,=np.where(np.array(model_suites)==model_suites[i])
                 feh=np.unique(feh_list[w]).astype(str)
@@ -375,11 +379,12 @@ class ModelHandler(object):
             zenodo_suites[w]='atmo2020'
             w=np.array(['sb12' in zen for zen in zenodo_versions])
             zenodo_suites[w]='sb12'
+            w=np.array(['bex' in zen for zen in zenodo_versions])
+            zenodo_suites[w]='bex'
             unique_families=np.unique(zenodo_families)
             for fam in unique_families:
                 print('Model family: '+fam)
                 w1,=np.where(zenodo_families==fam)
-                # inserire anche suites
                 unique_suites=np.unique(zenodo_suites[w1])
                 for sui in unique_suites:
                     print('    Model suite: '+sui)
@@ -395,7 +400,7 @@ class ModelHandler(object):
             __, if1, if2 = np.intersect1d(model_families,[key],return_indices=True)
             __, in1, in2 = np.intersect1d(model_suites,[key],return_indices=True)
             __, is1, is2 = np.intersect1d(model_versions,[key],return_indices=True)
-            
+
             zenodo_grids=list(stored_data['complete_model_list'].keys())
             zenodo_versions=np.array([i.split('_')[0] for i in zenodo_grids])
             zenodo_families=np.array([i.lower() for i in stored_data['model_families'].values()])
@@ -452,7 +457,7 @@ class ModelHandler(object):
                     w,=np.where(np.array(model_families)==model_families[if1])
                     versions=np.unique(np.array(model_versions)[w])
                     __, is01, is02 = np.intersect1d(np.array(model_versions)[w],versions,return_indices=True)
-                    for i in range(len(is01)): 
+                    for i in range(len(is01)):
                         print(version_header_list[w[is01[i]]][:-1])
                         print(header_list[w[is01[i]]][1:-1])
                         print('# Mass range (M_sun): '+str(list(np.around(mass_list[w[is01[i]]],4))))
@@ -484,10 +489,10 @@ class ModelHandler(object):
                 print('Available model versions within this model family:')
                 print(', '.join(model_versions))
                 print('')
-                for m_v in model_versions: 
+                for m_v in model_versions:
                     ModelHandler.available(m_v)
                     print('')
-                
+
             else:
                 mess='The inserted model does not exist. Check the spelling and try again. Available models: '+', '.join(unique_names)+'.'
                 raise ValueError(mess)
@@ -505,7 +510,7 @@ class ModelHandler(object):
                     if name.endswith('h5'):
                         model_grid = ModelHandler(name[:-3])
                         attrs_list.append(model_grid._get_attributes())
-            model_versions=[attr['model_version'] for attr in attrs_list]        
+            model_versions=[attr['model_version'] for attr in attrs_list]
             model_suites=[attr['model_suite'] for attr in attrs_list]
             feh_list=np.array([attr['feh'] for attr in attrs_list])
             he_list=np.array([attr['he'] for attr in attrs_list])
@@ -541,11 +546,11 @@ class ModelHandler(object):
             res = {'feh':feh,'he':he,'afe':afe,'v_vcrit':v_vcrit,'fspot':fspot,'B':B}
             stored_data['models']['parameters'][model_suite_or_version] = res
             return res
-            
-                
+
+
     @classmethod
     def _model_list(cls,dtype='grid',return_type='list'):
-        
+
         attrs_list = []
         file_list = []
         for root, dirs, files in os.walk(madys_path):
@@ -557,9 +562,9 @@ class ModelHandler(object):
                     file_list.append(model.file)
 
         try:
-            res=[attr['model_'+dtype] for attr in attrs_list]        
+            res=[attr['model_'+dtype] for attr in attrs_list]
         except KeyError: raise KeyError("Valid arguments for dtype: 'grid', 'version', 'name', 'family'. ")
-            
+
         if return_type=='dict':
             unique_models = np.unique(res)
             __, i1, i2 = np.intersect1d(unique_models,np.array(res),return_indices=True)
@@ -568,8 +573,8 @@ class ModelHandler(object):
             for i, r in enumerate(res[i2]): dic[r] = file_list[i2[i]]
             return dic
         else: return np.unique(res)
-        
-    
+
+
     @staticmethod
     def _version_to_grid(model_version,model_params):
 
@@ -581,11 +586,11 @@ class ModelHandler(object):
             code='200000'
         keys=['feh', 'afe', 'v_vcrit', 'fspot', 'he', 'B']
 
-        
+
         def_params = {'feh':0.00, 'afe': 0.00, 'v_vcrit': 0.00, 'fspot': 0.00, 'B':0, 'he':0.27}
         for key in def_params.keys():
             if key not in model_params: model_params[key]=def_params[key]
-        
+
         model_grid=model_version+''
         for i,k in enumerate(keys):
             if code[i]=='0': continue
@@ -597,7 +602,7 @@ class ModelHandler(object):
                 s='m' if value<0 else 'p'
                 ff="{:."+code[i]+"f}"
                 s1=ff.format(abs(value))
-                model_grid+='_'+s+s1    
+                model_grid+='_'+s+s1
 
         return model_grid
 
@@ -629,7 +634,7 @@ class ModelHandler(object):
                 c+=1
 
         return model_version,model_params
-    
+
     @staticmethod
     def _check_updates():
         PIK=os.path.join(madys_path,'utils','models.pkl')
@@ -663,12 +668,12 @@ class ModelHandler(object):
                 print('It was not possible to check the GitHub page for updates. Using local list of models.')
                 stored_data['complete_model_list'] = local_model_db
                 stored_data['model_families'] = local_model_families
-                
+
     @staticmethod
     def _load_local_models(reload=False):
         if ('local_model_list' not in stored_data.keys()) | (reload==True):
             stored_data['local_model_list'] = ModelHandler._model_list(return_type='dict')
-            
+
     @staticmethod
     def _find_model_grid(model_version,start_params):
 
@@ -684,10 +689,10 @@ class ModelHandler(object):
                     if str.lower(value)=='y':
                         print('Downloading the model...')
                         break
-                    elif str.lower(value)=='n': 
+                    elif str.lower(value)=='n':
                         raise KeyboardInterrupt('No analysis is possible if the model is not present locally. Execution ended.')
                     else:
-                        print("Invalid choice. Please select 'Y' or 'N'.")        
+                        print("Invalid choice. Please select 'Y' or 'N'.")
                 if str.lower(value)=='y':
                     ModelHandler.download_model(sol1)
                     return sol1
@@ -702,10 +707,10 @@ class ModelHandler(object):
                         if str.lower(value)=='y':
                             print('Downloading the model...')
                             break
-                        elif str.lower(value)=='n': 
+                        elif str.lower(value)=='n':
                             raise KeyboardInterrupt('No analysis is possible if the model is not present locally. Execution ended.')
                         else:
-                            print("Invalid choice. Please select 'Y' or 'N'.")        
+                            print("Invalid choice. Please select 'Y' or 'N'.")
                     if str.lower(value)=='y':
                         ModelHandler.download_model(sol1)
                         return sol1
@@ -728,15 +733,15 @@ class ModelHandler(object):
                         if str.lower(value)=='y':
                             print('Downloading the model...')
                             break
-                        elif str.lower(value)=='n': 
+                        elif str.lower(value)=='n':
                             break
                         else:
-                            print("Invalid choice. Please select 'Y' or 'N'.")        
+                            print("Invalid choice. Please select 'Y' or 'N'.")
                     if str.lower(value)=='y':
                         ModelHandler.download_model(sol1)
                         return sol1
                     else: return sol2
-            else: 
+            else:
                 return sol1
 
         elif isinstance(start_params,list):
@@ -788,7 +793,7 @@ class ModelHandler(object):
                 However, the relative folder is empty, so MADYS does not have any model to compare data with.
                 Re-run the program, downloading at least one model when prompted.
                 Program ended."""
-                elif np.min(values)==-1: 
+                elif np.min(values)==-1:
                     return
                 else:
                     for value in values:
@@ -797,7 +802,7 @@ class ModelHandler(object):
                         ModelHandler.download_model(dl_model)
                     print('Download ended.')
         else: raise ValueError('Invalid input provided. Valid input types: dictionary, list.')
-    
+
     @staticmethod
     def download_model(model_grid,verbose=True):
         model_version = ModelHandler._grid_to_version(model_grid)[0]
@@ -812,7 +817,7 @@ class ModelHandler(object):
         except Exception as e:
             if os.path.isfile(fname): os.remove(fname)
             msg = """
-            The file was not downloaded correctly. Possible reasons: 
+            The file was not downloaded correctly. Possible reasons:
                 1) a connection error;
                 2) the file url has changed.
             Please download the file manually, and insert it in the following path:
@@ -821,7 +826,7 @@ class ModelHandler(object):
             """
             e.args = (msg,)
             raise
-        ModelHandler._load_local_models(reload=True)                
+        ModelHandler._load_local_models(reload=True)
 
     @staticmethod
     def _find_match(model_version,model_params,model_list,approximate=False):
@@ -830,6 +835,9 @@ class ModelHandler(object):
         w,=np.where(model_versions==model_version)
         n_m=len(w)
         true_model_list = list(np.array(model_list)[w])
+
+        if len(w)==0:
+            raise ValueError('Model '+model_version+' does not exist. Are you sure you have spelled it correctly?')
 
         if approximate:
             def_params = {'feh':0.00, 'afe': 0.00, 'v_vcrit': 0.00, 'fspot': 0.00, 'B':0, 'he':0.27}
@@ -854,17 +862,17 @@ class ModelHandler(object):
                     res[k]=param_array[arg]
 
             return res
-            
+
     @staticmethod
     def _load_filters():
         PIK=os.path.join(madys_path,'utils','filters.pkl')
         with open(PIK,'rb') as f:
-            filter_dict=pickle.load(f)            
+            filter_dict=pickle.load(f)
         stored_data['filters'] = filter_dict
-    
+
 
 class IsochroneGrid(object):
-    
+
     """
     Class: madys.IsochroneGrid
 
@@ -874,7 +882,7 @@ class IsochroneGrid(object):
     - filters: list or numpy array, required. Set of filters of the final grid. Use info_filters() for further information on available filters.
     - mass_range: list or numpuy array, optional. It can be either:
             1) a two-element list with minimum and maximum mass within the grid (M_sun);
-            2) a numpy array, giving the desired mass steps (M_sun) at which the model is evaluated. 
+            2) a numpy array, giving the desired mass steps (M_sun) at which the model is evaluated.
       Default: [0.0, 1.4].
     - age_range: list or numpy array, optional. It can be either:
             1) a 1D numpy array, so that the i-th age (Myr) is used as fixed age for the i-th star;
@@ -885,14 +893,14 @@ class IsochroneGrid(object):
     - n_steps: list, optional. Number of (mass, age) steps of the interpolated grid. Default: [1000,500].
     - n_try: int, optional. Number of Monte Carlo iteractions for each star. Default: 1000.
     - feh: float, optional. Selects [Fe/H] of the isochrone set. Default: 0.00 (=solar metallicity).
-    - he: float, optional. Selects helium fraction Y of the isochrone set. Default: solar Y (depends on the model).    
+    - he: float, optional. Selects helium fraction Y of the isochrone set. Default: solar Y (depends on the model).
     - afe: float, optional. Selects alpha enhancement [a/Fe] of the isochrone set. Default: 0.00.
     - v_vcrit: float, optional. Selects rotational velocity of the isochrone set. Default: 0.00 (non-rotating).
     - fspot: float, optional. Selects fraction of stellar surface covered by star spots. Default: 0.00.
     - B: int, optional. Set to 1 to turn on the magnetic field (only for Dartmouth models). Default: 0.
     - fill_value: array-like or (array-like, array_like) or “extrapolate”, optional. How the interpolation over mass deals with values outside the original range. Default: np.nan. See scipy.interpolate.interp1d for details.
     - logger: logger, optional. A logger returned by SampleObject._setup_custom_logger(). Default: None.
-    
+
     Attributes:
     - ages: numpy array. The n_a ages of the grid [Myr].
     - masses: numpy array. The n_m masses of the grid [M_sun].
@@ -905,12 +913,12 @@ class IsochroneGrid(object):
     - mass_range: list or numpy array. See above.
     - age_range: list or numpy array. See above.
     - feh: float. See above.
-    - he: float. See above.  
+    - he: float. See above.
     - afe: float. See above.
     - v_vcrit: float. See above.
     - fspot: float. See above.
     - B: int. See above.
-    
+
     Built-in methods:
 
     1) __eq__
@@ -939,7 +947,7 @@ class IsochroneGrid(object):
                 - False, not to plot any track.
           Default: 0.1,0.3,0.5,0.7,0.85,1.0,1.3,2].
         - all valid keywords for IsochroneGrid().
-        
+
     2) plot_iso_grid
     A class method. Defines a IsochroneGrid object.
     Plots theoretical magnitudes in a given band for a certain model, or the magnitude difference between two models.
@@ -957,13 +965,13 @@ class IsochroneGrid(object):
         - cmap: string, optional. Color map of f(age,mass). Default: 'viridis_r'.
         - tofile: string, optional. Full path of the output .png file. Default: False (no file is saved).
         - all valid keywords for IsochroneGrid().
-    
-    """    
-    
+
+    """
+
     def __init__(self, model_version, filters, **kwargs):
-        
+
         if 'sb12' in model_version:
-            if (model_version!='sb12_hy_cold') & (model_version!='sb12_hy_hot') & (model_version!='sb12_cf_cold') & (model_version!='sb12_cf_hot'): 
+            if (model_version!='sb12_hy_cold') & (model_version!='sb12_hy_hot') & (model_version!='sb12_cf_cold') & (model_version!='sb12_cf_hot'):
                 raise ValueError("Model not found! Available models for sb12: 'sb12_hy_cold', sb12_hy_hot, sb12_cf_cold, 'sb12_cf_hot'.")
 
         logger=kwargs['logger'] if 'logger' in kwargs else None
@@ -972,15 +980,15 @@ class IsochroneGrid(object):
         self.age_range=kwargs['age_range'] if 'age_range' in kwargs else [1,1000]
         self.n_steps=kwargs['n_steps'] if 'n_steps' in kwargs else [1000,500]
         self.__fill_value=kwargs['fill_value'] if 'fill_value' in kwargs else np.nan
-        search_model=kwargs['search_model'] if 'search_model' in kwargs else True        
+        search_model=kwargs['search_model'] if 'search_model' in kwargs else True
 
         model_params = {'feh':0.00, 'afe': 0.00, 'v_vcrit': 0.00, 'fspot': 0.00, 'B':0, 'he':0.27}
         for key in model_params.keys():
             if key in kwargs: model_params[key]=kwargs[key]
-                
-        if search_model: 
+
+        if search_model:
             ModelHandler._find_model_grid(model_version,model_params)
-                
+
         model_params = self._get_model_parameters(model_params)
         for key in model_params.keys(): self.__setattr__(key,model_params[key])
 
@@ -1000,15 +1008,14 @@ class IsochroneGrid(object):
         self._fix_filters(model_obj.file)
         fnew=self.filters
         nf=len(fnew)
-        
-        
+
         if isinstance(self.mass_range,list):
             n1=self.n_steps[0]
             mnew=np.exp(np.log(0.999*self.mass_range[0])+(np.log(1.001*self.mass_range[1])-np.log(0.999*self.mass_range[0]))/(n1-1)*np.arange(n1))
         else:
             mnew=np.sort(self.mass_range)
             n1=len(mnew)
-            
+
         try: len(self.age_range)
         except TypeError:
             anew=self.age_range
@@ -1025,7 +1032,7 @@ class IsochroneGrid(object):
                     n2=len(anew)
                     case=3
                 elif len(self.age_range[0])==3:
-                    age0=np.unique(self.age_range.ravel())    
+                    age0=np.unique(self.age_range.ravel())
                     age1=(age0[:-1]+(age0[1:]-age0[:-1])/4)
                     age2=(age0[:-1]+(age0[1:]-age0[:-1])/2)
                     age3=(age0[:-1]+3*(age0[1:]-age0[:-1])/4)
@@ -1035,17 +1042,17 @@ class IsochroneGrid(object):
                 elif len(self.age_range[0])==2:
                     n2=self.n_steps[1]
                     anew=np.exp(np.log(1.0001*np.nanmin(self.age_range))+(np.log(0.9999*np.nanmax(self.age_range))-np.log(1.0001*np.nanmin(self.age_range)))/(n2-1)*np.arange(n2))
-                    case=6                
+                    case=6
             else: raise TypeError('Only scalar, list or numpy arrays are valid inputs for the keyword "age_range".')
-        if self.model_grid=='pm13': 
+        if self.model_grid=='pm13':
             n2=1
             case=5
-        
-        iso=np.full([n1,len(ages),len(fnew)],np.nan)
-        iso_f=np.full(([n1,n2,nf]), np.nan)    
-        
+
+        iso=np.full([n1,len(ages),nf],np.nan)
+        iso_f=np.full(([n1,n2,nf]), np.nan)
+
         if case==5:
-            for j in range(len(fnew)):
+            for j in range(nf):
                 w,=np.where(v0==fnew[j])
                 if len(w)>0:
                     k=0
@@ -1061,7 +1068,7 @@ class IsochroneGrid(object):
                     continue
             anew=ages
         elif case>1:
-            for j in range(len(fnew)):
+            for j in range(nf):
                 w,=np.where(v0==fnew[j])
                 if len(w)>0:
                     for k in range(len(ages)):
@@ -1089,7 +1096,7 @@ class IsochroneGrid(object):
                         logger.info('Filter '+fnew[j]+' not available for model '+self.model_grid+' Setting the corresponding row to nan.')
                     continue
         else:
-            for j in range(len(fnew)):
+            for j in range(nf):
                 w,=np.where(v0==fnew[j])
                 if len(w)>0:
                     for k in range(len(ages)):
@@ -1115,12 +1122,10 @@ class IsochroneGrid(object):
                     if logger!=None:
                         logger.info('Filter '+fnew[j]+' not available for model '+self.model_grid+'. Setting the corresponding row to nan.')
                     continue
-                            
 
-
-        if hasattr(anew,'__len__')==False: anew=np.array([anew])        
+        if hasattr(anew,'__len__')==False: anew=np.array([anew])
         fnew=np.array(fnew)
-        
+
         self.masses=mnew
         self.ages=anew
         self.data=iso_f
@@ -1132,7 +1137,7 @@ class IsochroneGrid(object):
         s="IsochroneGrid('"+self.model_version+"', "+repr(list(self.filters))+", "
         kwargs=['mass_range','age_range','n_steps','_IsochroneGrid__fill_value','feh','B','afe','v_vcrit','fspot','he']
         for i in kwargs:
-            if isinstance(self.__dict__[i],list): 
+            if isinstance(self.__dict__[i],list):
                 l=[str(j) for j in self.__dict__[i]]
                 s+=i+'=['+','.join(l)+']'
             elif isinstance(self.__dict__[i],np.ndarray): s+=i+'=np.'+np.array_repr(self.__dict__[i])
@@ -1140,11 +1145,11 @@ class IsochroneGrid(object):
             s+=', '
         if s.endswith(', '): s=s[:-2]
         s+=')'
-        s=s.replace('_IsochroneGrid__fill_value','fill_value')  
-        s=s.replace('=nan','=np.nan')  
-        
+        s=s.replace('_IsochroneGrid__fill_value','fill_value')
+        s=s.replace('=nan','=np.nan')
+
         return s
-    
+
     def _get_model_parameters(self,model_params):
 
         model_p=ModelHandler._available_parameters(self.model_version)
@@ -1161,11 +1166,11 @@ class IsochroneGrid(object):
         return res
 
     def _fix_filters(self,fname):
-        
+
         with h5py.File(fname,"r") as f:
             fi = f.get('filters')[:]
             fi=np.array(fi,dtype='str')
-        
+
         filters=self.filters
 
         if 'Gbp2' in fi:
@@ -1178,7 +1183,7 @@ class IsochroneGrid(object):
             filters=np.where(filters=='Gbp2','Gbp',filters)
             filters=np.where(filters=='Grp2','Grp',filters)
             self.filters=np.unique(filters)
-    
+
     @staticmethod
     def _get_mass_range(data,model_version,dtype='mag',**kwargs):
 
@@ -1215,22 +1220,22 @@ class IsochroneGrid(object):
                 im3,__=np.unravel_index(a3,sh)
                 a4=np.nanargmin((iso_data[:,:,0]-data[i4,0])**2+(iso_data[:,:,1]-data[i4,1])**2)
                 im4,__=np.unravel_index(a4,sh)
-                im=np.array([im1,im2,im3,im4])        
+                im=np.array([im1,im2,im3,im4])
                 sample_r=[np.nanmin(iso_m[im]),np.nanmax(iso_m[im])]
 
-                m=IsochroneGrid._intersect_arr(mass_range,[0.6*sample_r[0],1.4*sample_r[1]])  
+                m=IsochroneGrid._intersect_arr(mass_range,[0.6*sample_r[0],1.4*sample_r[1]])
             else: m=mass_range
-            
+
             if isinstance(m,list): return m
-            else: return m.tolist()    
-    
+            else: return m.tolist()
+
     ############################################# plotting functions #########################################
 
     @classmethod
     def plot_isochrones(cls,col,mag,model_version,ax,**kwargs):
-        
+
         filters=[]
-        
+
         if '-' in col:
             col_n=col.split('-')
             filters.extend(col_n)
@@ -1241,19 +1246,19 @@ class IsochroneGrid(object):
             filters.extend(mag_n)
         else:
             filters.append(mag)
-        
+
         filters=np.array(filters)
-                
+
         if 'mass_range' in kwargs: mass_r=IsochroneGrid._get_mass_range(kwargs['mass_range'],model_version,dtype='mass',**kwargs)
         else: mass_r=IsochroneGrid._get_mass_range([1e-6,1e+6],model_version,dtype='mass',**kwargs)
         kwargs['mass_range']=mass_r
-        
+
         plot_ages = np.array(kwargs['plot_ages']) if 'plot_ages' in kwargs else np.array([1,3,5,10,20,30,100,200,500,1000])
         plot_masses = np.array(kwargs['plot_masses']) if 'plot_masses' in kwargs else np.array([0.1,0.3,0.5,0.7,0.85,1.0,1.3,2])
-        
+
         x_axis=col
         y_axis=mag
-                
+
         iso=IsochroneGrid(model_version,filters,**kwargs)
         isochrones=iso.data
         iso_ages=iso.ages
@@ -1261,62 +1266,62 @@ class IsochroneGrid(object):
         iso_masses=iso.masses
 
         #changes names of Gaia_DR2 filters to DR3
-        if 'G2' in iso_filters: 
+        if 'G2' in iso_filters:
             w=where_v(['G2'],iso_filters)
             iso_filters[w]=['G']
-        if 'Gbp2' in iso_filters: 
+        if 'Gbp2' in iso_filters:
             w=where_v(['Gbp2'],iso_filters)
             iso_filters[w]=['Gbp']
-        if 'Grp2' in iso_filters: 
+        if 'Grp2' in iso_filters:
             w=where_v(['Grp2'],iso_filters)
             iso_filters[w]=['Grp']
-            
+
         #finds color/magnitude isochrones to plot
-        if '-' in x_axis: 
+        if '-' in x_axis:
             col_n=x_axis.split('-')
             w1,=np.where(iso_filters==col_n[0])
             w2,=np.where(iso_filters==col_n[1])
             col_th=isochrones[:,:,w1]-isochrones[:,:,w2]
-        else: 
+        else:
             w1,=np.where(iso_filters==x_axis)
             col_th=isochrones[:,:,w1]
-        if '-' in y_axis: 
+        if '-' in y_axis:
             mag_n=y_axis.split('-')
             w1,=np.where(iso_filters==mag_n[0])
             w2,=np.where(iso_filters==mag_n[1])
             mag_th=isochrones[:,:,w1]-isochrones[:,:,w2]
-        else: 
+        else:
             w1,=np.where(iso_filters==y_axis)
             mag_th=isochrones[:,:,w1]
 
         if type(plot_masses)!=bool:
             kwargs['mass_range']=plot_masses
-            trk=IsochroneGrid(model_version,filters,age_range=[np.min(plot_ages),np.max(plot_ages)],**kwargs)        
+            trk=IsochroneGrid(model_version,filters,age_range=[np.min(plot_ages),np.max(plot_ages)],**kwargs)
             tracks=trk.data
             trk_ages=trk.ages
             trk_filters=trk.filters
             trk_masses=trk.masses
-            if 'G2' in trk_filters: 
+            if 'G2' in trk_filters:
                 w=where_v(['G2'],trk_filters)
                 trk_filters[w]=['G']
-            if 'Gbp2' in trk_filters: 
+            if 'Gbp2' in trk_filters:
                 w=where_v(['Gbp2'],trk_filters)
                 trk_filters[w]=['Gbp']
-            if 'Grp2' in trk_filters: 
+            if 'Grp2' in trk_filters:
                 w=where_v(['Grp2'],trk_filters)
-                trk_filters[w]=['Grp']                
-            if '-' in x_axis: 
+                trk_filters[w]=['Grp']
+            if '-' in x_axis:
                 w1,=np.where(trk_filters==col_n[0])
                 w2,=np.where(trk_filters==col_n[1])
                 col_th_t=tracks[:,:,w1]-tracks[:,:,w2]
-            else: 
+            else:
                 w1,=np.where(trk_filters==x_axis)
                 col_th_t=tracks[:,:,w1]
-            if '-' in y_axis: 
+            if '-' in y_axis:
                 w1,=np.where(trk_filters==mag_n[0])
                 w2,=np.where(trk_filters==mag_n[1])
                 mag_th_t=tracks[:,:,w1]-tracks[:,:,w2]
-            else: 
+            else:
                 w1,=np.where(trk_filters==y_axis)
                 mag_th_t=tracks[:,:,w1]
 
@@ -1341,8 +1346,8 @@ class IsochroneGrid(object):
                     if c<len(col_th_t[im,:]):
                         an=ax.annotate(str(plot_masses[i]),(col_th_t[im,c],mag_th_t[im,c]),size='large')
                         an.set_in_layout(False)
-        return None     
-        
+        return None
+
     @classmethod
     def plot_iso_grid(cls,col,model_version,reverse_xaxis=False,reverse_yaxis=False,tofile=None,**kwargs):
 
@@ -1352,28 +1357,28 @@ class IsochroneGrid(object):
 
         f=list(stored_data['filters'].keys())
         filt=[]
-        
+
         if isinstance(model_version,list):
             for mod in model_version:
                 ModelHandler._find_model_grid(mod,model_params)
                 if mod=='atmo2020': raise ValueError("Please use one among the following: 'atmo2020-ceq', 'atmo2020-neq-s', 'atmo2020-neq-w'. ")
                 elif mod=='sb12': raise ValueError("Please use one among the following: 'sb12-hy-cold','sb12-hy-hot','sb12-cf-cold','sb12-cf-hot'. ")
-            if '-' in col: 
+            if '-' in col:
                 filt.extend(col.split('-'))
                 filt=np.array(filt)
-                
+
                 for ff in filt:
                     if ff not in f: raise ValueError('Filter '+ff+' does not exist. Use info_filters() to know the available filters.')
-                
+
                 iso=IsochroneGrid(model_version[0],filt,**kwargs)
                 iso_mass,iso_age,iso_filt1,iso_data1=iso.masses,iso.ages,iso.filters,iso.data
-                if 'G2' in iso_filt1: 
+                if 'G2' in iso_filt1:
                     w=where_v(['G2'],iso_filt1)
                     iso_filt1[w]=['G']
-                if 'Gbp2' in iso_filt1: 
+                if 'Gbp2' in iso_filt1:
                     w=where_v(['Gbp2'],iso_filt1)
                     iso_filt1[w]=['Gbp']
-                if 'Grp2' in iso_filt1: 
+                if 'Grp2' in iso_filt1:
                     w=where_v(['Grp2'],iso_filt1)
                     iso_filt1[w]=['Grp']
                 w1_1,=np.where(iso_filt1==filt[0])
@@ -1381,13 +1386,13 @@ class IsochroneGrid(object):
                 l=iso_data1.shape
                 iso2=IsochroneGrid(model_version[1],filt,**kwargs)
                 iso_mass2,iso_age2,iso_filt2,iso_data2=iso2.masses,iso2.ages,iso2.filters,iso2.data
-                if 'G2' in iso_filt2: 
+                if 'G2' in iso_filt2:
                     w=where_v(['G2'],iso_filt2)
                     iso_filt2[w]=['G']
-                if 'Gbp2' in iso_filt2: 
+                if 'Gbp2' in iso_filt2:
                     w=where_v(['Gbp2'],iso_filt2)
                     iso_filt2[w]=['Gbp']
-                if 'Grp2' in iso_filt2: 
+                if 'Grp2' in iso_filt2:
                     w=where_v(['Grp2'],iso_filt2)
                     iso_filt2[w]=['Grp']
                 w1_2,=np.where(iso_filt2==filt[0])
@@ -1395,9 +1400,12 @@ class IsochroneGrid(object):
                 data1=(iso_data1[:,:,w1_1]-iso_data1[:,:,w2_1]).reshape([l[0],l[1]])
                 data2=(iso_data2[:,:,w1_2]-iso_data2[:,:,w2_2]).reshape([l[0],l[1]])
                 data=data1-data2
-            else: 
+            else:
                 if col not in f: raise ValueError('Filter '+col+' does not exist. Use info_filters() to know the available filters.')
-                filt=np.array(col)
+                try:
+                    len(col)
+                    filt=np.array(col)
+                except TypeError: filt=np.array([col])
                 iso=IsochroneGrid(model_version[0],filt,**kwargs)
                 iso_mass,iso_age,iso_filt1,data1=iso.masses,iso.ages,iso.filters,iso.data
                 iso2=IsochroneGrid(model_version[1],filt,**kwargs)
@@ -1410,35 +1418,38 @@ class IsochroneGrid(object):
             ModelHandler._find_model_grid(model_version,model_params)
             if model_version=='atmo2020': raise ValueError("Please use one among the following: 'atmo2020-ceq', 'atmo2020-neq-s', 'atmo2020-neq-w'. ")
             elif model_version=='sb12': raise ValueError("Please use one among the following: 'sb12-hy-cold','sb12-hy-hot','sb12-cf-cold','sb12-cf-hot'. ")
-            if '-' in col: 
+            if '-' in col:
                 filt.extend(col.split('-'))
                 filt=np.array(filt)
                 iso=IsochroneGrid(model_version,filt,**kwargs)
                 iso_mass,iso_age,iso_filt,iso_data=iso.masses,iso.ages,iso.filters,iso.data
-                if 'G2' in iso_filt: 
+                if 'G2' in iso_filt:
                     w=where_v(['G2'],iso_filt)
                     iso_filt[w]=['G']
-                if 'Gbp2' in iso_filt: 
+                if 'Gbp2' in iso_filt:
                     w=where_v(['Gbp2'],iso_filt)
                     iso_filt[w]=['Gbp']
-                if 'Grp2' in iso_filt: 
+                if 'Grp2' in iso_filt:
                     w=where_v(['Grp2'],iso_filt)
                     iso_filt[w]=['Grp']
                 w1,=np.where(iso_filt==filt[0])
                 w2,=np.where(iso_filt==filt[1])
                 l=iso_data.shape
                 data=(iso_data[:,:,w1]-iso_data[:,:,w2]).reshape([l[0],l[1]])
-            else: 
+            else:
                 if col not in f: raise ValueError('Filter '+col+' does not exist. Use info_filters() to know the available filters.')
-                filt=np.array(col)
+                try:
+                    len(col)
+                    filt=np.array(col)
+                except TypeError: filt=np.array([col])
                 iso=IsochroneGrid(model_version,filt,**kwargs)
-                iso_mass,iso_age,iso_filt,data=iso.masses,iso.ages,iso.filters,iso.data                
+                iso_mass,iso_age,iso_filt,data=iso.masses,iso.ages,iso.filters,iso.data
                 l=data.shape
                 data=data.reshape([l[0],l[1]])
-        
+
         im_min=0
         im_max=l[0]-1
-        if np.isnan(nansumwrapper(data[0,:]))==False: 
+        if np.isnan(nansumwrapper(data[0,:]))==False:
             im_min=0
             if np.isnan(nansumwrapper(data[-1,:])):
                 i=l[0]-1
@@ -1448,7 +1459,7 @@ class IsochroneGrid(object):
                     i-=1
                 im_max=i
             else: im_max=l[0]
-        elif np.isnan(nansumwrapper(data[l[0]-1,:]))==False: 
+        elif np.isnan(nansumwrapper(data[l[0]-1,:]))==False:
             im_max=l[0]-1
             if np.isnan(nansumwrapper(data[0,:])):
                 i=0
@@ -1460,7 +1471,7 @@ class IsochroneGrid(object):
             else: im_min=0
         ia_min=0
         ia_max=l[1]-1
-        if np.isnan(nansumwrapper(data[im_min:im_max,0]))==False: 
+        if np.isnan(nansumwrapper(data[im_min:im_max,0]))==False:
             ia_min=0
             if np.isnan(nansumwrapper(data[im_min:im_max,-1])):
                 i=l[1]-1
@@ -1470,7 +1481,7 @@ class IsochroneGrid(object):
                     i-=1
                 ia_max=i
             else: ia_max=l[0]
-        elif np.isnan(nansumwrapper(data[im_min:im_max,l[1]-1]))==False: 
+        elif np.isnan(nansumwrapper(data[im_min:im_max,l[1]-1]))==False:
             ia_max=l[0]-1
             if np.isnan(nansumwrapper(data[im_min:im_max,0])):
                 i=0
@@ -1483,7 +1494,7 @@ class IsochroneGrid(object):
 
         fontsize=kwargs['fontsize'] if 'fontsize' in kwargs else 15
         cmap=kwargs['cmap'] if 'cmap' in kwargs else 'viridis_r'
-        
+
         fig, ax = plt.subplots(figsize=(12,12))
         ax.contour(iso_mass[im_min:im_max], iso_age[ia_min:ia_max], (data[im_min:im_max,ia_min:ia_max]).T, 100, cmap=cmap)
         CS = ax.contourf(iso_mass[im_min:im_max], iso_age[ia_min:ia_max], (data[im_min:im_max,ia_min:ia_max]).T, 100, cmap=cmap)
@@ -1500,26 +1511,26 @@ class IsochroneGrid(object):
         ax.yaxis.set_tick_params(labelsize=fontsize)
         if reverse_xaxis: ax.invert_xaxis()
         if reverse_yaxis: ax.invert_yaxis()
-        if 'x_log' in kwargs: 
+        if 'x_log' in kwargs:
             if kwargs['x_log']: ax.set_xscale('log')
-        if 'y_log' in kwargs: 
+        if 'y_log' in kwargs:
             if kwargs['y_log']: ax.set_yscale('log')
-        if 'levels' in kwargs: 
+        if 'levels' in kwargs:
             CS2=ax.contour(CS,levels=kwargs['levels'], colors='white')
-            ax.clabel(CS2, CS2.levels, fmt='%1.2f',fontsize=fontsize)            
-            
+            ax.clabel(CS2, CS2.levels, fmt='%1.2f',fontsize=fontsize)
+
         if type(tofile)!=type(None): plt.savefig(tofile)
-        plt.show()    
-                
+        plt.show()
+
     @staticmethod
     def _split_if_nan(a):
         ind=[]
         res=[]
         for s in np.ma.clump_unmasked(np.ma.masked_invalid(a)):
             ind.append(s)
-            res.append(a[s])    
+            res.append(a[s])
         return res,ind
-    
+
     @staticmethod
     def _intersect_arr(x,y):
         if np.max(x)<np.min(y): return np.array([])
@@ -1527,11 +1538,11 @@ class IsochroneGrid(object):
 
 
 class SampleObject(object):
-    
+
     """
     Class: madys.SampleObject
 
-    Class that creates, handles and obtains physical parameters for lists of n young stellar and substellar objects. 
+    Class that creates, handles and obtains physical parameters for lists of n young stellar and substellar objects.
     Check the GitHub repository for additional details on general functioning, customizable settings and various examples.
 
     An instance can be initialized in two modes, differing in the shape of input data:
@@ -1592,7 +1603,7 @@ class SampleObject(object):
     3) __repr__
     Returns a string 's' corresponding to the user's input.
     It can be executed through eval(s).
-    
+
     4) __str__
     Returns a verbose representation of the calling sequence.
 
@@ -1613,7 +1624,7 @@ class SampleObject(object):
         - n_try: int, optional. Number of Monte Carlo iteractions for each star. Default: 1000.
         - verbose: bool, optional. Set to True to save the results in a file. Default: True.
         - feh: float or numpy array, optional. Selects [Fe/H] of the isochrone set. If numpy array, the i-th element refers to the i-th star. Default: 0.00 (solar metallicity).
-        - he: float, optional. Selects helium fraction Y of the isochrone set. If numpy array, the i-th element refers to the i-th star. Default: solar Y (different for each model).    
+        - he: float, optional. Selects helium fraction Y of the isochrone set. If numpy array, the i-th element refers to the i-th star. Default: solar Y (different for each model).
         - afe: float, optional. Selects alpha enhancement [a/Fe] of the isochrone set. If numpy array, the i-th element refers to the i-th star. Default: 0.00.
         - v_vcrit: float, optional. Selects rotational velocity of the isochrone set. If numpy array, the i-th element refers to the i-th star. Default: 0.00 (non-rotating).
         - fspot: float, optional. Selects fraction of stellar surface covered by star spots. If numpy array, the i-th element refers to the i-th star. Default: 0.00.
@@ -1729,17 +1740,10 @@ class SampleObject(object):
         - cmap: string, optional. A valid colormap for the contour plot. Default: 'viridis'.
         - size: int, optional. Size of axis labels and ticks. Default: 15.
         - colorbar: bool, optional. Whether to show a clorbar or not. Default: True.
-        - ax: None or Axes object, optional. If nont None, draws the figure over an axisting 'ax'. Default: None.    
+        - ax: None or Axes object, optional. If nont None, draws the figure over an axisting 'ax'. Default: None.
         Output: no output is returned, but the plot is drawn or overplotted in the current window.
 
-    8) info_filters
-    Prints info about filters/physical quantity in MADYS.
-    Informs about 1) the name of the quantity and its basic reference; 2) the models in which the quantity is available.
-        Input:
-        - filt: string, optional. Use it to print info about a specific quantity. If None, prints info about all the available quantities. Default: None.
-        Output: none.
-
-    9) ang_dist
+    8) ang_dist
     Computes the angular distance between two sky coordinates or two equal-sized arrays of positions.
         Input:
         - ra1: float or numpy array, required. Right ascension of the first star. If unitless, it is interpreted as if measured in degrees.
@@ -1756,33 +1760,33 @@ class SampleObject(object):
         - err: float or numpy array, returned only if error==True. Uncertainty on the angular distance for (each couple of) coordinates [deg].
 
     """
-    
+
     def __init__(self, file, **kwargs):
-        
+
         self.__input = copy.deepcopy(kwargs)
         self.__input['file']=file
-        
+
         if 'ext_map' not in kwargs:
             print("The keyword 'ext_map' must be set to 'leike', 'stilism' or None. ")
             while 1:
-                ext_map = input("Please insert a value among 'leike', 'stilism' or 'None' (without quotation marks):\n")                
-                if ext_map not in ['None','leike','stilism']: 
+                ext_map = input("Please insert a value among 'leike', 'stilism' or 'None' (without quotation marks):\n")
+                if ext_map not in ['None','leike','stilism']:
                     print("Invalid choice. Please insert a value among 'leike', 'stilism' or 'None' (without quotation marks):\n")
                 else: break
         else: ext_map=kwargs['ext_map']
-        
+
         if ext_map=='None': ext_map=None
         if ext_map not in [None,'leike','stilism']: raise ValueError("'ext_map' must be set to 'leike', 'stilism' or None.")
         self.__input['ext_map']=ext_map
         SampleObject._download_ext_map(ext_map)
-        
-        self.verbose = kwargs['verbose'] if 'verbose' in kwargs else 2  
-        
+
+        self.verbose = kwargs['verbose'] if 'verbose' in kwargs else 2
+
         if self.verbose>0:
             if (isinstance(file,Table)) | (isinstance(file,list)):
                 try:
                     self.file = kwargs['mock_file']
-                except KeyError: 
+                except KeyError:
                     self.verbose=0
                     self.file=''
             else: self.file = file
@@ -1791,12 +1795,12 @@ class SampleObject(object):
                 self._sample_name_ext()
         else:
             if (isinstance(file,Table)) | (isinstance(file,list)): self.file = ''
-            else: 
+            else:
                 self.file = file
                 self.path = os.path.dirname(self.file)
                 self._sample_name_ext()
 
-        if isinstance(file,Table):            
+        if isinstance(file,Table):
             self.mode=2
             self.phot_table = file
             col0=file.colnames
@@ -1811,14 +1815,14 @@ class SampleObject(object):
             elif 'object_name' in self.GaiaID.columns: self.GaiaID.keep_columns('object_name')
             else: raise ValueError('The columns with IDs was not found! Check that a "ID"/"id"/"source_id"/"object_name" column is present, and try again.')
             n=len(col)
-            nst=len(file)    
+            nst=len(file)
         else:
             self.mode=1
             self.surveys = kwargs['surveys'] if 'surveys' in kwargs else ['gaia','2mass']
             if 'gaia' not in self.surveys: self.surveys.append('gaia')
             filters=[]
             available_surveys=list(np.unique([stored_data['filters'][k]['survey'] for k in stored_data['filters'].keys()]))
-            for i in range(len(self.surveys)): 
+            for i in range(len(self.surveys)):
                 if self.surveys[i] not in available_surveys:
                     raise ValueError("Survey "+self.surveys[i]+' not available. Available surveys: '+','.join(available_surveys)+'.')
                 else:
@@ -1826,39 +1830,39 @@ class SampleObject(object):
                     filters.extend(np.array(list(stored_data['filters'].keys()))[w])
             self.filters=np.array(filters)
             if 'id_type' in kwargs: id_type = kwargs['id_type']
-            else: raise ValueError("'id_type' not provided! Select one among: 'DR2', 'DR3', 'other'.")            
+            else: raise ValueError("'id_type' not provided! Select one among: 'DR2', 'DR3', 'other'.")
             self.__id_type = id_type
             if isinstance(id_type,str)==False: raise ValueError("'id_type' must be a string.")
             elif id_type not in ['DR2','DR3','other']:
                 raise ValueError("Invalid value for 'id_type'. Select one among: 'DR2', 'DR3', 'other'.")
             get_phot = kwargs['get_phot'] if 'get_phot' in kwargs else True
-            
+
             if isinstance(file,list): self.ID=Table({'ID':file})
             else: self.ID=self._read_IDs()
             if self.__id_type!='other': self.GaiaID = self.ID
             else: self._get_gaia()
-            nst=len(self.ID)                
+            nst=len(self.ID)
             simbad_query = kwargs['simbad_query'] if 'simbad_query' in kwargs else nst<100
-        
+
         if self.verbose>1:
-            logging.shutdown() 
+            logging.shutdown()
             self.log_file = os.path.join(self.path,self.__sample_name+'_log.txt')
             if os.path.exists(self.log_file): os.remove(self.log_file)
             self.__logger = SampleObject._setup_custom_logger('madys',self.log_file)
         else: self.__logger = None
-            
+
         if isinstance(file,Table):
             self.abs_phot=np.full([nst,n],np.nan)
             self.abs_phot_err=np.full([nst,n],np.nan)
             for i in range(n):
-                self.abs_phot[:,i]=file[col[i]]               
+                self.abs_phot[:,i]=file[col[i]]
                 self.abs_phot_err[:,i]=file[col_err[i]]
-                
+
             self._print_log('info','Program started')
             self._print_log('info','Input type: custom table')
             self._print_log('info','Filters required: '+','.join(self.filters))
             self._print_log('info','No. of stars: '+str(nst))
-            
+
             self.ebv=np.zeros(len(file))
             if 'ebv' in kwargs:
                 self.ebv=kwargs['ebv']
@@ -1884,24 +1888,24 @@ class SampleObject(object):
                 self._print_log('info','Input photometry: apparent, converted to absolute.')
             else:
                 self._print_log('info','Input photometry: no parallax provided, assumed absolute.')
-                
-        else:            
+
+        else:
             self._print_log('info','Program started')
             self._print_log('info','Input file: list of IDs')
             self._print_log('info','No. of stars: '+str(nst))
             self._print_log('info','Looking for photometry in the surveys: '+','.join(['gaia','2mass']))
-            
-            if get_phot==True: 
+
+            if get_phot==True:
                 self._print_log('info','Starting data query...')
                 self._get_phot(simbad_query)
-                self._print_log('info','Data query: ended.')                
+                self._print_log('info','Data query: ended.')
             elif get_phot==False:
                 if self.verbose==0: raise ValueError("verbose set to 0 but get_phot=False. Set verbose to at least 1 or get_phot to True.")
                 filename=os.path.join(self.path,(self.__sample_name+'_phot_table.csv'))
                 if os.path.exists(filename):
                     self.phot_table=ascii.read(filename, format='csv')
                     self._print_log('info','Data recovered from a previous execution. File: '+filename)
-                else: 
+                else:
                     self._print_log('warning','get_phot is set to False but the file '+filename+' was not found. Program ended.')
                     raise ValueError('get_phot is set to False but the file '+filename+' was not found. Set get_phot=True to query the provided IDs, or get_phot=full_file_path to recover them from an input file.')
             else:
@@ -1909,13 +1913,13 @@ class SampleObject(object):
                 if os.path.exists(filename):
                     self.phot_table=ascii.read(filename, format='csv')
                     self._print_log('info','Data recovered from a previous execution. File: '+filename)
-                else: 
+                else:
                     self._print_log('warning','The provided file '+filename+' was not found. Program ended.')
                     raise ValueError('The provided file file '+filename+' was not found. Set get_phot=True to query the provided IDs, or check the file name.')
-                    
+
             self.good_phot=self._check_phot(**kwargs)
-            
-            
+
+
             nf=len(self.filters)
 
             query_keys={'G':'dr3_gmag_corr','Gbp':'dr3_phot_bp_mean_mag','Grp':'dr3_phot_rp_mean_mag','G2':'dr2_phot_g_mean_mag',
@@ -1952,7 +1956,7 @@ class SampleObject(object):
                 par=np.where(np.isnan(par),par2,par)
                 par_err=np.where(np.isnan(par_err),par_err2,par_err)
                 for i in range(len(u2)):
-                    self._print_log('info','Invalid parallax in Gaia DR3 for star '+str(self.ID[u2[i]][0])+', using DR2 instead')                    
+                    self._print_log('info','Invalid parallax in Gaia DR3 for star '+str(self.ID[u2[i]][0])+', using DR2 instead')
             if 'ebv' in kwargs:
                 self.ebv=kwargs['ebv']
                 self._print_log('info','Extinction type: provided by the user')
@@ -1970,16 +1974,16 @@ class SampleObject(object):
                 else:
                     self.ebv=self.phot_table['ebv']
                     self._print_log('info','Extinction type: recovered from a previous execution')
-                    
+
             self.abs_phot,self.abs_phot_err=self.app_to_abs_mag(self.app_phot,par,app_mag_error=self.app_phot_err,parallax_error=par_err,ebv=self.ebv,filters=self.filters)
             self._print_log('info','Input photometry: apparent, converted to absolute')
             self.par=par
             self.par_err=par_err
             if get_phot & (self.verbose>0):
                 filename=os.path.join(self.path,(self.__sample_name+'_phot_table.csv'))
-                ascii.write(self.phot_table, filename, format='csv', overwrite=True)                
+                ascii.write(self.phot_table, filename, format='csv', overwrite=True)
 
-        if self.verbose>1: logging.shutdown() 
+        if self.verbose>1: logging.shutdown()
 
     def __getitem__(self,i):
         new=copy.deepcopy(self)
@@ -1987,7 +1991,7 @@ class SampleObject(object):
             try:
                 if isinstance(new.__dict__[j],str): continue
                 elif j=='surveys': continue
-                elif j=='filters': continue                
+                elif j=='filters': continue
                 new.__dict__[j]=new.__dict__[j][i]
             except TypeError:
                 continue
@@ -2004,9 +2008,9 @@ class SampleObject(object):
             if 'phot_table' in new.__dict__.keys():
                 new.good_phot=Table(new.good_phot)
                 new.phot_table=Table(new.phot_table)
-            
+
         return new
-    
+
     def __len__(self):
         return len(self.par)
 
@@ -2016,16 +2020,16 @@ class SampleObject(object):
             s='SampleObject('
             l=self._SampleObject__input['file']
             if isinstance(l,list):
-                s+="['"+"','".join(l)+"'], "            
+                s+="['"+"','".join(l)+"'], "
             else:
                 s+="'"+l+"', "
                 s=s.replace('\\','/')
-            
+
             ext_map=self._SampleObject__input['ext_map']
             if type(ext_map)==type(None): ext_map_str=str(ext_map)
             else: ext_map_str="'"+ext_map+"'"
             s+='ext_map='+ext_map_str+', '
-                
+
             for i in self._SampleObject__input:
                 if i=='file': continue
                 elif i=='ext_map': continue
@@ -2034,7 +2038,7 @@ class SampleObject(object):
                     s=s.replace('\\','/')
                 elif isinstance(self._SampleObject__input[i],str):
                     s+=i+"='"+str(self._SampleObject__input[i])+"'"
-                elif isinstance(self._SampleObject__input[i],list): 
+                elif isinstance(self._SampleObject__input[i],list):
                     l=[str(j) for j in self._SampleObject__input[i]]
                     s+=i+'=['+','.join(l)+']'
                 elif isinstance(self._SampleObject__input[i],np.ndarray): s+=i+'=np.'+np.array_repr(self._SampleObject__input[i])
@@ -2042,18 +2046,18 @@ class SampleObject(object):
                 s+=', '
             if s.endswith(', '): s=s[:-2]
             s+=')'
-            s=s.replace('=nan','=np.nan')  
+            s=s.replace('=nan','=np.nan')
             return s
         elif self.mode==2:
             s='SampleObject('+repr_table(self.phot_table)+', '
-            
+
             ext_map=self._SampleObject__input['ext_map']
             if type(ext_map)==type(None): ext_map_str=str(ext_map)
             else: ext_map_str="'"+ext_map+"'"
             s+=ext_map_str+', '
-            
+
             for i in self._SampleObject__input:
-                if isinstance(self._SampleObject__input[i],list): 
+                if isinstance(self._SampleObject__input[i],list):
                     l=[str(j) for j in self._SampleObject__input[i]]
                     s+=i+'=['+','.join(l)+']'
                 elif isinstance(self._SampleObject__input[i],np.ndarray): s+=i+'=np.'+np.array_repr(self._SampleObject__input[i])
@@ -2066,8 +2070,8 @@ class SampleObject(object):
                 s+=', '
             if s.endswith(', '): s=s[:-2]
             s+=')'
-            s=s.replace('=nan','=np.nan')  
-            return s        
+            s=s.replace('=nan','=np.nan')
+            return s
         else: raise ValueError('Has the value for self.mode been modified? Restore it to 1 or 2.')
 
     def __str__(self):
@@ -2076,7 +2080,7 @@ class SampleObject(object):
             s='A SampleObject instance, mode 1 \n'
             l=self._SampleObject__input['file']
             if isinstance(l,list):
-                s+='Input IDs: '+"['"+"','".join(l)+"'] \n"            
+                s+='Input IDs: '+"['"+"','".join(l)+"'] \n"
             else:
                 s+="Input file: '"+l+"' \n"
                 s=s.replace('\\','/')
@@ -2088,21 +2092,21 @@ class SampleObject(object):
                     s=s.replace('\\','/')
                 elif isinstance(self._SampleObject__input[i],str):
                     s+=i+"='"+str(self._SampleObject__input[i])+"'"
-                elif isinstance(self._SampleObject__input[i],list): 
+                elif isinstance(self._SampleObject__input[i],list):
                     l=[str(j) for j in self._SampleObject__input[i]]
                     s+=i+'=['+','.join(l)+']'
                 elif isinstance(self._SampleObject__input[i],np.ndarray): s+=i+'=np.'+np.array_repr(self._SampleObject__input[i])
                 else: s+=i+'='+str(self._SampleObject__input[i])
                 s+=', '
             if s.endswith(', '): s=s[:-2]
-            s=s.replace('=nan','=np.nan')  
+            s=s.replace('=nan','=np.nan')
             return s
         elif self.mode==2:
             s='A SampleObject instance, mode 2 \n'
             s+='Input data: '+repr_table(self.phot_table)+' \n'
             s+='Settings: '
             for i in self._SampleObject__input:
-                if isinstance(self._SampleObject__input[i],list): 
+                if isinstance(self._SampleObject__input[i],list):
                     l=[str(j) for j in self._SampleObject__input[i]]
                     s+=i+'=['+','.join(l)+']'
                 elif isinstance(self._SampleObject__input[i],np.ndarray): s+=i+'=np.'+np.array_repr(self._SampleObject__input[i])
@@ -2113,13 +2117,13 @@ class SampleObject(object):
                 else: s+=i+'='+str(self._SampleObject__input[i])
                 s+=', '
             if s.endswith(', '): s=s[:-2]
-            s=s.replace('=nan','=np.nan')  
-            return s        
+            s=s.replace('=nan','=np.nan')
+            return s
         else: raise ValueError('Has the value for self.mode been modified? Restore it to 1 or 2.')
-    
-    
+
+
     ############################################# catalog queries ############################################
-        
+
     def _sample_name_ext(self):
         sample_p,sample_name=os.path.split(self.file)
         i=0
@@ -2127,7 +2131,7 @@ class SampleObject(object):
         self.__ext=sample_name[i:]
         self.__sample_name=sample_name[:i]
         self.__sample_path=self.file.split(self.__ext)[0]
-        
+
     def _read_IDs(self):
 
         with warnings.catch_warnings():
@@ -2145,11 +2149,11 @@ class SampleObject(object):
                 elif 'ID' in col: ID = IDtab['ID']
                 elif 'source_id' in col: ID = IDtab['source_id']
                 elif 'object_name' in col: ID = IDtab['object_name']
-                else: raise ValueError('The columns with IDs was not found! Check that a "ID"/"id"/"source_id"/"object_name" column is present, and try again.')    
+                else: raise ValueError('The columns with IDs was not found! Check that a "ID"/"id"/"source_id"/"object_name" column is present, and try again.')
             else: ID=IDtab[col[0]]
 
             if self.__id_type=='DR2':
-                for i in range(len(ID)):                     
+                for i in range(len(ID)):
                     st_id=str(ID.loc[i])
                     if 'Gaia DR3' in st_id:
                         raise ValueError("id_type='DR2' but the star "+st_id+" is from Gaia DR3.")
@@ -2166,9 +2170,9 @@ class SampleObject(object):
             if isinstance(ID,pd.Series): ID=ID.to_frame()
             ID=Table.from_pandas(ID)
             ID.rename_column(ID.colnames[0], 'ID')
-        
+
         return ID
-    
+
     def _get_gaia(self):
         ns=len(self.ID)
         self.GaiaID=['']*ns
@@ -2181,7 +2185,7 @@ class SampleObject(object):
                     self.GaiaID[i]='Gaia DR2 0000'
                     continue
                 for rr in res:
-                    if str(rr[0]).startswith('Gaia DR2'): 
+                    if str(rr[0]).startswith('Gaia DR2'):
                         self.GaiaID[i]=str(rr[0])
                         found=True
                         break
@@ -2247,7 +2251,7 @@ class SampleObject(object):
                 gaiadr2.ruwe as dr2ruwe
                 ON dr2xmatch.dr2_source_id = dr2ruwe.source_id
             """
-        if '2mass' in surveys: 
+        if '2mass' in surveys:
             qstr1+='tmass.designation as tmass_id, '
             qstr2+="""
             tmass.j_m, tmass.j_msigcom,
@@ -2263,7 +2267,7 @@ class SampleObject(object):
                 gaiadr1.tmass_original_valid AS tmass
                 ON tmassxmatch.original_ext_source_id = tmass.designation"""
 
-        if 'wise' in surveys: 
+        if 'wise' in surveys:
             qstr1+='allwise.designation as allwise_id, '
             qstr2+="""
             allwise.w1mpro, allwise.w1mpro_error,
@@ -2279,8 +2283,8 @@ class SampleObject(object):
             LEFT OUTER JOIN
                 gaiadr1.allwise_original_valid AS allwise
                 ON allwisexmatch.original_ext_source_id = allwise.designation
-            """   
-        if 'apass' in surveys: 
+            """
+        if 'apass' in surveys:
             qstr1+='apass.recno as apassdr9_id, '
             qstr2+="""
             apass.b_v, apass.e_b_v, apass.vmag, apass.e_vmag, apass.bmag, apass.e_bmag, apass.r_mag, apass.e_r_mag, apass.i_mag, apass.e_i_mag,"""
@@ -2302,10 +2306,10 @@ class SampleObject(object):
                 ON dr3.source_id = sloanxmatch.source_id
             LEFT OUTER JOIN
                 external.sdssdr13_photoprimary as sloan
-                ON sloanxmatch.clean_sdssdr13_oid = sloan.objid        
+                ON sloanxmatch.clean_sdssdr13_oid = sloan.objid
             """
-        if 'panstarrs' in surveys: 
-            qstr1+='ps1xmatch.source_id as panstarrs_id, '        
+        if 'panstarrs' in surveys:
+            qstr1+='ps1xmatch.source_id as panstarrs_id, '
             qstr2+="""
             panstarrs.g_mean_psf_mag as ps1_g, g_mean_psf_mag_error as ps1_g_error, panstarrs.r_mean_psf_mag as ps1_r, r_mean_psf_mag_error as ps1_r_error,
             panstarrs.i_mean_psf_mag as ps1_i, i_mean_psf_mag_error as ps1_i_error, panstarrs.z_mean_psf_mag as ps1_z, z_mean_psf_mag_error as ps1_z_error,
@@ -2316,33 +2320,33 @@ class SampleObject(object):
                 ON dr3.source_id = ps1xmatch.source_id
             LEFT OUTER JOIN
                 gaiadr2.panstarrs1_original_valid AS panstarrs
-                ON ps1xmatch.original_ext_source_id = panstarrs.obj_id            
+                ON ps1xmatch.original_ext_source_id = panstarrs.obj_id
             """
 
         if qstr2.rstrip().endswith(','): qstr2=qstr2.rstrip()[:-1]
 
         qstr0="""
         select all
-        """        
+        """
         qstr4="""
         WHERE """+query_list
         qstr=qstr0+qstr1+qstr2+qstr3+qstr4
 
         return qstr
-                    
+
     def _list_chunk(self,ind=None,key_name=None,id_list=None,equality='=',quote_mark=False):
         query_list=''
-        
+
         if (type(key_name)==type(None)) & (type(id_list)==type(None)):
             id_str = 'Gaia DR3 ' if self.__id_type=='DR3' else 'Gaia DR2 '
-            id_sea = 'dr3.source_id' if self.__id_type=='DR3' else 'dr2xmatch.dr2_source_id'    
+            id_sea = 'dr3.source_id' if self.__id_type=='DR3' else 'dr2xmatch.dr2_source_id'
             if type(ind)==type(None): ind=len(self.GaiaID)
             if quote_mark:
                 if isinstance(ind,np.ndarray):
                     for i in ind:
                         id=str(self.GaiaID[i]).split(id_str)[1]
                         query_list+=id_sea+' '+equality+" '"+id+"' OR "
-                else:        
+                else:
                     for i in range(ind):
                         id=str(self.GaiaID[i]).split(id_str)[1]
                         query_list+=id_sea+' '+equality++" '"+id+"' OR "
@@ -2351,20 +2355,20 @@ class SampleObject(object):
                     for i in ind:
                         id=str(self.GaiaID[i]).split(id_str)[1]
                         query_list+=id_sea+' '+equality+' '+id+' OR '
-                else:        
+                else:
                     for i in range(ind):
                         id=str(self.GaiaID[i]).split(id_str)[1]
                         query_list+=id_sea+' '+equality+' '+id+' OR '
         elif type(key_name)==type(None):
             id_str = 'Gaia DR3 ' if self.__id_type=='DR3' else 'Gaia DR2 '
-            id_sea = 'dr3.source_id' if self.__id_type=='DR3' else 'dr2xmatch.dr2_source_id'    
+            id_sea = 'dr3.source_id' if self.__id_type=='DR3' else 'dr2xmatch.dr2_source_id'
             if type(ind)==type(None): ind=len(id_list)
             if quote_mark:
                 if isinstance(ind,np.ndarray):
                     for i in ind:
                         id=str(id_list[i]).split(id_str)[1]
                         query_list+=id_sea+' '+equality+" '"+id+"' OR "
-                else:        
+                else:
                     for i in range(ind):
                         id=str(id_list[i]).split(id_str)[1]
                         query_list+=id_sea+' '+equality+" '"+id+"' OR "
@@ -2373,7 +2377,7 @@ class SampleObject(object):
                     for i in ind:
                         id=str(id_list[i]).split(id_str)[1]
                         query_list+=id_sea+' '+equality+' '+id+' OR '
-                else:        
+                else:
                     for i in range(ind):
                         id=str(id_list[i]).split(id_str)[1]
                         query_list+=id_sea+' '+equality+' '+id+' OR '
@@ -2385,7 +2389,7 @@ class SampleObject(object):
                     for i in ind:
                         id=str(id_list[i])
                         query_list+=id_sea+' '+equality+" '"+id+"' OR "
-                else:        
+                else:
                     for i in range(ind):
                         id=str(self.GaiaID[i]).split(id_str)[1]
                         query_list+=id_sea+' '+equality+" '"+id+"' OR "
@@ -2394,13 +2398,13 @@ class SampleObject(object):
                     for i in ind:
                         id=str(id_list[i])
                         query_list+=id_sea+' '+equality+' '+id+' OR '
-                else:        
+                else:
                     for i in range(ind):
                         id=str(self.GaiaID[i]).split(id_str)[1]
                         query_list+=id_sea+' '+equality+' '+id+' OR '
-                
+
         query_list=query_list[:-4]
-        return query_list    
+        return query_list
 
     def _divide_query(self,query,key_name=None,id_list=None,n_it_max=10,engine='gaia',equality='=',quote_mark=False):
 
@@ -2428,7 +2432,7 @@ class SampleObject(object):
                     continue
             n_chunks*=2
             nit+=1
-            if nit>(n_it_max-1): raise RuntimeError('Perhaps '+str(nst)+' stars are too many?')                
+            if nit>(n_it_max-1): raise RuntimeError('Perhaps '+str(nst)+' stars are too many?')
 
         if len(data)>1: t=vstack(data)
         else: t=data[0]
@@ -2453,7 +2457,7 @@ class SampleObject(object):
                 qstr=self._query_string(query_list)
                 try:
                     adql = QueryStr(qstr,verbose=False)
-                    t=gaia.query(adql)        
+                    t=gaia.query(adql)
                     data.append(t)
                     done[todo_c]=True
                     n_conn_err=0
@@ -2465,20 +2469,20 @@ class SampleObject(object):
                     time.sleep(1)
                     n_conn_err+=1
                 if c>=n_chunks: break
-                if n_conn_err>9: raise ConnectionError('Too many connection errors. Did you check your connection?')  
+                if n_conn_err>9: raise ConnectionError('Too many connection errors. Did you check your connection?')
             n_chunks*=2
             nit+=1
-            if nit>9: raise RuntimeError('Perhaps '+str(nst)+' stars are too many?')                
-                
+            if nit>9: raise RuntimeError('Perhaps '+str(nst)+' stars are too many?')
+
         if len(data)>1: t=vstack(data)
         else: t=data[0]
 
         t=self._fix_double_entries(t)
-        
+
         t=self._fix_2mass(t,simbad_query)
 
         data=[]
-        with np.errstate(divide='ignore',invalid='ignore'):        
+        with np.errstate(divide='ignore',invalid='ignore'):
             dr3_gmag_corr, dr3_gflux_corr = self._correct_gband(t.field('dr3_bp_rp'), t.field('dr3_astrometric_params_solved'), t.field('dr3_phot_g_mean_mag'), t.field('dr3_phot_g_mean_flux'))
             dr3_bp_rp_excess_factor_corr = self._dr3_correct_flux_excess_factor(t.field('dr3_bp_rp'), t.field('dr3_phot_bp_rp_excess_factor'))
             dr3_g_mag_error, dr3_bp_mag_error, dr3_rp_mag_error = self._gaia_mag_errors(t.field('dr3_phot_g_mean_flux'), t.field('dr3_phot_g_mean_flux_error'), t.field('dr3_phot_bp_mean_flux'), t.field('dr3_phot_bp_mean_flux_error'), t.field('dr3_phot_rp_mean_flux'), t.field('dr3_phot_rp_mean_flux_error'))
@@ -2500,24 +2504,24 @@ class SampleObject(object):
             message="Total time needed to retrieve photometry for "+ str(len(self.GaiaID))+ " targets: - {:0>2}:{:0>2}:{:05.2f}".format(int(hours),int(minutes),seconds)
             self._print_log('info',message)
             print(message)
-            
-    def _fix_double_entries(self,t,index=None):        
-        
+
+    def _fix_double_entries(self,t,index=None):
+
         if type(index)==type(None): index=np.arange(len(self.GaiaID))
-        n=len(index)        
+        n=len(index)
         if (len(t)<2) & (n<2): return t
         else:
-            t=Table(t,masked=True)            
+            t=Table(t,masked=True)
             n_t=len(t)
             id_type=self.__id_type
 
             w,=np.where(t['dr2_id']=='')
             t['dr2_id'].mask[w]=True
             t['dr2_id']=t['dr2_id'].filled('Gaia DR2 0000')
-            
+
             w,=np.where(t['dr3_id']=='')
             t['dr3_id'].mask[w]=True
-            t['dr3_id']=t['dr3_id'].filled('Gaia DR3 0000')            
+            t['dr3_id']=t['dr3_id'].filled('Gaia DR3 0000')
 
             gaia2_col=np.array([str(i).split('Gaia DR2')[1] for i in t['dr2_id']])
             gaia3_col=np.array([str(i).split('Gaia DR3')[1] for i in t['dr3_id']])
@@ -2529,16 +2533,16 @@ class SampleObject(object):
                 for i in range(n):
                     id=str(self.GaiaID[index[i]]).split('Gaia DR3')[1]
                     w,=np.where(id==gaia3_col)
-                    if len(w)==1: 
+                    if len(w)==1:
                         ind.extend(w)
                         if gaia2_col[w]==' 0000': t['dr2_id'].mask[w]=True
-                    elif len(w)==0: 
+                    elif len(w)==0:
                         ind.append(0)
                         t_mask.append(i)
-                    else: 
+                    else:
                         w1,=np.where(id==gaia2_col[w])
                         if len(w1)==1: ind.extend(w[w1])
-                        else: 
+                        else:
                             ind.append(0)
                             p_mask.append(i)
             else:
@@ -2546,16 +2550,16 @@ class SampleObject(object):
                 for i in range(n):
                     id=str(self.GaiaID[index[i]]).split('Gaia DR2')[1]
                     w,=np.where(id==gaia2_col)
-                    if len(w)==1: 
+                    if len(w)==1:
                         ind.extend(w)
                         if gaia3_col[w]==' 0000': t['dr3_id'].mask[w]=True
                     elif len(w)==0:
                         ind.append(0)
                         t_mask.append(i)
-                    else: 
+                    else:
                         w1,=np.where(id==gaia3_col[w])
                         if len(w1)==1: ind.extend(w[w1])
-                        else: 
+                        else:
                             ind.append(0)
                             p_mask.append(i)
             ind=np.array(ind)
@@ -2564,20 +2568,20 @@ class SampleObject(object):
                 t_mask=np.array(t_mask)
                 for j in t_mask:
                     for i in t.columns:
-                        t[i].mask[j]=True        
+                        t[i].mask[j]=True
             if len(p_mask)>0:
                 p_mask=np.array(p_mask)
                 for j in p_mask:
                     for i in cols:
-                        t[i].mask[j]=True        
+                        t[i].mask[j]=True
             return t
 
 
     def _fix_2mass(self,t,simbad_query):
-        
+
         with warnings.catch_warnings():
             warnings.simplefilter('ignore')
-            
+
             tt1=time.perf_counter()
             if 'wise' in self.surveys:
                 w,=np.where((t['j_m'].mask==True) & (t['tmass_key'].mask==False))
@@ -2592,19 +2596,19 @@ class SampleObject(object):
 
                 query_list=self._list_chunk(w)
                 qstr=self._query_string('',surveys=['gaia','wise'])
-        
+
                 t1=self._divide_query(qstr,id_list=np.array(self.GaiaID['ID'])[w],n_it_max=10,engine='gaia')
 
                 t1=self._fix_double_entries(t1,index=w)
 
                 w1,=np.where(t1['tmass_key'].mask==False)
 
-                if self.__id_type=='DR3': 
+                if self.__id_type=='DR3':
                     id_res=np.array(t1['dr3_id'][w1])
-                    l=np.array(t['dr3_id'][w])            
-                else: 
+                    l=np.array(t['dr3_id'][w])
+                else:
                     id_res=np.array(t1['dr2_id'][w1])
-                    l=np.array(t['dr2_id'][w])        
+                    l=np.array(t['dr2_id'][w])
 
                 __, i1, i2 = np.intersect1d(id_res,l,return_indices=True)
 
@@ -2612,8 +2616,8 @@ class SampleObject(object):
                 wise_ids = np.array(t1['allwise_id'][w1[i1]])
                 qstr = """
                  SELECT all
-                     allwise.AllWISE, allwise.RAJ2000, allwise.DEJ2000, allwise.W1mag, allwise.W2mag, 
-                 allwise.W3mag, allwise.W4mag, allwise.Jmag, allwise.e_Jmag, allwise.Hmag, allwise.e_Hmag, 
+                     allwise.AllWISE, allwise.RAJ2000, allwise.DEJ2000, allwise.W1mag, allwise.W2mag,
+                 allwise.W3mag, allwise.W4mag, allwise.Jmag, allwise.e_Jmag, allwise.Hmag, allwise.e_Hmag,
                  allwise.Kmag, allwise.e_Kmag, allwise.ccf, allwise.d2M, allwise."2Mkey"
                  FROM "II/328/allwise" as allwise
                 where """
@@ -2633,8 +2637,8 @@ class SampleObject(object):
                 nst=len(i3)
                 qstr0 = """
                  SELECT ALL
-                  tmass.RAJ2000, tmass.DEJ2000, tmass."2MASS", tmass.Jmag, tmass.e_Jmag, tmass.Hmag, tmass.e_Hmag, 
-                 tmass.Kmag, tmass.e_Kmag, tmass.Qflg, tmass.Rflg, tmass.Bflg, tmass.Cflg, tmass.Xflg, tmass.Aflg, 
+                  tmass.RAJ2000, tmass.DEJ2000, tmass."2MASS", tmass.Jmag, tmass.e_Jmag, tmass.Hmag, tmass.e_Hmag,
+                 tmass.Kmag, tmass.e_Kmag, tmass.Qflg, tmass.Rflg, tmass.Bflg, tmass.Cflg, tmass.Xflg, tmass.Aflg,
                  tmass.Cntr
                  FROM "II/246/out" as tmass
                  WHERE """
@@ -2657,7 +2661,7 @@ class SampleObject(object):
                         query_list=query_list[:-3]
                         qstr=qstr0+query_list
                         try:
-                            adql = QueryStr(qstr,verbose=False)                
+                            adql = QueryStr(qstr,verbose=False)
                             res = vizier.query(adql)
                             data.append(res)
                             done[todo_c]=True
@@ -2692,7 +2696,7 @@ class SampleObject(object):
                     units=["","","deg","deg"])
                 t_ext['ph_qual']=MaskedColumn(t_ext['ph_qual'],dtype=object)
                 for i in names: t[i][w[i2[i5]]]=t_ext[i]
-                    
+
                 names=['tmass_id','ph_qual','tmass_ra','tmass_dec','j_m', 'h_m','ks_m','j_msigcom', 'h_msigcom','ks_msigcom']
                 for i in names: t[i].mask[w[i2[i5[w_ncm]]]]=True
 
@@ -2713,14 +2717,14 @@ class SampleObject(object):
                 for j in range(len(w)):
                     found=False
                     x=Simbad.query_objectids(t['dr3_id'][w[j]])
-                    if type(x)==type(None): x=Simbad.query_objectids(t['dr2_id'][w[j]])            
+                    if type(x)==type(None): x=Simbad.query_objectids(t['dr2_id'][w[j]])
                     if type(x)!=type(None):
                         for rr in x:
-                            if str(rr[0]).startswith('2MASS'): 
+                            if str(rr[0]).startswith('2MASS'):
                                 key2=str(rr[0]).replace('2MASS J','')
                                 found=True
                                 break
-                    if found: 
+                    if found:
                         l.append(key2)
                         ind.append(w[j])
                     if time.perf_counter()-tt2>180:
@@ -2734,13 +2738,13 @@ class SampleObject(object):
                     for i in range(len(l)):
                         id=l[i]
                         query_list+='tmass."2MASS" = '+"'"+id+"'"+' OR '
-                    query_list=query_list[:-4]            
+                    query_list=query_list[:-4]
 
                     qstr = """
                     select all
-                        tmass.RAJ2000, tmass.DEJ2000, tmass."2MASS", tmass.Jmag, tmass.e_Jmag, tmass.Hmag, tmass.e_Hmag, 
+                        tmass.RAJ2000, tmass.DEJ2000, tmass."2MASS", tmass.Jmag, tmass.e_Jmag, tmass.Hmag, tmass.e_Hmag,
                         tmass.Kmag, tmass.e_Kmag, tmass.Qflg
-                    from 
+                    from
                         "II/246/out" as tmass
                     where """ + query_list
 
@@ -2757,32 +2761,32 @@ class SampleObject(object):
                         names=names,
                         units=["mag","mag","mag","mag","mag","mag","","deg","deg",""])
                     t_ext['ph_qual']=MaskedColumn(t_ext['ph_qual'],dtype=object)
-                    for i in names: t[i][ind[i2]]=t_ext[i]     
+                    for i in names: t[i][ind[i2]]=t_ext[i]
                 else: i2=[]
 
                 tt3=time.perf_counter()
 
-        return t    
-        
+        return t
+
     ############################################# data handling and quality assessment #######################
 
     def _check_phot(self,**kwargs):
 
         t=copy.deepcopy(self.phot_table)
         t=Table(t, masked=True, copy=False)
-        
+
         dr2_q = self._dr2_quality(t.field('dr2_phot_bp_rp_excess_factor_corr'),t.field('dr2_phot_g_mean_mag'))
         t['dr2_phot_bp_mean_mag'].mask[~dr2_q]=True
         t['dr2_phot_rp_mean_mag'].mask[~dr2_q]=True
         t['dr2_phot_bp_mean_mag'].fill_value = np.nan
         t['dr2_phot_rp_mean_mag'].fill_value = np.nan
-        
+
         dr3_q = self._dr3_quality(t.field('dr3_phot_bp_rp_excess_factor_corr'),t.field('dr3_phot_g_mean_mag'))
         t['dr3_phot_bp_mean_mag'].mask[~dr3_q]=True
         t['dr3_phot_rp_mean_mag'].mask[~dr3_q]=True
         t['dr3_phot_bp_mean_mag'].fill_value = np.nan
         t['dr3_phot_rp_mean_mag'].fill_value = np.nan
-        
+
         if '2mass' in self.surveys:
             if 'max_tmass_q' in kwargs:
                 max_tmass_q=kwargs['max_tmass_q']
@@ -2794,7 +2798,7 @@ class SampleObject(object):
             t['j_m'].fill_value = np.nan
             t['h_m'].fill_value = np.nan
             t['ks_m'].fill_value = np.nan
-            
+
         if 'wise' in self.surveys:
             if 'max_wise_q' in kwargs:
                 max_wise_q=kwargs['max_wise_q']
@@ -2808,7 +2812,7 @@ class SampleObject(object):
             t['w2mpro'].fill_value = np.nan
             t['w3mpro'].fill_value = np.nan
             t['w4mpro'].fill_value = np.nan
-        
+
         return t
 
     @staticmethod
@@ -2906,7 +2910,7 @@ class SampleObject(object):
         q1[dr3_bp_rp_excess_factor.mask]=False
         return q1
 
-    @staticmethod    
+    @staticmethod
     def _tmass_quality(ph_qual,max_q='A'):
         q=np.array(['A','B','C','D','E','F','U','X'])
         w,=np.where(q==max_q)[0]
@@ -2921,10 +2925,10 @@ class SampleObject(object):
             if ph_qual[i][1] in q[0:w+1]: qH[i]=True
             if ph_qual[i][2] in q[0:w+1]: qK[i]=True
         return qJ,qH,qK
-    
-    @staticmethod    
+
+    @staticmethod
     def _allwise_quality(cc_flags,ph_qual2,max_q='A'):
-        q=np.array(['A','B','C','U','Z','X'])    
+        q=np.array(['A','B','C','U','Z','X'])
         w,=np.where(q==max_q)[0]
         n=len(ph_qual2)
         qW1=np.zeros(n,dtype=bool)
@@ -2939,14 +2943,14 @@ class SampleObject(object):
             if (ph_qual2[i][2] in q[0:w+1]) & (cc_flags[i][2]=='0'): qW3[i]=True
             if (ph_qual2[i][3] in q[0:w+1]) & (cc_flags[i][3]=='0'): qW4[i]=True
         return qW1,qW2,qW3,qW4
-    
+
     @staticmethod
     def _is_phot_good(phot,phot_err,max_phot_err=0.1):
         if type(phot)==float: dim=0
         else:
             l=phot.shape
             dim=len(l)
-        if dim<=1: 
+        if dim<=1:
             with np.errstate(invalid='ignore'):
                 gs=(np.isnan(phot)==False) & (phot_err < max_phot_err) & (abs(phot) < 70)
         else:
@@ -2954,9 +2958,9 @@ class SampleObject(object):
             with np.errstate(invalid='ignore'):
                 for i in range(l[1]): gs[:,i]=(np.isnan(phot[:,i])==False) & (phot_err[:,i] < max_phot_err)
         return gs
-    
+
     ############################################# isochrones and age-mass computation ########################
-    
+
     @staticmethod
     def _merge_fam(x):
         if (len(x.shape)<2) | ((x.shape)[0]<2): return x
@@ -2988,9 +2992,9 @@ class SampleObject(object):
             if found==0: break
         w,=np.where(np.isnan(x[:,0])==False)
         return x[w,:]
-    
+
     def _get_agemass(self, model_version, **kwargs):
-        
+
         GK=where_v(np.array(['G','K']),self.filters)
         if 'mass_range' in kwargs: kwargs['mass_range']=IsochroneGrid._get_mass_range(kwargs['mass_range'],model_version,dtype='mass',**kwargs)
         elif np.max(GK)<len(self.filters): kwargs['mass_range']=IsochroneGrid._get_mass_range(self.abs_phot[:,GK],model_version,**kwargs)
@@ -3007,11 +3011,11 @@ class SampleObject(object):
 
         th_model=IsochroneGrid(model_version,filt,logger=self.__logger,search_model=False,**kwargs)
         iso_mass,iso_age,iso_filt,iso_data=th_model.masses,th_model.ages,th_model.filters,th_model.data
-        
+
         self._print_log('info','Isochrones for model '+model_version+' correctly loaded')
         iso_mass_log=np.log10(iso_mass)
         iso_age_log=np.log10(iso_age)
-        
+
         if phys_param:
             phys_filt=['logg','logT','logL','logR']
             w_p=where_v(phys_filt,iso_filt)
@@ -3044,7 +3048,7 @@ class SampleObject(object):
         self._print_log('info','Age unit of the results: Myr')
 
         phot=self.abs_phot
-        phot_err=self.abs_phot_err            
+        phot_err=self.abs_phot_err
 
         l0=phot.shape
         xlen=l0[0]
@@ -3055,7 +3059,7 @@ class SampleObject(object):
         phot=phot[:,filt2]
         phot_err=phot_err[:,filt2]
         red=np.zeros([l0[0],len(filt2)])
-        for i in range(len(filt2)): 
+        for i in range(len(filt2)):
             red[:,i]=SampleObject.extinction(self.ebv,self.filters[filt2[i]])
         app_phot=self.app_phot[:,filt2]-red
         app_phot_err=self.app_phot_err[:,filt2]
@@ -3065,7 +3069,7 @@ class SampleObject(object):
         code=5+np.zeros(xlen,dtype=int)
         m_fit=np.full(xlen,np.nan)
         m_min=np.full(xlen,np.nan)
-        m_max=np.full(xlen,np.nan) 
+        m_max=np.full(xlen,np.nan)
         radius_fit=np.full(xlen,np.nan)
         radius_min=np.full(xlen,np.nan)
         radius_max=np.full(xlen,np.nan)
@@ -3086,7 +3090,7 @@ class SampleObject(object):
             a_max=a_fit
             i_age=np.zeros(xlen)
             case=1
-        elif isinstance(th_model.age_range,np.ndarray): 
+        elif isinstance(th_model.age_range,np.ndarray):
             if len(th_model.age_range.shape)==1: #the age is fixed for each star
                 case=1
                 if len(th_model.age_range)!=xlen:
@@ -3095,7 +3099,7 @@ class SampleObject(object):
                 a_fit=th_model.age_range
                 a_min=th_model.age_range
                 a_max=th_model.age_range
-                i_age=np.arange(0,xlen,dtype=int)            
+                i_age=np.arange(0,xlen,dtype=int)
             elif len(th_model.age_range[0])==2: #the age is to be found within the specified interval
                 case=2
                 if len(th_model.age_range)!=xlen:
@@ -3106,7 +3110,7 @@ class SampleObject(object):
                     i_age[i,:]=closest(iso_age,th_model.age_range[i,:])
                 a_fit=np.full(xlen,np.nan)
                 a_min=np.full(xlen,np.nan)
-                a_max=np.full(xlen,np.nan)            
+                a_max=np.full(xlen,np.nan)
                 ravel_indices=lambda i,j,j_len: j+j_len*i
             elif len(th_model.age_range[0])==3: #the age is fixed, and age_min and age_max are used to compute errors
                 case=3
@@ -3132,7 +3136,7 @@ class SampleObject(object):
                 logg_f = RectBivariateSpline(iso_mass_log,iso_age_log,phys_data2[:,:,0])
                 logT_f = RectBivariateSpline(iso_mass_log,iso_age_log,phys_data2[:,:,1])
                 logL_f = RectBivariateSpline(iso_mass_log,iso_age_log,phys_data2[:,:,2])
-                logR_f = RectBivariateSpline(iso_mass_log,iso_age_log,phys_data2[:,:,3])    
+                logR_f = RectBivariateSpline(iso_mass_log,iso_age_log,phys_data2[:,:,3])
 
         all_maps, hot_p, all_sol = [], [], []
 
@@ -3141,8 +3145,8 @@ class SampleObject(object):
         sigma=np.full((l_r,ylen),np.nan)
         chi2_min=np.full(xlen,np.nan)
         len_sample=kwargs['n_tot'] if 'n_tot' in kwargs else len(self)
-        
-        with np.errstate(divide='ignore',invalid='ignore'):        
+
+        with np.errstate(divide='ignore',invalid='ignore'):
             if case==3:
                 sigma0=np.full(([l[0],ylen]),np.nan)
                 sigma=np.full(([l[0],l[1],ylen]),np.nan)
@@ -3153,7 +3157,7 @@ class SampleObject(object):
                         print('Program running. Done: '+str(self.done)+'/'+str(len_sample)+' ('+'{:.1f}'.format(self.done/len_sample*100)+ '%). Estimated time left: '+'{:.0f}'.format(time_left)+' s.')
                         self.t1=time.perf_counter()
                     w,=np.where(SampleObject._is_phot_good(phot[i,:],phot_err[i,:],max_phot_err=self.ph_cut))
-                    if len(w)==0: 
+                    if len(w)==0:
                         self._print_log('info','All magnitudes for star '+str(i)+' have an error beyond the maximum allowed threshold ('+str(self.ph_cut)+' mag): age and mass determinations was not possible.')
                         all_sol.append({})
                         all_maps.append([])
@@ -3173,19 +3177,19 @@ class SampleObject(object):
                         all_maps.append([])
                         hot_p.append([])
                         code[i]=2
-                        continue                        
+                        continue
                     w2=w[b]
-                    
+
                     if len(w2)>1:
                         chi2=nansumwrapper(sigma0[:,w2],axis=1)/(np.sum(np.isnan(iso_data[:,i00,w2])==False,axis=1)-1)
                     else:
                         chi2=nansumwrapper(sigma0[:,w2],axis=1)
-                        
-                    if save_maps: all_maps.append(chi2)                
+
+                    if save_maps: all_maps.append(chi2)
                     est,ind=SampleObject._min_v(chi2)
                     chi2_min[i]=est
                     ind=ind[0]
-                    
+
                     daa=closest(iso_mass_log,[iso_mass_log[ind]-0.3,iso_mass_log[ind]+0.3])
                     n_est=n_try*(i_age[i,2]-i_age[i,1]+1)
                     ind_array=np.zeros(n_est,dtype=int)
@@ -3199,10 +3203,10 @@ class SampleObject(object):
                                 chi2=nansumwrapper(sigma[daa[0]:daa[1],j,w2],axis=1)/(np.sum(np.isnan(iso_data[daa[0]:daa[1],j,w2])==False,axis=1)-1)
                             else:
                                 chi2=nansumwrapper(sigma[daa[0]:daa[1],j,w2],axis=1)
-                            
+
                             ind_array[k]=daa[0]+np.nanargmin(chi2)
                             k+=1
-                    
+
                     m_min[i],m_fit[i],m_max[i]=10**np.percentile(iso_mass_log[ind_array],[16,50,84])
                     code[i]=0
                     if phys_param:
@@ -3219,7 +3223,7 @@ class SampleObject(object):
                      'logL':logL_fit, 'logL_min': logL_min, 'logL_max': logL_max,
                      'Teff':Teff_fit, 'Teff_min': Teff_min, 'Teff_max': Teff_max,
                      'fit_status': code}
-                        
+
             elif case==1:
                 sigma=np.full(([l[0],1,ylen]),np.nan)
                 for i in range(xlen):
@@ -3229,7 +3233,7 @@ class SampleObject(object):
                         print('Program running. Done: '+str(self.done)+'/'+str(len_sample)+' ('+'{:.1f}'.format(self.done/len_sample*100)+ '%). Estimated time left: '+'{:.0f}'.format(time_left)+' s.')
                         self.t1=time.perf_counter()
                     w,=np.where(SampleObject._is_phot_good(phot[i,:],phot_err[i,:],max_phot_err=self.ph_cut))
-                    if len(w)==0: 
+                    if len(w)==0:
                         self._print_log('info','All magnitudes for star '+str(i)+' have an error beyond the maximum allowed threshold ('+str(self.ph_cut)+' mag): age and mass determinations was not possible.')
                         all_sol.append({})
                         all_maps.append([])
@@ -3252,22 +3256,22 @@ class SampleObject(object):
                         code[i]=2
                         continue
                     w2=w[b]
-                    
+
                     if len(w2)>1:
-                        chi2=nansumwrapper(sigma[:,0,w2],axis=1)/(np.sum(np.isnan(iso_data[:,i00,w2])==False,axis=1)-1) #no. of degrees of freedom = no. filters - one parameter (mass) 
+                        chi2=nansumwrapper(sigma[:,0,w2],axis=1)/(np.sum(np.isnan(iso_data[:,i00,w2])==False,axis=1)-1) #no. of degrees of freedom = no. filters - one parameter (mass)
                     else:
                         chi2=np.nansum(sigma[:,0,w2],axis=1)
-                    
-                    if save_maps: all_maps.append(chi2)                
+
+                    if save_maps: all_maps.append(chi2)
                     est,ind=SampleObject._min_v(chi2)
                     chi2_min[i]=est/(len(w2)-2)
                     m_fit[i]=iso_mass[ind[0]]
                     a_fit[i]=iso_age[i00]
                     code[i]=0
-                    
+
                     m_f1=np.zeros(n_try)
                     a_f1=np.zeros(n_try)
-                                                
+
                     if phys_param:
                         logg_fit[i]=phys_data[ind[0],i00,0]
                         Teff_fit[i]=phys_data[ind[0],i00,1]
@@ -3278,7 +3282,7 @@ class SampleObject(object):
                         logL_f1=np.zeros(n_try)
                         radius_f1=np.zeros(n_try)
                         for j in range(n_try):
-                            phot1,phot_err1=SampleObject.app_to_abs_mag(app_phot[i,w2]+app_phot_err[i,w2]*np.random.normal(size=len(w2)),self.par[i]+self.par_err[i]*np.random.normal(),app_mag_error=app_phot_err[i,w2],parallax_error=self.par_err[i])                            
+                            phot1,phot_err1=SampleObject.app_to_abs_mag(app_phot[i,w2]+app_phot_err[i,w2]*np.random.normal(size=len(w2)),self.par[i]+self.par_err[i]*np.random.normal(),app_mag_error=app_phot_err[i,w2],parallax_error=self.par_err[i])
                             for h in range(len(w2)):
                                 sigma[:,0,w2[h]]=((iso_data[:,i00,w2[h]]-phot1[h])/phot_err1[h])**2
                             cr1=np.sum(sigma[:,:,w2],axis=2)
@@ -3305,7 +3309,7 @@ class SampleObject(object):
                         radius_fit[i]=10**radius_fit[i]
                     else:
                         for j in range(n_try):
-                            phot1,phot_err1=SampleObject.app_to_abs_mag(app_phot[i,w2]+app_phot_err[i,w2]*np.random.normal(size=len(w2)),self.par[i]+self.par_err[i]*np.random.normal(),app_mag_error=app_phot_err[i,w2],parallax_error=self.par_err[i])                            
+                            phot1,phot_err1=SampleObject.app_to_abs_mag(app_phot[i,w2]+app_phot_err[i,w2]*np.random.normal(size=len(w2)),self.par[i]+self.par_err[i]*np.random.normal(),app_mag_error=app_phot_err[i,w2],parallax_error=self.par_err[i])
                             for h in range(len(w2)):
                                 sigma[:,0,w2[h]]=((iso_data[:,i00,w2[h]]-phot1[h])/phot_err1[h])**2
                             cr1=np.sum(sigma[:,:,w2],axis=2)
@@ -3315,8 +3319,8 @@ class SampleObject(object):
                     m_min[i]=10**(np.log10(m_fit[i])-np.std(m_f1,ddof=1))
                     m_max[i]=10**(np.log10(m_fit[i])+np.std(m_f1,ddof=1))
                     a_min[i]=10**(np.log10(a_fit[i])-np.std(a_f1,ddof=1))
-                    a_max[i]=10**(np.log10(a_fit[i])+np.std(a_f1,ddof=1))            
-                        
+                    a_max[i]=10**(np.log10(a_fit[i])+np.std(a_f1,ddof=1))
+
                 dic={'ages':a_fit, 'ages_min':a_min, 'ages_max':a_max,
                      'masses':m_fit, 'masses_min':m_min, 'masses_max':m_max,
                      'ebv':self.ebv, 'chi2_min':chi2_min, 'chi2_maps':all_maps, 'weight_maps':hot_p,
@@ -3334,27 +3338,27 @@ class SampleObject(object):
                         print('Program running. Done: '+str(self.done)+'/'+str(len_sample)+' ('+'{:.1f}'.format(self.done/len_sample*100)+ '%). Estimated time left: '+'{:.0f}'.format(time_left)+' s.')
                         self.t1=time.perf_counter()
                     w,=np.where(SampleObject._is_phot_good(phot[i,:],phot_err[i,:],max_phot_err=self.ph_cut))
-                    if len(w)==0: 
+                    if len(w)==0:
                         self._print_log('info','All magnitudes for star '+str(i)+' have an error beyond the maximum allowed threshold ('+str(self.ph_cut)+' mag): age and mass determinations was not possible.')
                         all_sol.append({})
                         all_maps.append([])
                         hot_p.append([])
                         code[i]=1
                         continue
-                    b=np.zeros(len(w),dtype=bool)                    
+                    b=np.zeros(len(w),dtype=bool)
 
-                    if case==2:                    
+                    if case==2:
                         use_i=[]
                         for j in range(i_age[i,0],i_age[i,1]+1):
                             new_i=ravel_indices(np.arange(0,l[0]),j,l[1])
                             use_i.extend(new_i) #ages to be used
                         use_i=np.array(use_i,dtype=int)
-                    else: use_i=np.arange(0,l_r,dtype=int)                
+                    else: use_i=np.arange(0,l_r,dtype=int)
 
                     for h in range(len(w)):
                         ph=phot[i,w[h]]
                         sigma[use_i,w[h]]=((iso_data_r[use_i,w[h]]-ph)/phot_err[i,w[h]])**2
-                        if np.nanmin(np.abs(iso_data_r[use_i,w[h]]-ph))<0.2: b[h]=True #if the best theor. match is more than 0.2 mag away, discards it      
+                        if np.nanmin(np.abs(iso_data_r[use_i,w[h]]-ph))<0.2: b[h]=True #if the best theor. match is more than 0.2 mag away, discards it
                     w2=w[b]
                     if len(w2)<3:
                         if np.sum(b)==0:
@@ -3368,14 +3372,14 @@ class SampleObject(object):
                         continue #at least 3 filters needed for the fit
                     if len(use_i)<l_r: sigma[SampleObject._complement_v(use_i,l_r),:]=np.nan
                     chi2=nansumwrapper(sigma[:,w2],axis=1)/(np.sum(np.isnan(iso_data_r[:,w2])==False,axis=1)-2)
-                    
+
                     ind=np.nanargmin(chi2)
                     crit1=np.sort(sigma[ind,w2])
                     crit2=np.sort(np.abs(iso_data_r[ind,w2]-phot[i,w2]))
 
                     g_sol=[]
                     chi_sol=[]
-                    if (crit1[2]<9) | (crit2[2]<0.1): #the 3rd best sigma < 3 or the 3rd best solution closer than 0.1 mag  
+                    if (crit1[2]<9) | (crit2[2]<0.1): #the 3rd best sigma < 3 or the 3rd best solution closer than 0.1 mag
                         w_ntb,=np.where(chi2<1000)
                         if len(w_ntb)==0:
                             self._print_log('info','No good fits could be found for star '+str(i)+'. Returning nan.')
@@ -3389,7 +3393,7 @@ class SampleObject(object):
                         gsol,=np.where(chi2_red<(chi2[ind]+2.3)) #68.3% C.I
                         g_sol.append(w_ntb[gsol])
                         chi_sol.append(chi2[w_ntb[gsol]])
-                        if phys_param:                        
+                        if phys_param:
                             for j in range(n_try):
                                 phot1,phot_err1=SampleObject.app_to_abs_mag(app_phot[i,w2]+app_phot_err[i,w2]*np.random.normal(size=len(w2)),self.par[i]+self.par_err[i]*np.random.normal(),app_mag_error=app_phot_err[i,w2],parallax_error=self.par_err[i])
                                 for h in range(len(w2)):
@@ -3407,13 +3411,13 @@ class SampleObject(object):
                             i_ma=np.unravel_index(g_sol,(l[0],l[1]))
 
                             ma0=np.zeros([l[0],l[1]])
-                            np.add.at(ma0,i_ma,1)                        
+                            np.add.at(ma0,i_ma,1)
                             i_ma0=np.where(ma0>(n_try/10))
                             ma=np.zeros([l[0],l[1]],dtype=bool)
                             ma[i_ma0]=True
 
                             labeled, _ = label(ma, np.ones((3, 3), dtype=int))
-                            labeled_r=labeled.ravel()        
+                            labeled_r=labeled.ravel()
 
                             n_gr=np.max(labeled)
 
@@ -3424,14 +3428,14 @@ class SampleObject(object):
                             lab_n=np.zeros(len(wn1))
                             for kk in range(len(wn1)):
                                 lab_n[kk]=np.argmin((wn1[kk]-com[:,0])**2+(wn2[kk]-com[:,1])**2)+1
-                            labeled[wn1,wn2]=lab_n                        
-                            labeled_r=labeled.ravel()        
+                            labeled[wn1,wn2]=lab_n
+                            labeled_r=labeled.ravel()
 
-                            mship=labeled_r[g_sol]            
+                            mship=labeled_r[g_sol]
                             wei_norm=np.sum(1/chi_sol)
                             fam=np.zeros([n_gr,5])
-                            
-                            if save_maps: 
+
+                            if save_maps:
                                 hp=np.zeros([l[0],l[1]])
                                 np.add.at(hp,i_ma,1/chi_sol)
                                 hot_p.append(hp/np.nansum(hp))
@@ -3450,24 +3454,24 @@ class SampleObject(object):
                                 fam[jj,4]=np.sum(1/chi_sol[w_gr])/wei_norm
                             fam=SampleObject._merge_fam(fam)
 
-                            n_gr=len(fam)            
-                            i_s=np.argmax(fam[:,4])    
+                            n_gr=len(fam)
+                            i_s=np.argmax(fam[:,4])
 
                             ival=np.array([[fam[i_s,0]-fam[i_s,1],fam[i_s,0],fam[i_s,0]+fam[i_s,1]],
-                                          [fam[i_s,2]-fam[i_s,3],fam[i_s,2],fam[i_s,2]+fam[i_s,3]]])                        
+                                          [fam[i_s,2]-fam[i_s,3],fam[i_s,2],fam[i_s,2]+fam[i_s,3]]])
 
-                                                        
+
                             logg_fit[i],logg_min[i],logg_max[i]=logg_f(ival[0,1],ival[1,1]),np.nanmin(logg_f(ival[0,:],ival[1,:])),np.nanmax(logg_f(ival[0,:],ival[1,:]))
                             Teff_fit[i],Teff_min[i],Teff_max[i]=10**logT_f(ival[0,1],ival[1,1]),10**np.nanmin(logT_f(ival[0,:],ival[1,:])),10**np.nanmax(logT_f(ival[0,:],ival[1,:]))
                             logL_fit[i],logL_min[i],logL_max[i]=logL_f(ival[0,1],ival[1,1]),np.nanmin(logL_f(ival[0,:],ival[1,:])),np.nanmax(logL_f(ival[0,:],ival[1,:]))
                             radius_fit[i],radius_min[i],radius_max[i]=10**logR_f(ival[0,1],ival[1,1]),10**np.nanmin(logR_f(ival[0,:],ival[1,:])),10**np.nanmax(logR_f(ival[0,:],ival[1,:]))
 
                             m_fit[i],m_min[i],m_max[i]=10**fam[i_s,0],10**(fam[i_s,0]-fam[i_s,1]),10**(fam[i_s,0]+fam[i_s,1])
-                            a_fit[i],a_min[i],a_max[i]=10**fam[i_s,2],10**(fam[i_s,2]-fam[i_s,3]),10**(fam[i_s,2]+fam[i_s,3])                                
+                            a_fit[i],a_min[i],a_max[i]=10**fam[i_s,2],10**(fam[i_s,2]-fam[i_s,3]),10**(fam[i_s,2]+fam[i_s,3])
                             code[i]=0
 
                             if n_gr>1:
-                                self._print_log('info','More than one region of the (mass,age) space is possible for star '+str(i)+'.')                            
+                                self._print_log('info','More than one region of the (mass,age) space is possible for star '+str(i)+'.')
                                 self._print_log('info','Possible solutions for star'+str(i)+':')
                                 m_all=np.zeros([n_gr,3])
                                 a_all=np.zeros([n_gr,3])
@@ -3480,12 +3484,12 @@ class SampleObject(object):
                                     a_all[jj,:]=[10**fam[jj,2],10**(fam[jj,2]-fam[jj,3]),10**(fam[jj,2]+fam[jj,3])]
 
                                     ival=np.array([[fam[jj,0]-fam[jj,1],fam[jj,0],fam[jj,0]+fam[jj,1]],
-                                                  [fam[jj,2]-fam[jj,3],fam[jj,2],fam[jj,2]+fam[jj,3]]])                        
+                                                  [fam[jj,2]-fam[jj,3],fam[jj,2],fam[jj,2]+fam[jj,3]]])
 
                                     logg_all[jj,:]=[float(logg_f(ival[0,1],ival[1,1])),np.nanmin(logg_f(ival[0,:],ival[1,:])),np.nanmax(logg_f(ival[0,:],ival[1,:]))]
                                     Teff_all[jj,:]=[10**float(logT_f(ival[0,1],ival[1,1])),10**np.nanmin(logT_f(ival[0,:],ival[1,:])),10**np.nanmax(logT_f(ival[0,:],ival[1,:]))]
                                     logL_all[jj,:]=[float(logL_f(ival[0,1],ival[1,1])),np.nanmin(logL_f(ival[0,:],ival[1,:])),np.nanmax(logL_f(ival[0,:],ival[1,:]))]
-                                    radius_all[jj,:]=[10**float(logR_f(ival[0,1],ival[1,1])),10**np.nanmin(logR_f(ival[0,:],ival[1,:])),10**np.nanmax(logR_f(ival[0,:],ival[1,:]))]                                
+                                    radius_all[jj,:]=[10**float(logR_f(ival[0,1],ival[1,1])),10**np.nanmin(logR_f(ival[0,:],ival[1,:])),10**np.nanmax(logR_f(ival[0,:],ival[1,:]))]
 
                                     Mi,Mip,Mim='{:.3f}'.format(m_all[jj,0]),'{:.3f}'.format(m_all[jj,1]),'{:.3f}'.format(m_all[jj,2])
                                     Ai,Aip,Aim='{:.3f}'.format(a_all[jj,0]),'{:.3f}'.format(a_all[jj,1]),'{:.3f}'.format(a_all[jj,2])
@@ -3498,7 +3502,7 @@ class SampleObject(object):
                                                  'Teff':np.array([Teff_fit[i],Teff_min[i],Teff_max[i]]),
                                                  'logL':np.array([logL_fit[i],logL_min[i],logL_max[i]]),
                                                  'radii':np.array([radius_fit[i],radius_min[i],radius_max[i]]),
-                                                 'prob':fam[:,4].ravel()})                            
+                                                 'prob':fam[:,4].ravel()})
                         else:
                             for j in range(n_try):
                                 phot1,phot_err1=SampleObject.app_to_abs_mag(app_phot[i,w2]+app_phot_err[i,w2]*np.random.normal(size=len(w2)),self.par[i]+self.par_err[i]*np.random.normal(),app_mag_error=app_phot_err[i,w2],parallax_error=self.par_err[i])
@@ -3519,7 +3523,7 @@ class SampleObject(object):
 
                             labeled, _ = label(ma, np.ones((3, 3), dtype=int))
                             labeled_r=labeled.ravel()
-                            mship=labeled_r[g_sol]                
+                            mship=labeled_r[g_sol]
                             n_gr=np.max(labeled)
                             wei_norm=np.sum(1/chi_sol)
                             fam=np.zeros([n_gr,5])
@@ -3537,15 +3541,15 @@ class SampleObject(object):
                                 fam[jj,4]=np.sum(1/chi_sol[w_gr])/wei_norm
 
                             fam=SampleObject._merge_fam(fam)
-                            n_gr=len(fam)            
-                            i_s=np.argmax(fam[:,4])                    
+                            n_gr=len(fam)
+                            i_s=np.argmax(fam[:,4])
 
                             m_fit[i],m_min[i],m_max[i]=10**fam[i_s,0],10**(fam[i_s,0]-fam[i_s,1]),10**(fam[i_s,0]+fam[i_s,1])
-                            a_fit[i],a_min[i],a_max[i]=10**fam[i_s,2],10**(fam[i_s,2]-fam[i_s,3]),10**(fam[i_s,2]+fam[i_s,3])                
+                            a_fit[i],a_min[i],a_max[i]=10**fam[i_s,2],10**(fam[i_s,2]-fam[i_s,3]),10**(fam[i_s,2]+fam[i_s,3])
                             code[i]=0
 
                             if n_gr>1:
-                                self._print_log('info','More than one region of the (mass,age) space is possible for star '+str(i)+'.')                            
+                                self._print_log('info','More than one region of the (mass,age) space is possible for star '+str(i)+'.')
                                 self._print_log('info','Possible solutions for star'+str(i)+':')
                                 m_all=np.zeros([n_gr,3])
                                 a_all=np.zeros([n_gr,3])
@@ -3562,7 +3566,7 @@ class SampleObject(object):
                                                  'ages':np.array([a_fit[i],a_min[i],a_max[i]]),
                                                  'prob':fam[:,4].ravel()})
 
-                    else: 
+                    else:
                         code[i]=4
                         all_sol.append({})
                         all_maps.append([])
@@ -3590,30 +3594,30 @@ class SampleObject(object):
         if phys_param==False:
             del dic['radii'],dic['radii_min'],dic['radii_max'],dic['logg'],dic['logg_min'],dic['logg_max']
             del dic['Teff'],dic['Teff_min'],dic['Teff_max'],dic['logL'],dic['logL_min'],dic['logL_max']
-        if save_maps==False: 
+        if save_maps==False:
             del dic['chi2_maps']
             del dic['weight_maps']
-            
+
         dic['feh']=np.full(xlen,th_model.feh)
         dic['he']=np.full(xlen,th_model.he)
         dic['afe']=np.full(xlen,th_model.afe)
         dic['v_vcrit']=np.full(xlen,th_model.v_vcrit)
         dic['fspot']=np.full(xlen,th_model.fspot)
         dic['B']=np.full(xlen,th_model.B)
-        if self.verbose>0: 
+        if self.verbose>0:
             dic['sample_name']=self.__sample_name
             dic['path']=self.__sample_path
         l=list(self.GaiaID[self.GaiaID.columns[0].name])
         dic['objects']=np.array(l)
         dic['isochrone_grid']=np.full(xlen,repr(th_model))
         dic['fitting_mode']=case
-        
+
         return FitParams(dic)
 
     def get_params(self,model_version,**kwargs):
         p=np.array(['feh','he','afe','v_vcrit','fspot','B'])
         k=np.sum([i in kwargs for i in p])
-        
+
         skip=False
         if k>0:
             cust=np.zeros(6)
@@ -3626,7 +3630,7 @@ class SampleObject(object):
             if np.sum(cust)<0.1: skip=True
         else:
             skip=True
-        
+
         if skip:
             dic={}
             if k in kwargs: dic[k]=kwargs[k][i]
@@ -3640,39 +3644,39 @@ class SampleObject(object):
                 model_params1 = ModelHandler._find_match(model_version,dic,list(stored_data['complete_model_list'].keys()))
                 sol1 = ModelHandler._version_to_grid(model_version,model_params1)
                 model_params.append(model_params1)
-            
+
         ModelHandler._find_model_grid(model_version,model_params)
-        
+
         try:
             model_p=ModelHandler._available_parameters(model_version)
         except ValueError as e:
-            msg = """You decided not to download any grid for model_version """+model_version+""". 
+            msg = """You decided not to download any grid for model_version """+model_version+""".
             However, the relative folder is empty, so MADYS does not have any model to compare data with.
             Re-run the program, downloading at least one model when prompted.
             Program ended."""
             e.args = (msg,)
             raise
-            
+
         n_st=len(self)
-        
+
         self.t0=time.perf_counter()
         self.t1=time.perf_counter()
         self.done=0
         if skip==False:
             comb=np.zeros([len(self),6])
             w,=np.where(cust==1)
-    
+
             for j in range(n_st):
                 kw_i={}
                 for k in p[w]: kw_i[k]=kwargs[k][j]
                 bf_params = ModelHandler._find_match(model_version,kw_i,list(stored_data['local_model_list'].keys()),approximate=True)
                 for i in w: comb[j,i] = bf_params[p[i]]
-            
+
             comb_u=np.vstack(list({tuple(row) for row in comb}))
 
             if len(comb_u)==1:
                 for i in w:
-                    kwargs[p[i]]=comb_u[i]            
+                    kwargs[p[i]]=comb_u[i]
                 res=self._get_agemass(model_version,**kwargs)
             else:
                 for j in range(len(comb_u)):
@@ -3689,7 +3693,7 @@ class SampleObject(object):
         print('Execution ended. Elapsed time: '+'{:.0f}'.format(time.perf_counter()-self.t0)+' s.')
 
         del self.t0, self.t1, self.done
-        if self.verbose==3: 
+        if self.verbose==3:
             filename=os.path.join(self.path,str(self.__sample_name+'_ages_'+model_version+'.txt'))
             res.to_file(filename)
             self._print_log('info','Age determination ended. Results saved in '+filename)
@@ -3697,12 +3701,12 @@ class SampleObject(object):
         elif self.verbose==2:
             self._print_log('info','Age determination ended. Results not saved in any file because "verbose" is set to 2.')
             logging.shutdown()
-    
+
         return res
 
-    
+
     ############################################# plotting functions #########################################
-    
+
     @staticmethod
     def _axis_range(col_name,col_phot):
         try:
@@ -3712,7 +3716,7 @@ class SampleObject(object):
         except TypeError:
             cmin=col_phot-0.1
             cmax=np.min([70,col_phot])+0.1
-        
+
         dic1={'G':[max(15,cmax),min(1,cmin)], 'Gbp':[max(15,cmax),min(1,cmin)], 'Grp':[max(15,cmax),min(1,cmin)],
             'J':[max(10,cmax),min(0,cmin)], 'H':[max(10,cmax),min(0,cmin)], 'K':[max(10,cmax),min(0,cmin)],
             'W1':[max(10,cmax),min(0,cmin)], 'W2':[max(10,cmax),min(0,cmin)], 'W3':[max(10,cmax),min(0,cmin)],
@@ -3731,12 +3735,12 @@ class SampleObject(object):
             if '-' in col_name:
                 if cmax-cmin>5: x=[cmin,cmax]
                 else: xx=np.nanmean(col_phot)+[-3,3]
-            else: 
+            else:
                 if cmax-cmin>5: x=[cmax,cmin]
                 else: xx=np.nanmean(col_phot)+[3,-3]
 
-        return xx 
-    
+        return xx
+
     def CMD(self,col,mag,model_version,ids=None,**kwargs):
 
         model_params={}
@@ -3771,13 +3775,13 @@ class SampleObject(object):
                 img_file=os.path.join(self.path,self.__sample_name+'_'+col+'_'+mag+'_'+model_version+'.png')
             except AttributeError: raise ValueError("No working path was defined in the analysis. Please pass an explicit path of the output file as argument to 'tofile'.")
             plt.savefig(img_file)
-            plt.close(fig)    
+            plt.close(fig)
         else:
             plt.savefig(tofile)
-            plt.close(fig)    
+            plt.close(fig)
 
-        return None     
-    
+        return None
+
 
     @staticmethod
     def plot_photometry(col,mag,ax,data,errors=None,ids=None,**kwargs):
@@ -3800,7 +3804,7 @@ class SampleObject(object):
                 col_data,col_err=self.abs_phot[:,c1],self.abs_phot_err[:,c1]
                 if type(errors)==type(False):
                     if errors==False:
-                        col_err=None                
+                        col_err=None
             if '-' in mag:
                 mag_n=mag.split('-')
                 m1,=np.where(self.filters==mag_n[0])
@@ -3817,7 +3821,7 @@ class SampleObject(object):
                 mag_data,mag_err=self.abs_phot[:,m1],self.abs_phot_err[:,m1]
                 if type(errors)==type(False):
                     if errors==False:
-                        mag_err=None                
+                        mag_err=None
             if type(col_err)!=type(None): col_err=col_err.ravel()
             if type(mag_err)!=type(None): mag_err=mag_err.ravel()
         else:
@@ -3831,7 +3835,7 @@ class SampleObject(object):
             else:
                 col_err=None
                 mag_err=None
-            
+
         col_data=col_data.ravel()
         mag_data=mag_data.ravel()
 
@@ -3840,30 +3844,30 @@ class SampleObject(object):
             mag_data=mag_data[ids]
             col_err=col_err[ids]
             mag_err=mag_err[ids]
-                
+
         x=col_data
         y=mag_data
         x_axis=col
         y_axis=mag
-        
-        label_points = kwargs['label_points'] if 'label_points' in kwargs else True        
+
+        label_points = kwargs['label_points'] if 'label_points' in kwargs else True
         groups = kwargs['groups'] if 'groups' in kwargs else None
         group_names = kwargs['group_names'] if 'group_names' in kwargs else None
         s = kwargs['s'] if 's' in kwargs else 50
-                
+
         npo = len(x) if hasattr(x,'__len__') else 1
 
-        if (type(groups)==type(None)):        
+        if (type(groups)==type(None)):
             if (type(col_err)==type(None)) & (type(mag_err)==type(None)):
                 ax.scatter(x, y, s=s, facecolors='none', edgecolors='black')
             else: ax.errorbar(x, y, yerr=mag_err, xerr=col_err, fmt='o', color='black')
         else:
             nc=max(groups)
             colormap = plt.cm.gist_ncar
-            colorst = [colormap(i) for i in np.linspace(0, 0.9,nc+1)]       
+            colorst = [colormap(i) for i in np.linspace(0, 0.9,nc+1)]
             for j in range(nc+1):
                 w,=np.where(groups==j)
-                if len(w)>0:  
+                if len(w)>0:
                     if (type(col_err)==type(None)) & (type(mag_err)==type(None)):
                         ax.scatter(x[w], y[w], s=s, facecolors='none', edgecolors=colorst[j], label=group_names[j])
                     else: ax.errorbar(x[w], y[w], yerr=mag_err[w], xerr=col_err[w], fmt='o', color=colorst[j], label=group_names[j])
@@ -3873,15 +3877,15 @@ class SampleObject(object):
             for i, txt in enumerate(po):
                 an=ax.annotate(txt, (x[i], y[i]))
                 an.set_in_layout(False)
-                
+
         if 'return_points' in kwargs:
             if kwargs['return_points']==True: return x,y
-    
+
     @staticmethod
     def plot_2D_ext(ra=None,dec=None,l=None,b=None,par=None,d=None,color='G',n=50,tofile=None,ext_map='leike',cmap='viridis',**kwargs):
 
-        if type(d)==type(None): 
-            if type(par)==type(None): raise NameError('Exactly one between d and par must be supplied!') 
+        if type(d)==type(None):
+            if type(par)==type(None): raise NameError('Exactly one between d and par must be supplied!')
             d=1000/par
         elif (type(d)!=type(None)) & (type(par)!=type(None)):
             raise NameError('Exactly one between d and par must be supplied!')
@@ -3903,7 +3907,7 @@ class SampleObject(object):
             dd=coo2.ravel()
             ee=SampleObject.interstellar_ext(l=aa,b=dd,d=d,color=color,ext_map=ext_map)
             col_name=[r'$l [^\circ]$',r'$b [^\circ]$']
-        else: raise NameError('Exactly one pair between (ra, dec) and (l,b) must be supplied!')       
+        else: raise NameError('Exactly one pair between (ra, dec) and (l,b) must be supplied!')
 
         E2=ee.reshape(n,n)
 
@@ -3913,15 +3917,15 @@ class SampleObject(object):
         ax=kwargs['ax'] if 'ax' in kwargs else None
 
         close=False
-        if ax==None: 
+        if ax==None:
             fig, ax = plt.subplots(figsize=(12,12))
             close=True
-        ax.contour(coo1, coo2, E2, 100, cmap=cmap)            
-        CS = ax.contourf(coo1, coo2, E2, 100, cmap=cmap)    
-        if col_bar:    
+        ax.contour(coo1, coo2, E2, 100, cmap=cmap)
+        CS = ax.contourf(coo1, coo2, E2, 100, cmap=cmap)
+        if col_bar:
             divider = make_axes_locatable(ax)
             cax = divider.append_axes("right", size="5%", pad=0.05)
-            cbar = plt.colorbar(CS, cax=cax)        
+            cbar = plt.colorbar(CS, cax=cax)
             if '-' in color: cbar.ax.set_ylabel(color+' reddening [mag]',fontsize=size)
             else: cbar.ax.set_ylabel(color+'-band extinction [mag]',fontsize=size)
             cbar.ax.xaxis.set_tick_params(labelsize=size)
@@ -3936,18 +3940,18 @@ class SampleObject(object):
         if 'reverse_yaxis' in kwargs:
             if kwargs['reverse_yaxis']==True: ax.invert_yaxis()
         if type(tofile)!=type(None): plt.savefig(tofile)
-        if close: plt.show()        
-        
-        
+        if close: plt.show()
+
+
     ############################################# extinction #################################################
 
     @staticmethod
     def _download_ext_map(ext_map):
 
         if type(ext_map)==type(None): return
-        
+
         path_ext=os.path.join(madys_path,'extinction')
-        if os.path.exists(path_ext) is False: os.mkdir(path_ext) # if the folder does not exist, it creates it 
+        if os.path.exists(path_ext) is False: os.mkdir(path_ext) # if the folder does not exist, it creates it
         opl = os.path.join(path_ext,'leike_mean_std.h5')
         ops = os.path.join(path_ext,'stilism_feb2019.h5')
 
@@ -3959,10 +3963,10 @@ class SampleObject(object):
                 if str.lower(value)=='y':
                     print('Downloading the map...')
                     break
-                elif str.lower(value)=='n': 
+                elif str.lower(value)=='n':
                     break
                 else:
-                    print("Invalid choice. Please select 'Y' or 'N'.")        
+                    print("Invalid choice. Please select 'Y' or 'N'.")
             if str.lower(value)=='n': raise KeyboardInterrupt('Please restart the program, setting ext_map=None.')
             else:
                 urllib.request.urlretrieve('https://cdsarc.cds.unistra.fr/ftp/J/A+A/639/A138/mean_std.h5.gz', opl+'.gz')
@@ -3978,19 +3982,19 @@ class SampleObject(object):
                 if str.lower(value)=='y':
                     print('Downloading the map...')
                     break
-                elif str.lower(value)=='n': 
+                elif str.lower(value)=='n':
                     break
                 else:
-                    print("Invalid choice. Please select 'Y' or 'N'.")        
+                    print("Invalid choice. Please select 'Y' or 'N'.")
             if str.lower(value)=='n': raise KeyboardInterrupt('Please restart the program, setting ext_map=None.')
             else:
                 urllib.request.urlretrieve('http://cdsarc.u-strasbg.fr/ftp/J/A+A/625/A135/map3D_GAIAdr2_feb2019.h5.gz', ops+'.gz')
                 with gzip.open(ops+'.gz', 'r') as f_in, open(ops, 'wb') as f_out: shutil.copyfileobj(f_in, f_out)
                 os.remove(ops+'.gz')
                 print('Extinction map correctly downloaded.')
-    
-    
-    
+
+
+
     @staticmethod
     def _wu_line_integrate(f,x0,x1,y0,y1,z0,z1,layer=None,star_id=None,logger=None):
         dim=f.shape
@@ -3998,32 +4002,32 @@ class SampleObject(object):
             x1=x0+(x1-x0)/2
             y1=y0+(y1-y0)/2
             z1=z0+(z1-z0)/2
-        n=int(10*np.ceil(abs(max([x1-x0,y1-y0,z1-z0],key=abs))))    
+        n=int(10*np.ceil(abs(max([x1-x0,y1-y0,z1-z0],key=abs))))
         ndim=len(dim)
 
         x=np.floor(np.linspace(x0,x1,num=n)).astype(int)
         y=np.floor(np.linspace(y0,y1,num=n)).astype(int)
-        
+
         if type(layer)==type(None):
             if ndim==2:
                 d10=np.sqrt((x1-x0)**2+(y1-y0)**2)
                 w_g,=np.where((x[1:]!=x[:-1]) | (y[1:]!=y[:-1]))
                 w_g=np.insert(w_g+1,0,0)
-                w_f=np.insert(w_g[1:]-w_g[:-1],len(w_g)-1,len(x)-w_g[-1])            
+                w_f=np.insert(w_g[1:]-w_g[:-1],len(w_g)-1,len(x)-w_g[-1])
                 w,=np.where((x[w_g]<dim[0]) & (y[w_g]<dim[1]))
                 if (len(w)<len(w_g)) & (logger!=None):
-                    logger.info('Star '+str(star_id)+' outside the extinction map. Its extinction is an underestimate.')                
+                    logger.info('Star '+str(star_id)+' outside the extinction map. Its extinction is an underestimate.')
                 w2=w_g[w]
                 I=np.sum(f[x[w2],y[w2]]*w_f[w])
             elif ndim==3:
                 d10=np.sqrt((x1-x0)**2+(y1-y0)**2+(z1-z0)**2)
-                z=np.floor(np.linspace(z0,z1,num=n)).astype(int)           
+                z=np.floor(np.linspace(z0,z1,num=n)).astype(int)
                 w_g,=np.where((x[1:]!=x[:-1]) | (y[1:]!=y[:-1]) | (z[1:]!=z[:-1]))
                 w_g=np.insert(w_g+1,0,0)
-                w_f=np.insert(w_g[1:]-w_g[:-1],len(w_g)-1,len(x)-w_g[-1])            
+                w_f=np.insert(w_g[1:]-w_g[:-1],len(w_g)-1,len(x)-w_g[-1])
                 w,=np.where((x[w_g]<dim[0]) & (y[w_g]<dim[1]) & (z[w_g]<dim[2]) & (x[w_g]>=0) & (y[w_g]>=0) & (z[w_g]>=0))
                 if (len(w)<len(w_g)) & (logger!=None):
-                    logger.info('Star '+str(star_id)+' outside the extinction map. Its extinction is an underestimate.')                
+                    logger.info('Star '+str(star_id)+' outside the extinction map. Its extinction is an underestimate.')
                 w2=w_g[w]
                 I=np.sum(f[x[w2],y[w2],z[w2]]*w_f[w])
         else:
@@ -4031,21 +4035,21 @@ class SampleObject(object):
                 d10=np.sqrt((x1-x0)**2+(y1-y0)**2)
                 w_g,=np.where((x[1:]!=x[:-1]) | (y[1:]!=y[:-1]))
                 w_g=np.insert(w_g+1,0,0)
-                w_f=np.insert(w_g[1:]-w_g[:-1],len(w_g)-1,len(x)-w_g[-1])            
+                w_f=np.insert(w_g[1:]-w_g[:-1],len(w_g)-1,len(x)-w_g[-1])
                 w,=np.where((x[w_g]<dim[1]) & (y[w_g]<dim[2]))
                 if (len(w)<len(w_g)) & (logger!=None):
-                    logger.info('Star '+str(star_id)+' outside the extinction map. Its extinction is an underestimate.')                
+                    logger.info('Star '+str(star_id)+' outside the extinction map. Its extinction is an underestimate.')
                 w2=w_g[w]
                 I=np.sum(f[layer,x[w2],y[w2]]*w_f[w])
             elif ndim==4:
-                d10=np.sqrt((x1-x0)**2+(y1-y0)**2+(z1-z0)**2)        
+                d10=np.sqrt((x1-x0)**2+(y1-y0)**2+(z1-z0)**2)
                 z=np.floor(np.linspace(z0,z1,num=n)).astype(int)
                 w_g,=np.where((x[1:]!=x[:-1]) | (y[1:]!=y[:-1]) | (z[1:]!=z[:-1]))
                 w_g=np.insert(w_g+1,0,0)
-                w_f=np.insert(w_g[1:]-w_g[:-1],len(w_g)-1,len(x)-w_g[-1])            
+                w_f=np.insert(w_g[1:]-w_g[:-1],len(w_g)-1,len(x)-w_g[-1])
                 w,=np.where((x[w_g]<dim[1]) & (y[w_g]<dim[2]) & (z[w_g]<dim[3]))
                 if (len(w)<len(w_g)) & (logger!=None):
-                    logger.info('Star '+str(star_id)+' outside the extinction map. Its extinction is an underestimate.')                
+                    logger.info('Star '+str(star_id)+' outside the extinction map. Its extinction is an underestimate.')
                 w2=w_g[w]
                 I=np.sum(f[layer,x[w2],y[w2],z[w2]]*w_f[w])
 
@@ -4062,17 +4066,17 @@ class SampleObject(object):
         if type(par)!=type(None) and type(d)!=type(None): raise NameError('Only one between parallax and distance must be supplied!')
 
         SampleObject._download_ext_map(ext_map)
-            
-        if type(ext_map)==type(None): 
+
+        if type(ext_map)==type(None):
             if type(ra)!=type(None):
                 ext=np.zeros_like(ra)
                 if isinstance(ra,np.ndarray)==False: ext=0.0
             elif type(l)!=type(None):
                 ext=np.zeros_like(l)
-                if isinstance(l,np.ndarray)==False: ext=0.0               
+                if isinstance(l,np.ndarray)==False: ext=0.0
             if error: return ext,ext
             else: return ext
-        
+
         if (ext_map=='leike') & (error==False): fname='leike_mean_std.h5'
         elif (ext_map=='leike') & (error==True): fname='leike_samples.h5'
         if (ext_map=='stilism'): fname='stilism_feb2019.h5'
@@ -4092,22 +4096,22 @@ class SampleObject(object):
 
         fits_image_filename=os.path.join(map_path,fname)
         f = h5py.File(fits_image_filename,'r')
-        if ext_map=='leike': 
+        if ext_map=='leike':
             x=np.arange(-370.,370.)
             y=np.arange(-370.,370.)
             z=np.arange(-270.,270.)
             if error==False: obj='mean'
             else: obj='dust_samples'
             data = f[obj][()]
-        elif ext_map=='stilism': 
+        elif ext_map=='stilism':
             x=np.arange(-3000.,3005.,5)
             y=np.arange(-3000.,3005.,5)
-            z=np.arange(-400.,405.,5)    
+            z=np.arange(-400.,405.,5)
             data = f['stilism']['cube_datas'][()]
 
         sun=[closest(x,0),closest(z,0)]
 
-        if type(d)==type(None): 
+        if type(d)==type(None):
             try:
                 len(par)
                 with warnings.catch_warnings():
@@ -4131,7 +4135,7 @@ class SampleObject(object):
         gc1 = c1.transform_to(Galactocentric)
         x0=(gc1.x+gc1.galcen_distance).value #X is directed to the Galactic Center
         y0=gc1.y.value #Y is in the sense of rotation
-        z0=(gc1.z-gc1.z_sun).value #Z points to the north Galactic pole    
+        z0=(gc1.z-gc1.z_sun).value #Z points to the north Galactic pole
 
         px=closest(x,x0)
         py=closest(y,y0)
@@ -4140,23 +4144,23 @@ class SampleObject(object):
         dist=x[1]-x[0]
 
         try:
-            len(px)        
+            len(px)
             wx,=np.where(px<len(x)-1)
             wy,=np.where(py<len(y)-1)
             wz,=np.where(pz<len(z)-1)
             px2=px.astype(float)
-            py2=py.astype(float)    
+            py2=py.astype(float)
             pz2=pz.astype(float)
             px2[wx]=(x0[wx]-x[px[wx]])/dist+px[wx]
             py2[wy]=(y0[wy]-y[py[wy]])/dist+py[wy]
-            pz2[wz]=(z0[wz]-z[pz[wz]])/dist+pz[wz]    
+            pz2[wz]=(z0[wz]-z[pz[wz]])/dist+pz[wz]
             ebv=np.full(len(x0),np.nan)
             if ext_map=='stilism':
                 for i in range(len(x0)):
                     if np.isnan(px2[i])==0:
                         ebv[i]=dist*SampleObject._wu_line_integrate(data,sun[0],px2[i],sun[0],py2[i],sun[1],pz2[i],star_id=i,logger=logger)/3.16
             elif ext_map=='leike':
-                if error==False: 
+                if error==False:
                     for i in range(len(x0)):
                         if np.isnan(px2[i])==0:
                             ebv[i]=dist*(2.5*SampleObject._wu_line_integrate(data,sun[0],px2[i],sun[0],py2[i],sun[1],pz2[i],star_id=i,logger=logger)*np.log10(np.exp(1)))/3.16/0.789
@@ -4181,7 +4185,7 @@ class SampleObject(object):
             if isinstance(py2,np.ndarray): py2=py2[0]
             if isinstance(pz2,np.ndarray): pz2=pz2[0]
             if ext_map=='stilism': ebv=dist*SampleObject._wu_line_integrate(data,sun[0],px2,sun[0],py2,sun[1],pz2,star_id=0,logger=logger)/3.16
-            elif ext_map=='leike': 
+            elif ext_map=='leike':
                 if error==False:
                     if np.isnan(px2)==0:
                         ebv=dist*(2.5*SampleObject._wu_line_integrate(data,sun[0],px2,sun[0],py2,sun[1],pz2,star_id=0,logger=logger)*np.log10(np.exp(1)))/3.16/0.789
@@ -4196,11 +4200,11 @@ class SampleObject(object):
                     ebv=np.mean(ebv0)
                     ebv_s=np.std(ebv0,ddof=1)
 
-        if color=='B-V': 
+        if color=='B-V':
             if error==False:
                 return ebv
             else: return ebv,ebv_s
-        else: 
+        else:
             if error==False:
                 return SampleObject.extinction(ebv,color)
             else:
@@ -4217,9 +4221,9 @@ class SampleObject(object):
             A=stored_data['filters'][col]['A_coeff']
 
         return 3.16*A*ebv
-    
+
     ############################################# other astronomical functions ###############################
-    
+
     @staticmethod
     def app_to_abs_mag(app_mag,parallax,app_mag_error=None,parallax_error=None,ebv=None,filters=None):
         if isinstance(app_mag,list): app_mag=np.array(app_mag)
@@ -4244,7 +4248,7 @@ class SampleObject(object):
                 if dim==0: red=SampleObject.extinction(ebv,filters[0])
                 else: red=np.array([SampleObject.extinction(ebv,filt) for filt in filters])
                 abs_mag-=red
-            if (type(app_mag_error)!=type(None)) & (type(parallax_error)!=type(None)): 
+            if (type(app_mag_error)!=type(None)) & (type(parallax_error)!=type(None)):
                 if isinstance(app_mag_error,list): app_mag_error=np.array(app_mag_error)
                 if (isinstance(parallax_error,list)) | (isinstance(parallax_error,Column)): parallax_error=np.array(parallax_error,dtype=float)
                 total_error=np.sqrt(app_mag_error**2+(5/np.log(10)/parallax)**2*parallax_error**2)
@@ -4265,21 +4269,21 @@ class SampleObject(object):
                 if isinstance(app_mag_error,list): app_mag_error=np.array(app_mag_error)
                 if (isinstance(parallax_error,list)) | (isinstance(parallax_error,Column)): parallax_error=np.array(parallax_error,dtype=float)
                 total_error=np.empty([l[0],l[1]])
-                for i in range(l[1]): 
+                for i in range(l[1]):
                     total_error[:,i]=np.sqrt(app_mag_error[:,i]**2+(5/np.log(10)/parallax)**2*parallax_error**2)
                 if len(i1)>0: total_error[:,i1]=app_mag_error[:,i1]
                 result=(abs_mag,total_error)
             else: result=abs_mag
             if type(ebv)!=type(None):
                 red=np.zeros([l[0],l[1]])
-                for i in range(l[1]): 
+                for i in range(l[1]):
                     red[:,i]=SampleObject.extinction(ebv,filters[i])
-                abs_mag-=red            
+                abs_mag-=red
 
         return result
 
     @staticmethod
-    def ang_dist(ra1,dec1,ra2,dec2,ra1_err=0.0,dec1_err=0.0,ra2_err=0.0,dec2_err=0.0,error=False):      
+    def ang_dist(ra1,dec1,ra2,dec2,ra1_err=0.0,dec1_err=0.0,ra2_err=0.0,dec2_err=0.0,error=False):
         ra1,dec1,ra2,dec2=np.ma.filled(ra1,fill_value=np.nan),np.ma.filled(dec1,fill_value=np.nan),np.ma.filled(ra2,fill_value=np.nan),np.ma.filled(dec2,fill_value=np.nan)
         try:
             ra1.unit
@@ -4302,9 +4306,9 @@ class SampleObject(object):
             err=np.sqrt(dra1**2*e_err**2+dra2**2*ra2_err**2+ddec1**2*dec1_err**2+ddec2**2*dec2_err**2)
             return dist.value,err.value
         else: return dist.value
-    
+
     ############################################# general functions ##########################################
-    
+
     @staticmethod
     def _min_v(a,absolute=False):
         """
@@ -4331,7 +4335,7 @@ class SampleObject(object):
     @staticmethod
     def _intersect1d_rep1(x,y):
         x1=copy.deepcopy(x)
-        y1=copy.deepcopy(y)    
+        y1=copy.deepcopy(y)
         r=[]
         i_1=[]
         i_2=[]
@@ -4344,7 +4348,7 @@ class SampleObject(object):
             r.append(r0)
         i_1=np.concatenate(i_1)
         i_2=np.concatenate(i_2)
-        r=np.concatenate(r)    
+        r=np.concatenate(r)
         return r,i_1,i_2
 
     @staticmethod
@@ -4356,19 +4360,19 @@ class SampleObject(object):
         logger = logging.getLogger(name)
         logger.setLevel(logging.DEBUG)
         if (logger.hasHandlers()):
-            logger.handlers.clear()        
+            logger.handlers.clear()
         logger.addHandler(handler)
 
-        return logger    
-    
+        return logger
+
     def _print_log(self,ltype,message):
         if self.verbose<2: return
-        else: 
+        else:
             if ltype=='info': self.__logger.info(message)
             elif ltype=='warning': self.__logger.warning(message)
             elif ltype=='error': self.__logger.error(message)
 
-                
+
 class FitParams(object):
 
     """
@@ -4410,7 +4414,7 @@ class FitParams(object):
         - weight_maps: list. Only present if save_maps=True in the parent analysis. Contains one 2D numpy array per star; matrix elements are the weight of grid points, as used to obtain the final family of solutions.
         - all_solutions: list. Contains a dictionary per star, with all possible solutions providing an accettable fit to data.
         - feh: float. [Fe/H] of the grid.
-        - he: float. Helium content of the grid.    
+        - he: float. Helium content of the grid.
         - afe: float. Alpha enhancement [a/Fe] of the grid.
         - v_vcrit: float. Rotational velocity of the grid.
         - fspot: float. Fraction of stellar surface covered by star spots.
@@ -4431,13 +4435,13 @@ class FitParams(object):
     1) __getitem__
     FitParam instances can be indexed like pandas dataframes, i.e. with a numpy array/list/int or with a string containing the column name.
     In the former case, the sample is cut according to the selected indices.
-    In the latter case, the corresponding key is returned.    
+    In the latter case, the corresponding key is returned.
     See documentation for additional details.
 
     2) __setitem__
     FitParam instances support item assignment.
     Check the GitHub repository for additional details.
-    
+
     3) __len__
     The len of a FitParams instance is equal to the number of objects in the original list.
 
@@ -4455,7 +4459,7 @@ class FitParams(object):
         Input:
         - filename: string, required. Full path of output file.
         Output: besides the .csv, no output is returned.
-        
+
     3) to_table
     Turns the main attributes of a FitParams instance into coulmns of an astropy Table.
         Input:
@@ -4473,24 +4477,24 @@ class FitParams(object):
             - 'in_notebook': to return an interactive print of the table in a Jupyter Notebook via astropy.table's show_in_notebook.
             - None: to return a simple astropy Table with default options (e.g. max no. of rows).
         Output: astropy Table.
-    
+
     5) plot_maps
     Plots (reduced chi2 / weight) maps of one or more stars as a f(mass,age) color map.
         Input:
         - indices: list, optional. Indices of the stars of interest, ordered as in the original list. Default: numpy.arange(n_stars), i.e. all stars.
         - tofile: bool or string, optional. If True, saves the plots as .png images in the same path where the analysis was performed. To change the file name, provide a string as full path of the output file. Default: False.
-        - dtype: string, optional. Use 'chi2' to plot chi2 maps, 'weights' to plot weight maps. Default: 'chi2'.   
+        - dtype: string, optional. Use 'chi2' to plot chi2 maps, 'weights' to plot weight maps. Default: 'chi2'.
         Output: no output is returned, but the plot is shown in the current window.
 
     """
-    
+
     def __init__(self,dic):
         for i in dic.keys():
             self.__dict__[i]=dic[i]
-            
+
     def __len__(self):
         return len(self.ages)
-    
+
     def __getitem__(self,i):
         new=copy.deepcopy(self)
         if isinstance(i,str): return self.__dict__[i]
@@ -4501,10 +4505,10 @@ class FitParams(object):
             except TypeError:
                 continue
         return new
-    
+
     def __setitem__(self,i,other):
         self.ages[i]=other.ages
-        
+
         for j in self.__dict__.keys():
             if isinstance(self.__dict__[j],str): self.__dict__[j]=other.__dict__[j]
             elif j in ['all_solutions','chi2_maps','weight_maps']:
@@ -4512,33 +4516,33 @@ class FitParams(object):
                     self.__dict__[j][i]=other.__dict__[j]
                 except TypeError:
                     for k in range(len(i)):
-                        self.__dict__[j][i[k]]=other.__dict__[j][k]                
+                        self.__dict__[j][i[k]]=other.__dict__[j][k]
             elif isinstance(self.__dict__[j],np.ndarray):
                 self.__dict__[j][i]=other.__dict__[j]
 
     #def __str__(self):
 
     #def __repr__(self):
-                
+
     def empty_like(self,n):
         new=copy.deepcopy(self)
         for j in new.__dict__.keys():
             if isinstance(new.__dict__[j],str): continue
             elif j=='all_solutions':
                 new.__dict__[j]=[[] for i in range(n)]
-            elif isinstance(new.__dict__[j],np.ndarray):                
+            elif isinstance(new.__dict__[j],np.ndarray):
                 new.__dict__[j]=np.zeros_like(new.__dict__[j],shape=n)
             elif j=='chi2_maps':
                 new.__dict__[j]=[[] for i in range(n)]
             elif j=='weight_maps':
                 new.__dict__[j]=[[] for i in range(n)]
         return new
-    
+
     def to_file(self,filename):
         try:
             self['sample_name']
         except KeyError: raise ValueError('verbose=0, so the results cannot be saved in a file.')
-            
+
         star_names=self['objects']
         f=open(filename, "w+")
 
@@ -4568,24 +4572,24 @@ class FitParams(object):
     def pprint(self,mode=None,**kwargs):
         tab=self.to_table(**kwargs)
         if mode=='all':
-            return tab.pprint_all()    
+            return tab.pprint_all()
         elif mode=='in_notebook':
             return tab.show_in_notebook(css='%3.1f')
         else:
             return tab
-        
+
     def plot_maps(self,indices=None,tofile=False,dtype='chi2'):
 
         if type(indices)==type(None): indices=np.arange(len(self))
-        
+
         try: len(indices)
         except TypeError: indices=np.array([indices])
 
         if dtype=='chi2':key='chi2_maps'
         elif dtype=='weights':key='weight_maps'
         else: raise ValueError("Invalid value for 'dtype'. dtype must be either 'chi2' or 'weights'.")
-            
-            
+
+
         if ((self['fitting_mode']==1) | (self['fitting_mode']==3)) & (key=='weight_maps'):
             raise ValueError('No weight map is returned under fitting mode '+str(self['fitting_mode']))
 
@@ -4601,9 +4605,9 @@ class FitParams(object):
                 print('No solution was found for star '+str(i)+'. Check the log for details.')
                 return
             m_sol=self['all_solutions']['masses']
-                
-            chi2=self[key]        
-                
+
+            chi2=self[key]
+
             th_model=eval(self['isochrone_grid'])
             iso_mass=th_model.masses
             iso_age=th_model.ages
@@ -4651,30 +4655,30 @@ class FitParams(object):
 
             plt.ylabel(r'$\log_{10}$(age)')
             plt.xlabel(r'mass ($M_\odot$)')
-            
+
             if isinstance(tofile,bool):
-                if tofile: 
+                if tofile:
                     file=self['path']+'_'+dtype+'_map_star0.png'
                     plt.savefig(file)
             else:
                 plt.savefig(tofile)
-                
+
             plt.show()
-                
+
         else:
             p=0
             for i in indices:
-                
+
                 try:
                     m_sol=self['all_solutions'][i]['masses']
                 except KeyError:
                     print('No solution was found for star '+str(i)+'. Check the log for details.')
                     p+=1
                     continue
-                
-                chi2=self[key][i]            
+
+                chi2=self[key][i]
                 m_sol=self['all_solutions'][i]['masses']
-                
+
                 ### find unique elements in eval('isochrone_grid')
                 th_model=eval(self['isochrone_grid'][i])
                 iso_mass=th_model.masses
@@ -4723,16 +4727,16 @@ class FitParams(object):
 
                 plt.ylabel(r'$\log_{10}$(age)')
                 plt.xlabel(r'mass ($M_\odot$)')
-                
+
                 if isinstance(tofile,bool):
-                    if tofile: 
+                    if tofile:
                         file=self['path']+'_'+dtype+'_map_star'+str(i)+'.png'
                         plt.savefig(file)
                 else:
                     plt.savefig(tofile)
 
                 plt.show()
-                
+
                 p+=1
 
 ModelHandler._check_updates()
