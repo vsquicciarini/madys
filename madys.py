@@ -719,7 +719,6 @@ class ModelHandler(object):
                     chi2=np.zeros(n_m)
                     for q in range(n_m):
                         par=ModelHandler._grid_to_version(true_model_list[q])[1]
-                        print(par)
                         for k in par.keys():
                             chi2[q]+=(par[k]-model_params1[k])**2
                     arg_min=np.argmin(chi2)
@@ -3609,12 +3608,28 @@ class SampleObject(object):
             dic['path']=self.__sample_path
         l=list(self.GaiaID[self.GaiaID.columns[0].name])
         dic['objects']=np.array(l)
-        dic['isochrone_grid']=np.full(xlen,repr(th_model))
+        dic['isochrone_grid']=list([repr(th_model)])*xlen
         dic['fitting_mode']=case
 
         return FitParams(dic)
 
     def get_params(self,model_version,**kwargs):
+        
+        def renew_kwargs(kwa,w):
+            kw=copy.deepcopy(kwa)
+            if 'age_range' not in kw: return kw
+            else:
+                age_range=kw['age_range']
+                if isinstance(age_range,np.ndarray):
+                    if len(age_range.shape)==1: #the age is fixed for each star
+                        kw['age_range']=age_range[w]
+                    elif len(age_range[0])==2: #the age is to be found within the specified interval
+                        kw['age_range']=age_range[w]
+                    elif len(age_range[0])==3: #the age is fixed, and age_min and age_max are used to compute errors
+                        kw['age_range']=age_range[w]
+        #        else: #the program is left completely unconstrained
+                return kw
+        
         p=np.array(['feh','he','afe','v_vcrit','fspot','B'])
         k=np.sum([i in kwargs for i in p])
 
@@ -3683,7 +3698,8 @@ class SampleObject(object):
                     w_an,=np.where(np.sum(comb_u[j]==comb,axis=1)==6)
                     for i in w:
                         kwargs[p[i]]=comb[w_an[0],i]
-                    res_i=self[w_an]._get_agemass(model_version,n_tot=len(self),**kwargs)
+                    kwargs2=renew_kwargs(kwargs,w_an)
+                    res_i=self[w_an]._get_agemass(model_version,n_tot=len(self),**kwargs2)
                     self.done+=len(w_an)
                     if j==0: res=res_i.empty_like(n_st)
                     res[w_an]=res_i
@@ -4511,7 +4527,7 @@ class FitParams(object):
 
         for j in self.__dict__.keys():
             if isinstance(self.__dict__[j],str): self.__dict__[j]=other.__dict__[j]
-            elif j in ['all_solutions','chi2_maps','weight_maps']:
+            elif j in ['all_solutions','chi2_maps','weight_maps','isochrone_grid']:
                 try:
                     self.__dict__[j][i]=other.__dict__[j]
                 except TypeError:
@@ -4535,6 +4551,8 @@ class FitParams(object):
             elif j=='chi2_maps':
                 new.__dict__[j]=[[] for i in range(n)]
             elif j=='weight_maps':
+                new.__dict__[j]=[[] for i in range(n)]
+            elif j=='isochrone_grid':
                 new.__dict__[j]=[[] for i in range(n)]
         return new
 
