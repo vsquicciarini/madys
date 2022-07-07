@@ -3648,7 +3648,8 @@ class SampleObject(object):
 
         if skip:
             dic={}
-            if k in kwargs: dic[k]=kwargs[k][i]
+            for kw in p:
+                if kw in kwargs: dic[kw]=kwargs[kw]
             model_params = ModelHandler._find_match(model_version,dic,list(stored_data['complete_model_list'].keys()))
         else:
             model_params = []
@@ -3704,7 +3705,9 @@ class SampleObject(object):
                     if j==0: res=res_i.empty_like(n_st)
                     res[w_an]=res_i
         else:
-                res=self._get_agemass(model_version,**kwargs)
+            for kw in p:
+                if kw in kwargs: kwargs[kw] = model_params[kw]
+            res=self._get_agemass(model_version,**kwargs)
 
         print('Execution ended. Elapsed time: '+'{:.0f}'.format(time.perf_counter()-self.t0)+' s.')
 
