@@ -16,7 +16,7 @@ A thorough description of photometric filters featured in `MADYS` is provided; f
 
 Latest news:
 ------------
-Jun 20, 2022 - BEX models (Linder et al. 2019) added to the list of available models.
+Jun 20, 2022 - BEX models (Linder et al. 2019, Marleau et al. 2019) added to the list of available models.
 
 Jun 17, 2022 - Gaia DR3 now available! The new catalog replaces, for all intents and purposes, Gaia EDR3.
 
