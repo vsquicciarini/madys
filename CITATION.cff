@@ -42,6 +42,9 @@ identifiers:
       relation childOf with the concept DOI specified
       in the doi key in the root of this file.
   - type: other
+    value: 'https://ascl.net/2206.018'
+    description: ASCL entry of the tool.
+  - type: other
     value: 'https://arxiv.org/abs/2206.02446'
     description: The ArXiv preprint of the paper
 repository-code: 'https://github.com/vsquicciarini/madys'
