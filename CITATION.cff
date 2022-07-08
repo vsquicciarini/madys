@@ -1,0 +1,83 @@
+# This CITATION.cff file was generated with cffinit.
+# Visit https://bit.ly/cffinit to generate yours today!
+
+cff-version: 1.2.0
+title: MADYS
+message: >-
+  Please cite this software using the metadata from
+  'preferred-citation'.
+type: software
+authors:
+  - given-names: Vito
+    family-names: Squicciarini
+    email: vito.squicciarini@inaf.it
+    affiliation: University of Padova
+    orcid: 'https://orcid.org/0000-0002-3122-6809'
+  - given-names: Mariangela
+    family-names: Bonavita
+    email: mariangela.bonavita@open.ac.uk
+    affiliation: The Open University
+    orcid: 'https://orcid.org/0000-0002-7520-8389'
+preferred-citation:
+  authors:
+    - given-names: Vito
+      family-names: Squicciarini
+      email: vito.squicciarini@inaf.it
+      affiliation: University of Padova
+      orcid: 'https://orcid.org/0000-0002-3122-6809'
+    - given-names: Mariangela
+      family-names: Bonavita
+      email: mariangela.bonavita@open.ac.uk
+      affiliation: The Open University
+      orcid: 'https://orcid.org/0000-0002-7520-8389'
+  title: 'Introducing MADYS: the Manifold Age Determination for Young Stars'
+  type: article
+  year: 2022
+  url: 'https://ui.adsabs.harvard.edu/abs/2022arXiv220602446S/abstract'
+identifiers:
+  - type: doi
+    value: 10.5281/zenodo.6807358
+    description: >-
+      The version DOI for this version, which has a
+      relation childOf with the concept DOI specified
+      in the doi key in the root of this file.
+  - type: other
+    value: 'https://arxiv.org/abs/2206.02446'
+    description: The ArXiv preprint of the paper
+repository-code: 'https://github.com/vsquicciarini/madys'
+repository: 'https://ascl.net/2206.018'
+abstract: >-
+  The Manifold Age Determination for Young Stars
+  (MADYS) is a flexible Python tool for age and mass
+  determination of young stellar and substellar
+  objects.
+
+  In this first full release, MADYS automatically
+  retrieves and cross-matches photometry from several
+  catalogs, estimates interstellar extinction, and
+  derives age and mass estimates for individual
+  objects through isochronal fitting.
+
+  Harmonising the heterogeneity of publicly-available
+  isochrone grids, the tool allows to choose amongst
+  17 models, many of which with customisable
+  astrophysical parameters (for a total of about 120
+  grids). Note that the grids are not downloaded when
+  installing MADYS. Instructions on how to download
+  them are provided in the .ipynb notebook in
+  GitHub's /example directory.
+
+  Several dedicated plotting function are provided to
+  allow a visual perception of the numerical output.
+keywords:
+  - python
+  - sql
+  - parameter-estimation
+  - direct-imaging
+  - stellar-astrophysics
+  - gaia
+  - model-comparison
+  - astronomy
+license: CC-BY-4.0
+version: 0.3.2
+date-released: '2022-07-07'
