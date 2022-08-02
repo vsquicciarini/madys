@@ -681,6 +681,7 @@ class ModelHandler(object):
 
         if isinstance(start_params,dict):
             model_params1 = ModelHandler._find_match(model_version,start_params,list(stored_data['complete_model_list'].keys()))
+            
             sol1 = ModelHandler._version_to_grid(model_version,model_params1)
             if len(local_model_list)==0:
                 print('No model '+model_version+' found in your local path. The best-matching model for your request would be '+sol1+'.')
@@ -716,6 +717,7 @@ class ModelHandler(object):
                         return sol1
                 else:
                     true_model_list = list(np.array(local_model_list)[w])
+                    
                     chi2=np.zeros(n_m)
                     for q in range(n_m):
                         par=ModelHandler._grid_to_version(true_model_list[q])[1]
@@ -724,6 +726,7 @@ class ModelHandler(object):
                     arg_min=np.argmin(chi2)
                     sol2=true_model_list[arg_min]
                     sol2_dict=ModelHandler._grid_to_version(true_model_list[arg_min])[1]
+                    
 
                     print('The closest model (M1) to the input has: '+str(sol2_dict)+', but a closer match (M2) was found in the MADYS database:')
                     print(str(model_params1)+'.')
@@ -1258,6 +1261,7 @@ class IsochroneGrid(object):
         x_axis=col
         y_axis=mag
 
+        kwargs['age_range']=plot_ages
         iso=IsochroneGrid(model_version,filters,**kwargs)
         isochrones=iso.data
         iso_ages=iso.ages
@@ -1295,7 +1299,9 @@ class IsochroneGrid(object):
 
         if type(plot_masses)!=bool:
             kwargs['mass_range']=plot_masses
-            trk=IsochroneGrid(model_version,filters,age_range=[np.min(plot_ages),np.max(plot_ages)],**kwargs)
+            kwargs2=copy.deepcopy(kwargs)
+            if 'age_range' in kwargs2: del kwargs2['age_range']
+            trk=IsochroneGrid(model_version,filters,age_range=[np.min(plot_ages),np.max(plot_ages)],**kwargs2)
             tracks=trk.data
             trk_ages=trk.ages
             trk_filters=trk.filters
@@ -1929,7 +1935,9 @@ class SampleObject(object):
                         'J_err':'j_msigcom','H_err':'h_msigcom','K_err':'ks_msigcom',
                         'W1_err':'w1mpro_error','W2_err':'w2mpro_error','W3_err':'w3mpro_error','W4_err':'w4mpro_error',
                         'g':'ps1_g','r':'ps1_r','i':'ps1_i','z':'ps1_z','y':'ps1_y','g_err':'ps1_g_error',
-                        'r_err':'ps1_r_error','i_err':'ps1_i_error','z_err':'ps1_z_error','y_err':'ps1_y_error'}
+                        'r_err':'ps1_r_error','i_err':'ps1_i_error','z_err':'ps1_z_error','y_err':'ps1_y_error',
+                        'SDSS_g':'sdss_g','SDSS_r':'sdss_r','SDSS_i':'sdss_i','SDSS_z':'sdss_z','SDSS_u':'sdss_u','SDSS_g_err':'sdss_g_error',
+                        'SDSS_r_err':'sdss_r_error','SDSS_i_err':'sdss_i_error','SDSS_z_err':'sdss_z_error','SDSS_u_err':'sdss_u_error'}
 
             phot=np.full([nst,nf],np.nan)
             phot_err=np.full([nst,nf],np.nan)
@@ -2295,17 +2303,19 @@ class SampleObject(object):
                 external.apassdr9 AS apass
                 ON apassxmatch.clean_apassdr9_oid = apass.recno
             """
-        if 'sloan' in surveys:
-            qstr1+='sloan.objid as sloan_id, '
+        if 'sdss' in surveys:
+            qstr1+='sdss.objid as sdss_id, '
             qstr2+="""
-            sloan.u, sloan.err_u, sloan.g, sloan.err_g, sloan.r, sloan.err_r, sloan.i, sloan.err_i, sloan.u, sloan.err_u,"""
+            sdss.u as sdss_u, sdss.err_u as sdss_u_error, sdss.g as sdss_g, sdss.err_g as sdss_g_error, 
+            sdss.r as sdss_r, sdss.err_r as sdss_r_error, sdss.i as sdss_i, sdss.err_i as sdss_i_error,
+            sdss.z as sdss_z, sdss.err_z as sdss_z_error,"""
             qstr3+="""
             LEFT OUTER JOIN
-                gaiadr3.sdssdr13_best_neighbour AS sloanxmatch
-                ON dr3.source_id = sloanxmatch.source_id
+                gaiadr3.sdssdr13_best_neighbour AS sdssxmatch
+                ON dr3.source_id = sdssxmatch.source_id
             LEFT OUTER JOIN
-                external.sdssdr13_photoprimary as sloan
-                ON sloanxmatch.clean_sdssdr13_oid = sloan.objid
+                external.sdssdr13_photoprimary as sdss
+                ON sdssxmatch.original_ext_source_id = sdss.objid
             """
         if 'panstarrs' in surveys:
             qstr1+='ps1xmatch.source_id as panstarrs_id, '
@@ -3168,8 +3178,10 @@ class SampleObject(object):
                     for h in range(len(w)):
                         ph=phot[i,w[h]]
                         sigma0[:,w[h]]=((iso_data[:,i00,w[h]]-ph)/phot_err[i,w[h]])**2
-                        ii=np.nanargmin(sigma0[:,w[h]])
-                        if abs(iso_data[ii,i00,w[h]]-ph)<0.2: b[h]=True #if the best theor. match is more than 0.2 mag away, discards it
+                        try:
+                            ii=np.nanargmin(sigma0[:,w[h]])
+                            if abs(iso_data[ii,i00,w[h]]-ph)<0.2: b[h]=True #if the best theor. match is more than 0.2 mag away, discards it
+                        except ValueError: b[h]=True
                     if np.sum(b)==0:
                         self._print_log('info','All magnitudes for star '+str(i)+' are more than 0.2 mag away from their best theoretical match. Check age and mass range of the theoretical grid, or change the model if the current one does not cover the expected age/mass range for this star.')
                         all_sol.append({})
@@ -3378,6 +3390,7 @@ class SampleObject(object):
 
                     g_sol=[]
                     chi_sol=[]
+                    
                     if (crit1[2]<9) | (crit2[2]<0.1): #the 3rd best sigma < 3 or the 3rd best solution closer than 0.1 mag
                         w_ntb,=np.where(chi2<1000)
                         if len(w_ntb)==0:
@@ -3661,8 +3674,8 @@ class SampleObject(object):
                 sol1 = ModelHandler._version_to_grid(model_version,model_params1)
                 model_params.append(model_params1)
 
-        ModelHandler._find_model_grid(model_version,model_params)
-
+        ModelHandler._find_model_grid(model_version,model_params)        
+        
         try:
             model_p=ModelHandler._available_parameters(model_version)
         except ValueError as e:
