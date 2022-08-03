@@ -317,7 +317,7 @@ class ModelHandler(object):
     def available(cls,key=None,verbose=True):
 
         attrs_list, header_list, version_header_list = [], [], []
-        mass_list, age_list = [], []
+        mass_list, age_list, filter_list = [], [], []
         for root, dirs, files in os.walk(madys_path):
             for name in files:
                 if root.endswith('extinction'): continue
@@ -328,6 +328,7 @@ class ModelHandler(object):
                     version_header_list.append(model_grid._get_header()[1])
                     mass_list.append(model_grid._get_agemass_ranges()[0])
                     age_list.append(model_grid._get_agemass_ranges()[1])
+                    filter_list.append(model_grid.get_data()[2])
         model_families=[attr['model_family'] for attr in attrs_list]
         model_suites=[attr['model_suite'] for attr in attrs_list]
         model_versions=[attr['model_version'] for attr in attrs_list]
@@ -346,6 +347,9 @@ class ModelHandler(object):
             print('')
             for i in i2:
                 print(header_list[i][:-1])
+                surveys = list(np.unique([stored_data['filters'][k]['survey'] for k in filter_list[i]]))
+                print('# Photometric systems: ')
+                print('# '+', '.join(surveys))
                 d=4
                 while np.sum(np.around(mass_list[i],d)==0)>0:
                     d+=1
@@ -409,6 +413,9 @@ class ModelHandler(object):
                 if verbose:
                     in1=in1[0]
                     print(header_list[in1][:-1])
+                    surveys = list(np.unique([stored_data['filters'][k]['survey'] for k in filter_list[in1]]))
+                    print('# Photometric systems: ')
+                    print('# '+', '.join(surveys))
                     print('# Mass range (M_sun): '+str(list(np.around(mass_list[in1],4))))
                     print('# Age range (Myr): '+str(list(np.around(age_list[in1],1))))
                     w,=np.where(np.array(model_suites)==model_suites[in1])
@@ -434,6 +441,9 @@ class ModelHandler(object):
                     w,=np.where(np.array(model_versions)==model_versions[is1])
                     print(version_header_list[is1][:-1])
                     print(header_list[is1][1:-1])
+                    surveys = list(np.unique([stored_data['filters'][k]['survey'] for k in filter_list[is1]]))
+                    print('# Photometric systems: ')
+                    print('# '+', '.join(surveys))
                     print('# Mass range (M_sun): '+str(list(np.around(mass_list[is1],4))))
                     print('# Age range (Myr): '+str(list(np.around(age_list[is1],1))))
                     feh=np.unique(feh_list[w]).astype(str)
@@ -460,6 +470,9 @@ class ModelHandler(object):
                     for i in range(len(is01)):
                         print(version_header_list[w[is01[i]]][:-1])
                         print(header_list[w[is01[i]]][1:-1])
+                        surveys = list(np.unique([stored_data['filters'][k]['survey'] for k in filter_list[w[is01[i]]]]))
+                        print('# Photometric systems: ')
+                        print('# '+', '.join(surveys))
                         print('# Mass range (M_sun): '+str(list(np.around(mass_list[w[is01[i]]],4))))
                         print('# Age range (Myr): '+str(list(np.around(age_list[w[is01[i]]],1))))
                         ww,=np.where(np.array(model_versions)==versions[is02[i]])
