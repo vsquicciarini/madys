@@ -16,6 +16,8 @@ A thorough description of photometric filters featured in `MADYS` is provided; f
 
 Latest news:
 ------------
+Aug 03, 2022 - Sloan Digital Sky Survey added to the list of automatically searchable surveys. Its filters are now available with the following models: PARSEC, MIST, AMES-Dusty, AMES-Cond, BT-Settl, NextGen.
+
 Jun 20, 2022 - BEX models (Linder et al. 2019, Marleau et al. 2019) added to the list of available models.
 
 Jun 17, 2022 - Gaia DR3 now available! The new catalog replaces, for all intents and purposes, Gaia EDR3.
