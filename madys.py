@@ -1584,6 +1584,7 @@ class SampleObject(object):
       Default: True.
     - simbad_query (1): bool, optional. Set to True to query objects without a 2MASS cross-match in SIMBAD. It can significantly slow down data queries. Default: True if n<100, False otherwise.
     - ebv: float or numpy array, optional. If set, uses the i-th element of the array as E(B-V) for the i-th star. Default: not set, computes E(B-V) through the map instead.
+    - ebv_err: float or numpy array, optional. Error on ebv, it should have its same type. If not set or None, no error is assumed. Default: not set.
     - max_tmass_q (1): worst 2MASS photometric flag ('ph_qual') still considered reliable. Possible values, ordered by decreasing quality: 'A','B','C','D','E','F','U','X'. For a given choice, excludes all measurements with a lower quality flag. Default: 'A'.
     - max_wise_q (1): worst ALLWISE photometric flag ('ph_qual2') still considered reliable. Possible values, ordered by decreasing quality: 'A','B','C','U','Z','X'. For a given choice, excludes all measurements with a lower quality flag. Default: 'A'.
     - verbose: int, optional. Degree of verbosity of the various tasks performed by MADYS. It can be:
@@ -1734,6 +1735,7 @@ class SampleObject(object):
         - app_mag_error: float, list or numpy array (1D or 2D), optional. Error on apparent magnitude(s); no error estimation if ==None. Default: None.
         - parallax_error: float, list or 1D numpy array, optional. Error on parallax(es); no error estimation if ==None. Default: None.
         - ebv: float, list or 1D numpy array, optional. E(B-V) affecting input magnitude(s); assumed null if ==None. Default: None.
+        - ebv_error: float, list or 1D numpy array, optional. Error on E(B-V); assumed null if ==None. Default: None.
         - filters: list or 1D numpy array, optional. Names of the filters; length must equal no. of columns of app_mag. Default: None.
         Output:
         - abs_mag: float or numpy array. Absolute magnitudes, same shape as app_mag.
@@ -1881,6 +1883,7 @@ class SampleObject(object):
             self._print_log('info','Filters required: '+','.join(self.filters))
             self._print_log('info','No. of stars: '+str(nst))
 
+            self.ebv_err = kwargs['ebv_err'] if 'ebv_err' in kwargs else None
             self.ebv=np.zeros(len(file))
             if 'ebv' in kwargs:
                 self.ebv=kwargs['ebv']
@@ -1902,7 +1905,7 @@ class SampleObject(object):
                 self.par_err=file['parallax_err']
                 self.app_phot=copy.deepcopy(self.abs_phot)
                 self.app_phot_err=copy.deepcopy(self.abs_phot_err)
-                self.abs_phot,self.abs_phot_err=SampleObject.app_to_abs_mag(self.abs_phot,self.par,app_mag_error=self.abs_phot_err,parallax_error=self.par_err,ebv=self.ebv,filters=col)
+                self.abs_phot,self.abs_phot_err=SampleObject.app_to_abs_mag(self.app_phot,self.par,app_mag_error=self.app_phot_err,parallax_error=self.par_err,ebv=self.ebv,ebv_error=self.ebv_err,filters=col)
                 self._print_log('info','Input photometry: apparent, converted to absolute.')
             else:
                 self._print_log('info','Input photometry: no parallax provided, assumed absolute.')
@@ -1936,8 +1939,7 @@ class SampleObject(object):
                     raise ValueError('The provided file file '+filename+' was not found. Set get_phot=True to query the provided IDs, or check the file name.')
 
             self.good_phot=self._check_phot(**kwargs)
-
-
+            
             nf=len(self.filters)
 
             query_keys={'G':'dr3_gmag_corr','Gbp':'dr3_phot_bp_mean_mag','Grp':'dr3_phot_rp_mean_mag','G2':'dr2_phot_g_mean_mag',
@@ -1977,10 +1979,12 @@ class SampleObject(object):
                 par_err=np.where(np.isnan(par_err),par_err2,par_err)
                 for i in range(len(u2)):
                     self._print_log('info','Invalid parallax in Gaia DR3 for star '+str(self.ID[u2[i]][0])+', using DR2 instead')
+            self.ebv_err = kwargs['ebv_err'] if 'ebv_err' in kwargs else None
             if 'ebv' in kwargs:
                 self.ebv=kwargs['ebv']
                 self._print_log('info','Extinction type: provided by the user')
                 self.phot_table['ebv']=self.ebv
+                self.phot_table['ebv_err']=self.ebv_err
             else:
                 if get_phot:
                     tt0=time.perf_counter()
@@ -1991,11 +1995,17 @@ class SampleObject(object):
                         self._print_log('info',"Extinction neglected, because 'ext_map' was set to None.")
                     else: self._print_log('info','Extinction type: computed using '+ext_map+' extinction map')
                     self.phot_table['ebv']=self.ebv
+                    self.phot_table['ebv_err']=self.ebv_err
                 else:
                     self.ebv=self.phot_table['ebv']
                     self._print_log('info','Extinction type: recovered from a previous execution')
+                    try:
+                        self.ebv_err=self.phot_table['ebv_err']
+                    except KeyError:
+                        self.ebv_err=None
+                        self._print_log('info','Extinction error: not found, setting it to 0')
 
-            self.abs_phot,self.abs_phot_err=self.app_to_abs_mag(self.app_phot,par,app_mag_error=self.app_phot_err,parallax_error=par_err,ebv=self.ebv,filters=self.filters)
+            self.abs_phot,self.abs_phot_err=self.app_to_abs_mag(self.app_phot,par,app_mag_error=self.app_phot_err,parallax_error=par_err,ebv=self.ebv,ebv_error=self.ebv_err,filters=self.filters)
             self._print_log('info','Input photometry: apparent, converted to absolute')
             self.par=par
             self.par_err=par_err
@@ -2004,6 +2014,7 @@ class SampleObject(object):
                 ascii.write(self.phot_table, filename, format='csv', overwrite=True)
 
         if self.verbose>1: logging.shutdown()
+
 
     def __getitem__(self,i):
         new=copy.deepcopy(self)
@@ -3077,14 +3088,23 @@ class SampleObject(object):
         ylen=len(iso_filt)
 
         filt2=where_v(iso_filt,self.filters)
-
+        
         phot=phot[:,filt2]
         phot_err=phot_err[:,filt2]
-        red=np.zeros([l0[0],len(filt2)])
+        red = np.zeros([l0[0],len(filt2)])
         for i in range(len(filt2)):
             red[:,i]=SampleObject.extinction(self.ebv,self.filters[filt2[i]])
+        if type(self.ebv_err)!=type(None):
+            ebv_err = self.ebv_err
+            red_err = np.zeros([l0[0],len(filt2)])
+            for i in range(len(filt2)):
+                red_err[:,i]=SampleObject.extinction(self.ebv_err,self.filters[filt2[i]])
+            app_phot_err=np.sqrt(self.app_phot_err[:,filt2]**2+red_err[:,filt2]**2)
+        else:
+            app_phot_err=self.app_phot_err[:,filt2]
+            ebv_err = 0*self.ebv
+            
         app_phot=self.app_phot[:,filt2]-red
-        app_phot_err=self.app_phot_err[:,filt2]
 
         l=iso_data.shape
 
@@ -3241,7 +3261,7 @@ class SampleObject(object):
                         radius_min[i],radius_fit[i],radius_max[i]=10**np.percentile(phys_data[ind_array,rep_ages,3],[16,50,84])
                 dic={'ages':a_fit, 'ages_min':a_min, 'ages_max':a_max,
                      'masses':m_fit, 'masses_min':m_min, 'masses_max':m_max,
-                     'ebv':self.ebv, 'chi2_min':chi2_min, 'chi2_maps':all_maps, 'weight_maps':hot_p,
+                     'ebv':self.ebv, 'ebv_err':ebv_err, 'chi2_min':chi2_min, 'chi2_maps':all_maps, 'weight_maps':hot_p,
                      'radii':radius_fit, 'radii_min': radius_min, 'radii_max': radius_max,
                      'logg':logg_fit, 'logg_min': logg_min, 'logg_max': logg_max,
                      'logL':logL_fit, 'logL_min': logL_min, 'logL_max': logL_max,
@@ -3347,7 +3367,7 @@ class SampleObject(object):
 
                 dic={'ages':a_fit, 'ages_min':a_min, 'ages_max':a_max,
                      'masses':m_fit, 'masses_min':m_min, 'masses_max':m_max,
-                     'ebv':self.ebv, 'chi2_min':chi2_min, 'chi2_maps':all_maps, 'weight_maps':hot_p,
+                     'ebv':self.ebv, 'ebv_err':ebv_err, 'chi2_min':chi2_min, 'chi2_maps':all_maps, 'weight_maps':hot_p,
                      'radii':radius_fit, 'radii_min': radius_min, 'radii_max': radius_max,
                      'logg':logg_fit, 'logg_min': logg_min, 'logg_max': logg_max,
                      'logL':logL_fit, 'logL_min': logL_min, 'logL_max': logL_max,
@@ -3599,7 +3619,7 @@ class SampleObject(object):
 
                 dic={'ages':a_fit, 'ages_min':a_min, 'ages_max':a_max,
                  'masses':m_fit, 'masses_min':m_min, 'masses_max':m_max,
-                 'ebv':self.ebv, 'chi2_min':chi2_min, 'chi2_maps':all_maps, 'weight_maps':hot_p,
+                 'ebv':self.ebv, 'ebv_err':ebv_err, 'chi2_min':chi2_min, 'chi2_maps':all_maps, 'weight_maps':hot_p,
                  'radii':radius_fit, 'radii_min': radius_min, 'radii_max': radius_max,
                  'logg':logg_fit, 'logg_min': logg_min, 'logg_max': logg_max,
                  'logL':logL_fit, 'logL_min': logL_min, 'logL_max': logL_max,
@@ -4270,7 +4290,8 @@ class SampleObject(object):
     ############################################# other astronomical functions ###############################
 
     @staticmethod
-    def app_to_abs_mag(app_mag,parallax,app_mag_error=None,parallax_error=None,ebv=None,filters=None):
+    def app_to_abs_mag(app_mag,parallax,app_mag_error=None,parallax_error=None,ebv=None,ebv_error=None,filters=None):
+        
         if isinstance(app_mag,list): app_mag=np.array(app_mag)
         if (isinstance(parallax,list)) | (isinstance(parallax,Column)): parallax=np.array(parallax,dtype=float)
 
@@ -4293,10 +4314,14 @@ class SampleObject(object):
                 if dim==0: red=SampleObject.extinction(ebv,filters[0])
                 else: red=np.array([SampleObject.extinction(ebv,filt) for filt in filters])
                 abs_mag-=red
+            if type(ebv_error)!=type(None):
+                if dim==0: red_error=SampleObject.extinction(ebv_error,filters[0])
+                else: red_error=np.array([SampleObject.extinction(ebv_error,filt) for filt in filters])
+            else: red_error=0
             if (type(app_mag_error)!=type(None)) & (type(parallax_error)!=type(None)):
                 if isinstance(app_mag_error,list): app_mag_error=np.array(app_mag_error)
                 if (isinstance(parallax_error,list)) | (isinstance(parallax_error,Column)): parallax_error=np.array(parallax_error,dtype=float)
-                total_error=np.sqrt(app_mag_error**2+(5/np.log(10)/parallax)**2*parallax_error**2)
+                total_error=np.sqrt(app_mag_error**2+(5/np.log(10)/parallax)**2*parallax_error**2+red_error**2)
                 result=(abs_mag,total_error)
             else: result=abs_mag
         else:
@@ -4314,11 +4339,15 @@ class SampleObject(object):
                 if isinstance(app_mag_error,list): app_mag_error=np.array(app_mag_error)
                 if (isinstance(parallax_error,list)) | (isinstance(parallax_error,Column)): parallax_error=np.array(parallax_error,dtype=float)
                 total_error=np.empty([l[0],l[1]])
+                red_error=np.zeros([l[0],l[1]])
+            if type(ebv_error)!=type(None):
+                if isinstance(ebv_error,list): ebv_error=np.array(ebv_error)
                 for i in range(l[1]):
-                    total_error[:,i]=np.sqrt(app_mag_error[:,i]**2+(5/np.log(10)/parallax)**2*parallax_error**2)
-                if len(i1)>0: total_error[:,i1]=app_mag_error[:,i1]
-                result=(abs_mag,total_error)
-            else: result=abs_mag
+                    red_error[:,i]=SampleObject.extinction(ebv_error,filters[i])
+            for i in range(l[1]):
+                total_error[:,i]=np.sqrt(app_mag_error[:,i]**2+(5/np.log(10)/parallax)**2*parallax_error**2+red_error[:,i]**2)
+            if len(i1)>0: total_error[:,i1]=app_mag_error[:,i1]
+            result=(abs_mag,total_error)
             if type(ebv)!=type(None):
                 red=np.zeros([l[0],l[1]])
                 for i in range(l[1]):
@@ -4564,7 +4593,7 @@ class FitParams(object):
                         self.__dict__[j][i[k]]=other.__dict__[j][k]
             elif isinstance(self.__dict__[j],np.ndarray):
                 self.__dict__[j][i]=other.__dict__[j]
-
+                
     #def __str__(self):
 
     #def __repr__(self):
@@ -4605,7 +4634,7 @@ class FitParams(object):
 
     def to_table(self,**kwargs):
         t={}
-        for i in ['objects', 'ages', 'ages_min', 'ages_max', 'masses', 'masses_min', 'masses_max', 'ebv', 'radii', 'radii_min', 'radii_max', 'logg', 'logg_min', 'logg_max', 'logL', 'logL_min', 'logL_max', 'Teff', 'Teff_min', 'Teff_max', 'fit_status']:
+        for i in ['objects', 'ages', 'ages_min', 'ages_max', 'masses', 'masses_min', 'masses_max', 'ebv', 'ebv_err', 'radii', 'radii_min', 'radii_max', 'logg', 'logg_min', 'logg_max', 'logL', 'logL_min', 'logL_max', 'Teff', 'Teff_min', 'Teff_max', 'fit_status']:
             try:
                 t[i]=self[i]
             except KeyError:
@@ -4617,14 +4646,26 @@ class FitParams(object):
         return tab
 
     def pprint(self,mode=None,**kwargs):
-        tab=self.to_table(**kwargs)
+
+        self2=copy.deepcopy(self)
+        key_list=list(self2.__dict__.keys())
+        
+        for i in range(len(self2.__dict__.values())): 
+            key=key_list[i]
+            try:
+                len(self2[key])
+            except TypeError:
+                if (type(self2[key])==float) | (type(self2[key])==int):
+                    self2.__dict__[key]=np.full_like(self2['masses'],self2[key])
+
+        tab=self2.to_table(**kwargs)
         if mode=='all':
             return tab.pprint_all()
         elif mode=='in_notebook':
             return tab.show_in_notebook(css='%3.1f')
         else:
             return tab
-
+        
     def plot_maps(self,indices=None,tofile=False,dtype='chi2'):
 
         if type(indices)==type(None): indices=np.arange(len(self))
