@@ -1,4 +1,4 @@
-Welcome to MADYS' documentation!
+MADYS
 ===================================
 
 .. image:: /madys_logo_black.png
@@ -19,6 +19,16 @@ Check out the :doc:`usage` section for further information, including
 how to :ref:`installation` the project.
 
 Check  the :doc:`instructions` section.
+
+Features
+--------
+
+Bugs
+--------
+
+Attribution
+--------
+Please cite `Squicciarini & Bonavita (2022) <https://ui.adsabs.harvard.edu/abs/2022A%26A...666A..15S/abstract>`_) whenever you publish results obtained with MADYS.
 
 .. note::
 
