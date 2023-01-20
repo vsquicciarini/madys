@@ -2,12 +2,12 @@
 
 # -- Project information
 
-project = 'Lumache'
-copyright = '2021, Graziella'
-author = 'Graziella'
+project = 'MADYS'
+copyright = '2022, Vito Squicciarini'
+author = 'Vito Squicciarini'
 
-release = '0.1'
-version = '0.1.0'
+release = '0.5'
+version = '0.5.0'
 
 # -- General configuration
 
