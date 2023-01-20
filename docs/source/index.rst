@@ -1,6 +1,10 @@
 Welcome to MADYS' documentation!
 ===================================
 
+.. image:: /madys_logo_black.png
+  :width: 200
+  :alt: Alternative text
+
 **MADYS** (/ˈmɑːdɪs/) is a *flexible* Python tool for age and mass determination of young *stellar and substellar objects*.
 
 MADYS automatically *retrieves* and *cross-matches* photometry from several catalogs, estimates interstellar extinction, and derives age and mass estimates for individual objects through isochronal fitting.
