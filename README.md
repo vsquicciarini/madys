@@ -74,12 +74,12 @@ Recent papers using `MADYS`:
 * `A wide-orbit giant planet in the high-mass b Centauri binary system`, [Janson et al. 2021, Natur.600..231J](https://ui.adsabs.harvard.edu/abs/2021Natur.600..231J/abstract)
 * `Unveiling the star formation history of the Upper Scorpius association through its kinematics`, [Squicciarini et al. 2021, MNRAS 507, 1381](https://ui.adsabs.harvard.edu/abs/2021MNRAS.507.1381S/abstract)
 * `New binaries from the SHINE survey`, [Bonavita et al. 2021, arXiv210313706B](https://ui.adsabs.harvard.edu/abs/2021arXiv210313706B/abstract)
-* `BEAST begins: sample characteristics and survey performance of the B-star Exoplanet Abundance Study`,[Janson, Squicciarini et al. 2021, A&A 646, A164](https://ui.adsabs.harvard.edu/abs/2021A%26A...646A.164J/abstract)
-* `Detecting planetary mass companions near the water frost-line using JWST interferometry`,[Ray et al. 2023, MNRAS 519, 2718](https://ui.adsabs.harvard.edu/abs/2023MNRAS.519.2718R/abstract)
+* `BEAST begins: sample characteristics and survey performance of the B-star Exoplanet Abundance Study`, [Janson, Squicciarini et al. 2021, A&A 646, A164](https://ui.adsabs.harvard.edu/abs/2021A%26A...646A.164J/abstract)
+* `Detecting planetary mass companions near the water frost-line using JWST interferometry`, [Ray et al. 2023, MNRAS 519, 2718](https://ui.adsabs.harvard.edu/abs/2023MNRAS.519.2718R/abstract)
 
 Authors
 -----------------------
-[Vito Squicciarini](https://orcid.org/0000-0002-3122-6809), University of Padova, IT (vito.squicciarini@inaf.it)
+[Vito Squicciarini](https://orcid.org/0000-0002-3122-6809), LESIA - Observatoire de Paris, FR (vito.squicciarini@inaf.it)
 
 [Mariangela Bonavita](https://orcid.org/0000-0002-7520-8389), The Open University, UK
 
