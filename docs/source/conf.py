@@ -29,6 +29,10 @@ templates_path = ['_templates']
 
 # -- Options for HTML output
 
+# The name of an image file (relative to this directory) to place at the top
+# of the sidebar.
+html_logo = 'madys_logo_black_small.png'
+
 html_theme = 'sphinx_rtd_theme'
 
 # -- Options for EPUB output
