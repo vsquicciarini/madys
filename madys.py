@@ -603,7 +603,7 @@ class ModelHandler(object):
         def_params = {'feh':0.00, 'afe': 0.00, 'v_vcrit': 0.00, 'fspot': 0.00, 'B':0, 'he':0.27}
         for key in def_params.keys():
             if key not in model_params: model_params[key]=def_params[key]
-
+        
         model_grid=model_version+''
         for i,k in enumerate(keys):
             if code[i]=='0': continue
@@ -3678,7 +3678,7 @@ class SampleObject(object):
         
         p=np.array(['feh','he','afe','v_vcrit','fspot','B'])
         k=np.sum([i in kwargs for i in p])
-
+        
         skip=False
         if k>0:
             cust=np.zeros(6)
@@ -3691,7 +3691,7 @@ class SampleObject(object):
             if np.sum(cust)<0.1: skip=True
         else:
             skip=True
-
+            
         if skip:
             dic={}
             for kw in p:
@@ -3707,7 +3707,7 @@ class SampleObject(object):
                 sol1 = ModelHandler._version_to_grid(model_version,model_params1)
                 model_params.append(model_params1)
 
-        ModelHandler._find_model_grid(model_version,model_params)        
+        ModelHandler._find_model_grid(model_version,model_params)                
         
         try:
             model_p=ModelHandler._available_parameters(model_version)
@@ -3738,7 +3738,7 @@ class SampleObject(object):
 
             if len(comb_u)==1:
                 for i in w:
-                    kwargs[p[i]]=comb_u[i]
+                    kwargs[p[i]]=comb_u[0][i]
                 res=self._get_agemass(model_version,**kwargs)
             else:
                 for j in range(len(comb_u)):
