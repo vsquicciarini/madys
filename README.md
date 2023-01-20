@@ -69,12 +69,13 @@ Recent papers using `MADYS`:
 
 `MADYS` has already been used, in its various preliminary forms, for several publications, including: 
 
-* `A scaled-up planetary system around a supernova progenitor`, [Squicciarini et al. 2022, arXiv220502279S](https://ui.adsabs.harvard.edu/abs/2022arXiv220502279S/abstract)
-* `Results from The COPAINS Pilot Survey: four new brown dwarfs and a high companion detection rate for accelerating stars`, [Bonavita et al. 2022, MNRAS.513.5588B](https://ui.adsabs.harvard.edu/abs/2022MNRAS.513.5588B/abstract)
+* `A scaled-up planetary system around a supernova progenitor`, [Squicciarini et al. 2022, A&A 664, A9](https://ui.adsabs.harvard.edu/abs/2022A%26A...664A...9S/abstract)
+* `Results from The COPAINS Pilot Survey: four new brown dwarfs and a high companion detection rate for accelerating stars`, [Bonavita et al. 2022, MNRAS 513, 5588](https://ui.adsabs.harvard.edu/abs/2022MNRAS.513.5588B/abstract)
 * `A wide-orbit giant planet in the high-mass b Centauri binary system`, [Janson et al. 2021, Natur.600..231J](https://ui.adsabs.harvard.edu/abs/2021Natur.600..231J/abstract)
-* `Unveiling the star formation history of the Upper Scorpius association through its kinematics`, [Squicciarini et al. 2021, MNRAS.507.1381S](https://ui.adsabs.harvard.edu/abs/2021MNRAS.507.1381S/abstract)
+* `Unveiling the star formation history of the Upper Scorpius association through its kinematics`, [Squicciarini et al. 2021, MNRAS 507, 1381](https://ui.adsabs.harvard.edu/abs/2021MNRAS.507.1381S/abstract)
 * `New binaries from the SHINE survey`, [Bonavita et al. 2021, arXiv210313706B](https://ui.adsabs.harvard.edu/abs/2021arXiv210313706B/abstract)
-* `BEAST begins: sample characteristics and survey performance of the B-star Exoplanet Abundance Study`,[Janson, Squicciarini et al. 2021, A&A...646A.164J](https://ui.adsabs.harvard.edu/abs/2021A%26A...646A.164J/abstract)
+* `BEAST begins: sample characteristics and survey performance of the B-star Exoplanet Abundance Study`,[Janson, Squicciarini et al. 2021, A&A 646, A164](https://ui.adsabs.harvard.edu/abs/2021A%26A...646A.164J/abstract)
+* `Detecting planetary mass companions near the water frost-line using JWST interferometry`,[Ray et al. 2023, MNRAS 519, 2718](https://ui.adsabs.harvard.edu/abs/2023MNRAS.519.2718R/abstract)
 
 Authors
 -----------------------
@@ -86,6 +87,6 @@ We are grateful for your effort, and hope that these tools will contribute to yo
 
 Attribution
 -----------------------
-Please cite [Squicciarini & Bonavita 2022 arXiv:2206.02446](https://arxiv.org/abs/2206.02446) whenever you publish results obtained with `MADYS`.
+Please cite [Squicciarini & Bonavita 2022 A&A 666, A15](https://ui.adsabs.harvard.edu/abs/2022A%26A...666A..15S/abstract) whenever you publish results obtained with `MADYS`.
 
 
