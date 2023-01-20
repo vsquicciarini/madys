@@ -57,7 +57,7 @@ It also requires [TAP Gaia Query](https://github.com/mbonav/tapGaia) (v0.1). The
 Examples
 --------
 
-The package is fully documented and a detailed description of its features, together with several examples of the kind of scientific results that can be obtained with it, is provided in [Squicciarini & Bonavita 2022 arXiv:2206.02446](https://arxiv.org/abs/2206.02446).
+The package is fully documented and a detailed description of its features, together with several examples of the kind of scientific results that can be obtained with it, is provided in [Squicciarini & Bonavita (2022)](https://ui.adsabs.harvard.edu/abs/2022A%26A...666A..15S/abstract).
 
 However, we recommend you check out the [examples](https://github.com/vsquicciarini/madys/blob/main/examples/) provided, for a better understanding of its usage.
 
@@ -87,6 +87,6 @@ We are grateful for your effort, and hope that these tools will contribute to yo
 
 Attribution
 -----------------------
-Please cite [Squicciarini & Bonavita 2022 A&A 666, A15](https://ui.adsabs.harvard.edu/abs/2022A%26A...666A..15S/abstract) whenever you publish results obtained with `MADYS`.
+Please cite [Squicciarini & Bonavita (2022)](https://ui.adsabs.harvard.edu/abs/2022A%26A...666A..15S/abstract) whenever you publish results obtained with `MADYS`.
 
 
