@@ -1,6 +1,0 @@
-site_name: MADYS
-site_url: https://madys.readthedocs.io/en/latest/
-nav:
-    - Home: index.md
-
-theme: readthedocs
