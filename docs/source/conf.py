@@ -35,7 +35,7 @@ html_logo = 'madys_logo_black_small.png'
 
 html_theme = 'sphinx_rtd_theme'
 
-html_favicon = 'clock2.ico'
+html_favicon = 'favicon.ico'
 
 # -- Options for EPUB output
 epub_show_urls = 'footnote'
