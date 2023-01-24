@@ -43,6 +43,17 @@ Contents
 
 .. toctree::
 
+   :maxdepth: 2
+   :caption: Setup
+
+   install
+   dependencies
+   release_notes
+
+.. toctree::
+   :maxdepth: 2
+   :caption: The Basics
+
    usage
    api
    instructions
