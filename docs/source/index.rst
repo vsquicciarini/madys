@@ -12,7 +12,7 @@ Check out the :doc:`usage` section for further information, including how to per
 Features
 --------
 
-* ability to automatically *retrieve* and *cross-match* photometry from several catalogs, including Gaia DR2, Gaia DR3, 2MASS, ALLWISE, Panstarrs PS1, APASS and SDSS;
+* ability to automatically *retrieve* and *cross-match* photometry from several catalogs, including `Gaia DR2 <https://ui.adsabs.harvard.edu/#abs/2018A%26A...616A...1G/abstract>`_, `Gaia DR3 <https://ui.adsabs.harvard.edu/#abs/2022arXiv220800211G/abstract>`_, `2MASS <https://ui.adsabs.harvard.edu/abs/2006AJ....131.1163S/abstract>`_, `ALLWISE <https://ui.adsabs.harvard.edu/abs/2014yCat.2328....0C/abstract>`_, `Panstarrs DR1 <https://ui.adsabs.harvard.edu/abs/2016arXiv161205560C/abstract>`_, `APASS DR9 <https://ui.adsabs.harvard.edu/abs/2016yCat.2336....0H/abstract>`_ and `SDSS DR13 <https://ui.adsabs.harvard.edu/abs/2017ApJS..233...25A/abstract>`;
 * possibility to assess the quality of photometric measurements and to impose custom rejection thresholds;
 * possibility to create custom tables of objects to be analyzed, such as companions discovered in direct imaging observations;
 * possibility to estimate interstellar extinction by integration of published 3D extinction maps;
