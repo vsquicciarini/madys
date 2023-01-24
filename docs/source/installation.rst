@@ -6,17 +6,19 @@ Installation
 Install
 ------------
 
-To use Lumache, first install it using pip:
+The installation of ``MADYS`` can be performed through pip:
 
 .. code-block:: console
 
-   (.venv) $ pip install lumache
+   (.venv) $ pip install madys
 
 Dependencies
 ----------------
 
+Write dipendencies here and xlml problem
+
 To retrieve a list of random ingredients,
-you can use the ``lumache.get_random_ingredients()`` function:
+you can use the :py:func:`lumache.get_random_ingredients` ``lumache.get_random_ingredients()`` function:
 
 .. autofunction:: lumache.get_random_ingredients
 
