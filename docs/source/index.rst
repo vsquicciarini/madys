@@ -13,10 +13,12 @@ Features
 --------
 
 * ability to automatically *retrieve* and *cross-match* photometry from several catalogs, including Gaia DR2, Gaia DR3, 2MASS, ALLWISE, Panstarrs PS1, APASS and SDSS;
+* possibility to assess the quality of photometric measurements and to impose custom rejection thresholds;
 * possibility to create custom tables of objects to be analyzed, such as companions discovered in direct imaging observations;
 * possibility to estimate interstellar extinction by integration of published 3D extinction maps;
 * derivation of key (sub)stellar parameters (age, mass, radius, T_eff, log(L), log(g)), or at least meaningful constraints within the phase space if no age prior is provided;
 * largest availability of models to date;
+* capability to handle thousands of objects at once;
 * presence of several dedicated plotting functions allowing a visual perception of the numerical output;
 * extensive documentation, including a large variety of examples showing the possible applications of the tool.
 
