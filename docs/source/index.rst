@@ -27,16 +27,15 @@ Caveats & Bugs
 A thorough discussion on the assumptions behind our tool and on its limits of applicability is provided in `Squicciarini & Bonavita (2022) <https://ui.adsabs.harvard.edu/abs/2022A%26A...666A..15S/abstract>`_. 
 Please refer to MADYS' `GitHub repository <https://github.com/vsquicciarini/madys>`_ to submit bugs and suggest new improvements to the code.
 
+.. note::
+
+   If you wish a new model to be included in a new version of MADYS, or a new set of photometric filters to be added to the current list, feel free to get in contact with us.
+
 Attribution
 --------
 Please cite `Squicciarini & Bonavita (2022) <https://ui.adsabs.harvard.edu/abs/2022A%26A...666A..15S/abstract>`_ whenever you publish results obtained with MADYS.
 
-Our code is also featured in the Astrophysics Source Code Library under the identifier  `[ascl:2206.018]<https://ascl.net/2206.018`_.   
-
-.. note::
-
-   If you wish a new model to be included in a new version of MADYS, or a new set of photometric filters to be added to the current list, feel free to get in contact with us.
- 
+Our code is also featured in the Astrophysics Source Code Library under the identifier  `[ascl:2206.018]<https://ascl.net/2206.018>`_.
 
 
 Contents
