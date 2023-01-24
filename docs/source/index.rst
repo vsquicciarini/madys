@@ -35,7 +35,7 @@ Attribution
 --------
 Please cite `Squicciarini & Bonavita (2022) <https://ui.adsabs.harvard.edu/abs/2022A%26A...666A..15S/abstract>`_ whenever you publish results obtained with MADYS.
 
-Our code is also featured in the Astrophysics Source Code Library under the identifier  `[ascl:2206.018]<https://ascl.net/2206.018>`_.
+Our code is also featured in the Astrophysics Source Code Library under the identifier  `[ascl:2206.018] <https://ascl.net/2206.018>`_.
 
 
 Contents
