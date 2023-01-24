@@ -45,7 +45,7 @@ Contents
    :maxdepth: 2
    :caption: Setup
 
-   install
+   installation
    release_notes
 
 .. toctree::
