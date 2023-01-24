@@ -47,7 +47,6 @@ Contents
    :caption: Setup
 
    install
-   dependencies
    release_notes
 
 .. toctree::
