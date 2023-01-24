@@ -5,23 +5,31 @@ Thanks to the unrivalled astrometric and photometric capabilities of the Gaia mi
 
 In view of the large availability of theoretical evolutionary models, both fields would benefit from a unified framework that allows a straightforward comparison of physical parameters obtained by different stellar and substellar models.
 
-To this aim, we developed the Manifold Age Determination for Young Stars (**MADYS**, IPA: /ˈmɑːdɪs/), a flexible Python tool for the age and mass determination of young stellar and substellar objects. MADYS automatically *retrieves* and *cross-matches* photometry from several catalogs, estimates interstellar extinction, and derives age and mass estimates for individual objects through isochronal fitting.
-
-Harmonising the heterogeneity of publicly-available isochrone grids, our tool allows to choose amongst 17 models, more than 120 isochrone grids, and more then 200 photometric filters. Several dedicated plotting functions are included to allow a visual perception of the numerical output.
+To this aim, we developed the Manifold Age Determination for Young Stars (**MADYS**, IPA: /ˈmɑːdɪs/), a flexible Python tool for the age and mass determination of young stellar and substellar objects based on isochronal fitting.
 
 Check out the :doc:`usage` section for further information, including how to perform the :ref:`installation` of the project.
-
-Check  the :doc:`instructions` section.
 
 Features
 --------
 
-Bugs
+* ability to automatically *retrieve* and *cross-match* photometry from several catalogs, including Gaia DR2, Gaia DR3, 2MASS, ALLWISE, Panstarrs PS1, APASS and SDSS;
+* possibility to create custom tables of objects to be analyzed, such as companions discovered in direct imaging observations;
+* possibility to estimate interstellar extinction by integration of published 3D extinction maps;
+* derivation of key (sub)stellar parameters (age, mass, radius, T_eff, log(L), log(g)), or at least meaningful constraints within the phase space if no age prior is provided;
+* largest availability of models to date;
+* presence of several dedicated plotting functions allowing a visual perception of the numerical output;
+* extensive documentation, including a large variety of examples showing the possible applications of the tool.
+
+Caveats & Bugs
 --------
+A thorough discussion on the assumptions behind our tool and on its limits of applicability is provided in `Squicciarini & Bonavita (2022) <https://ui.adsabs.harvard.edu/abs/2022A%26A...666A..15S/abstract>`_. 
+Please refer to MADYS' `GitHub repository <https://github.com/vsquicciarini/madys>`_ to submit bugs and suggest new improvements to the code.
 
 Attribution
 --------
 Please cite `Squicciarini & Bonavita (2022) <https://ui.adsabs.harvard.edu/abs/2022A%26A...666A..15S/abstract>`_ whenever you publish results obtained with MADYS.
+
+Our code is also featured in the Astrophysics Source Code Library under the identifier  `[ascl:2206.018]<https://ascl.net/2206.018`_.   
 
 .. note::
 
