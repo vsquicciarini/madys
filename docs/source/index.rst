@@ -1,4 +1,4 @@
-MADYS
+Rationale
 ===================================
 
 Thanks to the unrivalled astrometric and photometric capabilities of the Gaia mission, new impetus has been given to the study of young stars: both from an *environmental* perspective, as members of comoving star-forming regions, and from an *individual* perspective, as targets amenable to planet-hunting direct-imaging observations.
