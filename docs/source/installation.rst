@@ -6,19 +6,19 @@ Installation
 Install
 ------------
 
-As catalog queries are mediated by the `TAP Gaia Query <https://github.com/mfouesneau/tap>`_ package (``TAP``), this module needs being present in your working environment. If you are trying to import ``MADYS`` from the command line, the module is automatically installed if not found. However, **this does not work on Jupyter Notebook**: in this case, we suggest to manually install the package from pip, through the following command:
+As catalog queries are mediated by the `TAP Gaia Query <https://github.com/mfouesneau/tap>`_ package (``TAP``), this module needs being present in your working environment. If you are trying to import ``MADYS`` from the command line, the module is automatically installed if not found. However, **this does not work on Jupyter Notebook**; in this case, we suggest to manually install the package from pip, through the following command:
 
 .. code-block:: console
 
-   pip install git+https://github.com/mfouesneau/tap
+  (.venv) $ pip install git+https://github.com/mfouesneau/tap
    
 Please make sure **not** to write just `pip install tap`; this command would download **a different**, although eponymous, package. 
 
-Also notice that :py:func:`TAP` might require the installation of `lxml <https://lxml.de/>`_.
+Also notice that 
 
 .. note::
 
-   If an error is thrown during the upload of ``lxml``, cancel the ``lxml`` package from your working path and force pip to install the v4.6.3, whose compatibility with TAP has been extensively tested.
+   ``TAP`` requires the installation of `lxml <https://lxml.de/>`_. If an error is thrown during the import of ``lxml``, cancel the ``lxml`` package from your working path and force pip to install the version 4.6.3, whose compatibility with ``TAP`` has been extensively tested.
 
 After installing ``TAP``, the installation of ``MADYS`` can be smoothly performed through pip:
 
