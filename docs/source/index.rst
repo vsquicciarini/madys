@@ -7,7 +7,7 @@ In view of the large availability of theoretical evolutionary models, both field
 
 To this aim, we developed the Manifold Age Determination for Young Stars (**MADYS**, IPA: /ˈmɑːdɪs/), a flexible Python tool for the age and mass determination of young stellar and substellar objects based on isochronal fitting.
 
-Check out the :doc:`usage` section for further information, including how to perform the :ref:`installation` of the project.
+The tool can be installed by following the guidelines provided in the :doc:`installation` section. Check the section :doc:`usage` to understand the capabilities of the code through several easily replicable examples.
 
 Features
 --------
