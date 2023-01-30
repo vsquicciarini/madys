@@ -11,6 +11,6 @@ Version 0.4.1-beta
  * Fixed bug preventing overplotting of tracks upon isochrones in the function plot_isochrones().
  * Fixed bug impeding the correct handling of missing PANSTARRS filters.
 
-Version 0.3.1
+Version 0.3.1-beta
  * BEX models (Linder et al. 2019, Marleau et al. 2019) added to the list of available models.
  * Gaia DR3 now available! The new catalog replaces, for all intents and purposes, Gaia EDR3.
