@@ -50,8 +50,26 @@ Contents
 
 .. toctree::
    :maxdepth: 2
-   :caption: The Basics
+   :caption: Fundamentals
 
-   usage
-   api
-   instructions
+   instance_creation
+   catalog_queries
+   extinction_model
+   photometric_quality
+   
+.. toctree::
+   :maxdepth: 2
+   :caption: Parameter determination
+
+   computation_run
+   available_models
+   
+.. toctree::
+   :maxdepth: 2
+   :caption: Visualizing the results
+
+   plotting_functions
+   cmds
+   
+   
+   
