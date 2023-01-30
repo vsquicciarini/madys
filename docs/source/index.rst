@@ -59,7 +59,7 @@ Contents
    
 .. toctree::
    :maxdepth: 2
-   :caption: Parameter determination
+   :caption: Core functionalities
 
    computation_run
    available_models
