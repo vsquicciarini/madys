@@ -6,7 +6,7 @@ Installation
 Install
 ------------
 
-As catalog queries are mediated by the `TAP Gaia Query <https://github.com/mfouesneau/tap>`_ package (``TAP``), this module needs being present in your working environment. If you are trying to import ``MADYS`` from the command line, the module is automatically installed if not found. However, **this does not work on Jupyter Notebook**; in this case, we suggest to manually install the package from pip, through the following command:
+As catalog queries are mediated by the `TAP Gaia Query <https://github.com/mfouesneau/tap>`_ package (``TAP``), this module needs being present in your working environment. If you are trying to import ``MADYS`` from the command line, the module is automatically installed if not found. However, **this does not work on Jupyter Notebook**; in this case, we suggest to manually install the package via pip, through the following command:
 
 .. code-block:: console
 
@@ -27,30 +27,6 @@ After installing ``TAP``, the installation of ``MADYS`` can be smoothly performe
 Dependencies
 ----------------
 
-This package relies on usual packages for data science and astronomy: numpy (v1.18.1), scipy (v1.6.1), pandas (v1.1.4), matplotlib (v3.3.4), astropy (v4.3.1) and h5py (v3.2.1).
+This package relies on usual packages for data science and astronomy: numpy (v1.18.1), scipy (v1.6.1), pandas (v1.1.4), matplotlib (v3.3.4), astropy (v4.3.1) and h5py (v3.2.1). In addition, it also requires astroquery (v0.4.2.dev0) and tabulate (v0.8.9).
 
-In addition, it also requires astroquery (v0.4.2.dev0) and tabulate (v0.8.9).
-
-It also requires TAP Gaia Query (v0.1). The last package might require the installation of lxml (v4.6.3).
-
-
-
-
-
-To retrieve a list of random ingredients,
-you can use the :py:func:`lumache.get_random_ingredients` ``lumache.get_random_ingredients()`` function:
-
-.. autofunction:: lumache.get_random_ingredients
-
-The ``kind`` parameter should be either ``"meat"``, ``"fish"``,
-or ``"veggies"``. Otherwise, :py:func:`lumache.get_random_ingredients`
-will raise an exception.
-
-.. autoexception:: lumache.InvalidKindError
-
-For example:
-
->>> import lumache
->>> lumache.get_random_ingredients()
-['shells', 'gorgonzola', 'parsley']
-
+As mentioned above, two additional dependencies are represented by TAP Gaia Query (v0.1) and lxml (v4.6.3).
