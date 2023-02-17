@@ -16,6 +16,8 @@ Finally, several dedicated plotting functions are included to allow a visual per
 
 Latest news:
 ------------
+Feb 17, 2023 - Changed default queried catalog from Gaia DR2 to Gaia DR3 when providing a list of stars with non-Gaia identifiers (i.e., with 'id_type'='other').
+
 Jan 19, 2023 - Added the possibility to take into account uncertainties on E(B-V) values, which can now be provided at inizialization through a dedicated keyword 'ebv_err'.
 
 Aug 03, 2022 - Sloan Digital Sky Survey added to the list of automatically searchable surveys. Its filters are now available with the following models: PARSEC, MIST, AMES-Dusty, AMES-Cond, BT-Settl, NextGen.
