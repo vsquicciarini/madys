@@ -603,7 +603,7 @@ class ModelHandler(object):
         def_params = {'feh':0.00, 'afe': 0.00, 'v_vcrit': 0.00, 'fspot': 0.00, 'B':0, 'he':0.27}
         for key in def_params.keys():
             if key not in model_params: model_params[key]=def_params[key]
-        
+
         model_grid=model_version+''
         for i,k in enumerate(keys):
             if code[i]=='0': continue
@@ -2213,14 +2213,14 @@ class SampleObject(object):
                 found=False
                 res=Simbad.query_objectids(self.ID[i])
                 if type(res)==type(None):
-                    self.GaiaID[i]='Gaia DR2 0000'
+                    self.GaiaID[i]='Gaia DR3 0000'
                     continue
                 for rr in res:
-                    if str(rr[0]).startswith('Gaia DR2'):
+                    if str(rr[0]).startswith('Gaia DR3'):
                         self.GaiaID[i]=str(rr[0])
                         found=True
                         break
-                if found==False: self.GaiaID[i]='Gaia DR2 0000'
+                if found==False: self.GaiaID[i]='Gaia DR3 0000'
         self.GaiaID=Table({'ID':self.GaiaID})
 
     def _query_string(self,query_list,surveys=None):
@@ -2371,8 +2371,8 @@ class SampleObject(object):
         query_list=''
 
         if (type(key_name)==type(None)) & (type(id_list)==type(None)):
-            id_str = 'Gaia DR3 ' if self.__id_type=='DR3' else 'Gaia DR2 '
-            id_sea = 'dr3.source_id' if self.__id_type=='DR3' else 'dr2xmatch.dr2_source_id'
+            id_str = 'Gaia DR2 ' if self.__id_type=='DR2' else 'Gaia DR3 '
+            id_sea = 'dr2xmatch.dr2_source_id' if self.__id_type=='DR2' else 'dr3.source_id'
             if type(ind)==type(None): ind=len(self.GaiaID)
             if quote_mark:
                 if isinstance(ind,np.ndarray):
@@ -2393,8 +2393,8 @@ class SampleObject(object):
                         id=str(self.GaiaID[i]).split(id_str)[1]
                         query_list+=id_sea+' '+equality+' '+id+' OR '
         elif type(key_name)==type(None):
-            id_str = 'Gaia DR3 ' if self.__id_type=='DR3' else 'Gaia DR2 '
-            id_sea = 'dr3.source_id' if self.__id_type=='DR3' else 'dr2xmatch.dr2_source_id'
+            id_str = 'Gaia DR2 ' if self.__id_type=='DR2' else 'Gaia DR3 '
+            id_sea = 'dr2xmatch.dr2_source_id' if self.__id_type=='DR2' else 'dr3.source_id'
             if type(ind)==type(None): ind=len(id_list)
             if quote_mark:
                 if isinstance(ind,np.ndarray):
@@ -2561,24 +2561,7 @@ class SampleObject(object):
             ind=[]
             p_mask=[]
             t_mask=[]
-            if id_type=='DR3':
-                cols=['dr2_id', 'dr2_epoch', 'dr2_ra', 'dr2_dec', 'dr2_parallax', 'dr2_parallax_error', 'dr2_parallax_over_error', 'dr2_pmra', 'dr2_pmra_error', 'dr2_pmdec', 'dr2_pmdec_error', 'dr2_ra_dec_corr', 'dr2_ra_parallax_corr', 'dr2_ra_pmra_corr', 'dr2_ra_pmdec_corr', 'dr2_dec_parallax_corr', 'dr2_dec_pmra_corr', 'dr2_dec_pmdec_corr', 'dr2_parallax_pmra_corr', 'dr2_parallax_pmdec_corr', 'dr2_pmra_pmdec_corr', 'dr2_phot_g_mean_mag', 'dr2_phot_g_mean_flux', 'dr2_phot_g_mean_flux_error', 'dr2_phot_bp_mean_flux', 'dr2_phot_bp_mean_flux_error', 'dr2_phot_bp_mean_mag', 'dr2_phot_rp_mean_flux', 'dr2_phot_rp_mean_flux_error', 'dr2_phot_rp_mean_mag', 'dr2_bp_rp', 'dr2_phot_bp_rp_excess_factor', 'dr2_ruwe', 'dr2_astrometric_params_solved', 'radial_velocity', 'radial_velocity_error']
-                for i in range(n):
-                    id=str(self.GaiaID[index[i]]).split('Gaia DR3')[1]
-                    w,=np.where(id==gaia3_col)
-                    if len(w)==1:
-                        ind.extend(w)
-                        if gaia2_col[w]==' 0000': t['dr2_id'].mask[w]=True
-                    elif len(w)==0:
-                        ind.append(0)
-                        t_mask.append(i)
-                    else:
-                        w1,=np.where(id==gaia2_col[w])
-                        if len(w1)==1: ind.extend(w[w1])
-                        else:
-                            ind.append(0)
-                            p_mask.append(i)
-            else:
+            if id_type=='DR2':
                 cols=['dr3_id', 'ra', 'dec', 'dr3_epoch', 'dr3_parallax', 'dr3_parallax_error', 'dr3_parallax_over_error', 'dr3_pmra', 'dr3_pmra_error', 'dr3_pmdec', 'dr3_pmdec_error', 'dr3_ra_dec_corr', 'dr3_ra_parallax_corr', 'dr3_ra_pmra_corr', 'dr3_ra_pmdec_corr', 'dr3_dec_parallax_corr', 'dr3_dec_pmra_corr', 'dr3_dec_pmdec_corr', 'dr3_parallax_pmra_corr', 'dr3_parallax_pmdec_corr', 'dr3_pmra_pmdec_corr', 'dr3_phot_g_mean_mag', 'dr3_phot_g_mean_flux', 'dr3_phot_g_mean_flux_error', 'dr3_phot_bp_mean_flux', 'dr3_phot_bp_mean_flux_error', 'dr3_phot_bp_mean_mag', 'dr3_phot_rp_mean_flux', 'dr3_phot_rp_mean_flux_error', 'dr3_phot_rp_mean_mag', 'dr3_bp_rp', 'dr3_phot_bp_rp_excess_factor', 'dr3_ruwe', 'dr3_astrometric_params_solved']
                 for i in range(n):
                     id=str(self.GaiaID[index[i]]).split('Gaia DR2')[1]
@@ -2591,6 +2574,23 @@ class SampleObject(object):
                         t_mask.append(i)
                     else:
                         w1,=np.where(id==gaia3_col[w])
+                        if len(w1)==1: ind.extend(w[w1])
+                        else:
+                            ind.append(0)
+                            p_mask.append(i)
+            else:
+                cols=['dr2_id', 'dr2_epoch', 'dr2_ra', 'dr2_dec', 'dr2_parallax', 'dr2_parallax_error', 'dr2_parallax_over_error', 'dr2_pmra', 'dr2_pmra_error', 'dr2_pmdec', 'dr2_pmdec_error', 'dr2_ra_dec_corr', 'dr2_ra_parallax_corr', 'dr2_ra_pmra_corr', 'dr2_ra_pmdec_corr', 'dr2_dec_parallax_corr', 'dr2_dec_pmra_corr', 'dr2_dec_pmdec_corr', 'dr2_parallax_pmra_corr', 'dr2_parallax_pmdec_corr', 'dr2_pmra_pmdec_corr', 'dr2_phot_g_mean_mag', 'dr2_phot_g_mean_flux', 'dr2_phot_g_mean_flux_error', 'dr2_phot_bp_mean_flux', 'dr2_phot_bp_mean_flux_error', 'dr2_phot_bp_mean_mag', 'dr2_phot_rp_mean_flux', 'dr2_phot_rp_mean_flux_error', 'dr2_phot_rp_mean_mag', 'dr2_bp_rp', 'dr2_phot_bp_rp_excess_factor', 'dr2_ruwe', 'dr2_astrometric_params_solved', 'radial_velocity', 'radial_velocity_error']
+                for i in range(n):
+                    id=str(self.GaiaID[index[i]]).split('Gaia DR3')[1]
+                    w,=np.where(id==gaia3_col)
+                    if len(w)==1:
+                        ind.extend(w)
+                        if gaia2_col[w]==' 0000': t['dr2_id'].mask[w]=True
+                    elif len(w)==0:
+                        ind.append(0)
+                        t_mask.append(i)
+                    else:
+                        w1,=np.where(id==gaia2_col[w])
                         if len(w1)==1: ind.extend(w[w1])
                         else:
                             ind.append(0)
@@ -2636,12 +2636,12 @@ class SampleObject(object):
 
                 w1,=np.where(t1['tmass_key'].mask==False)
 
-                if self.__id_type=='DR3':
-                    id_res=np.array(t1['dr3_id'][w1])
-                    l=np.array(t['dr3_id'][w])
-                else:
+                if self.__id_type=='DR2':
                     id_res=np.array(t1['dr2_id'][w1])
                     l=np.array(t['dr2_id'][w])
+                else:
+                    id_res=np.array(t1['dr3_id'][w1])
+                    l=np.array(t['dr3_id'][w])
 
                 __, i1, i2 = np.intersect1d(id_res,l,return_indices=True)
 
@@ -2711,15 +2711,15 @@ class SampleObject(object):
                 __, i5, i6 = SampleObject._intersect1d_rep1(cntr_old,cntr_res)
 
                 try:
-                    if self.__id_type=='EDR3':
-                        dd=3600*SampleObject.ang_dist(t['ra'][w[i2[i5]]].value-(t['edr3_epoch'][w[i2[i5]]].value-2000)*t['edr3_pmra'][w[i2[i5]]].value/3.6e+6,t['dec'][w[i2[i5]]].value-(t['edr3_epoch'][w[i2[i5]]].value-2000)*t['edr3_pmdec'][w[i2[i5]]].value/3.6e+6,res['RAJ2000'][i6].value,res['DEJ2000'][i6].value)
-                    else:
+                    if self.__id_type=='DR2':
                         dd=3600*SampleObject.ang_dist(t['dr2_ra'][w[i2[i5]]].value-(t['dr2_epoch'][w[i2[i5]]].value-2000)*t['dr2_pmra'][w[i2[i5]]].value/3.6e+6,t['dr2_dec'][w[i2[i5]]].value-(t['dr2_epoch'][w[i2[i5]]].value-2000)*t['dr2_pmdec'][w[i2[i5]]].value/3.6e+6,res['RAJ2000'][i6].value,res['DEJ2000'][i6].value)
-                except AttributeError:
-                    if self.__id_type=='EDR3':
-                        dd=3600*SampleObject.ang_dist(t['ra'][w[i2[i5]]]-(t['edr3_epoch'][w[i2[i5]]]-2000)*t['edr3_pmra'][w[i2[i5]]]/3.6e+6,t['dec'][w[i2[i5]]]-(t['edr3_epoch'][w[i2[i5]]]-2000)*t['edr3_pmdec'][w[i2[i5]]]/3.6e+6,res['RAJ2000'][i6],res['DEJ2000'][i6])
                     else:
+                        dd=3600*SampleObject.ang_dist(t['ra'][w[i2[i5]]].value-(t['dr3_epoch'][w[i2[i5]]].value-2000)*t['dr3_pmra'][w[i2[i5]]].value/3.6e+6,t['dec'][w[i2[i5]]].value-(t['dr3_epoch'][w[i2[i5]]].value-2000)*t['dr3_pmdec'][w[i2[i5]]].value/3.6e+6,res['RAJ2000'][i6].value,res['DEJ2000'][i6].value)
+                except AttributeError:
+                    if self.__id_type=='DR2':
                         dd=3600*SampleObject.ang_dist(t['dr2_ra'][w[i2[i5]]]-(t['dr2_epoch'][w[i2[i5]]]-2000)*t['dr2_pmra'][w[i2[i5]]]/3.6e+6,t['dr2_dec'][w[i2[i5]]]-(t['dr2_epoch'][w[i2[i5]]]-2000)*t['dr2_pmdec'][w[i2[i5]]]/3.6e+6,res['RAJ2000'][i6],res['DEJ2000'][i6])
+                    else:
+                        dd=3600*SampleObject.ang_dist(t['ra'][w[i2[i5]]]-(t['dr3_epoch'][w[i2[i5]]]-2000)*t['dr3_pmra'][w[i2[i5]]]/3.6e+6,t['dec'][w[i2[i5]]]-(t['dr3_epoch'][w[i2[i5]]]-2000)*t['dr3_pmdec'][w[i2[i5]]]/3.6e+6,res['RAJ2000'][i6],res['DEJ2000'][i6])
 
                 w_ncm,=np.where(dd>0.7)
 
@@ -3678,7 +3678,7 @@ class SampleObject(object):
         
         p=np.array(['feh','he','afe','v_vcrit','fspot','B'])
         k=np.sum([i in kwargs for i in p])
-        
+
         skip=False
         if k>0:
             cust=np.zeros(6)
@@ -3691,7 +3691,7 @@ class SampleObject(object):
             if np.sum(cust)<0.1: skip=True
         else:
             skip=True
-            
+
         if skip:
             dic={}
             for kw in p:
@@ -3707,7 +3707,7 @@ class SampleObject(object):
                 sol1 = ModelHandler._version_to_grid(model_version,model_params1)
                 model_params.append(model_params1)
 
-        ModelHandler._find_model_grid(model_version,model_params)                
+        ModelHandler._find_model_grid(model_version,model_params)        
         
         try:
             model_p=ModelHandler._available_parameters(model_version)
@@ -3738,7 +3738,7 @@ class SampleObject(object):
 
             if len(comb_u)==1:
                 for i in w:
-                    kwargs[p[i]]=comb_u[0][i]
+                    kwargs[p[i]]=comb_u[i]
                 res=self._get_agemass(model_version,**kwargs)
             else:
                 for j in range(len(comb_u)):
