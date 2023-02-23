@@ -33,8 +33,7 @@ As an example, we provide here information about two planets in the direct-image
 .. code-block:: console
 
    J, dJ, H, dH, K, dK = 5.383, 0.027, 5.280, 0.018, 5.240, 0.018 #2MASS magnitude and uncertainties for the primary star
-   par, par_err = 24.4620, 0.0455 #Gaia EDR3 parallax
-   age_old=[45,30,60] #[age optimal, age min, age max]
+   par, par_err = 24.4620, 0.0455 #Gaia DR3 parallax
 
    # creates a Table with all photometric data. Contrasts from Zurlo et al. (2016)
    dic = {'object_name': ['HR 8799 b','HR 8799 c'],
@@ -56,7 +55,7 @@ As an example, we provide here information about two planets in the direct-image
    hr8799_obj=madys.SampleObject(input_data,ext_map='leike')
 
 
-In both cases, all the information related to the instance can be accessed through the instance attribute 'phot_table'.
+In both cases, all the information related to the instance can be accessed through the instance attribute ``'phot_table'``.
 
 Customizable options
 ------------
