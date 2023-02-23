@@ -1,7 +1,7 @@
 Instance creation
 =====
 
-``SampleObject`` is the class dedicated to catalog queries, computation of extinctions, and parameter estimation.
+``SampleObject`` is the class dedicated to catalog queries, computation of extinctions, and parameter estimation. It is here that our (sub)stellar sample of interest and its properties are defined and stored. Virtually any amount of objects (1 to ~10^5) can be provided with a single command, allowing for a wide variety of scientific applications.
 
 A ``SampleObject`` instance can be initialized in two different ways:
 
