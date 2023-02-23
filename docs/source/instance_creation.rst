@@ -1,16 +1,33 @@
 Instance creation
 =====
 
-aInstallation
+``SampleObject`` is the class dedicated to catalog queries, computation of extinctions, and parameter estimation.
+
+A ``SampleObject instance can be initialized in different ways (see below).
+
+Two inizialization modes exist:
+
+* mode 1: starting from object names, it searchs for relevant information in all-sky catalogs;
+* mode 2: completely determined by the data given as input.
+
+From object names
 ------------
 
-To use Lumache, first install it using pip:
+A valid input for mode 1 is, for instance, a .csv file. A column with IDs (labeled as 'source_id', 'id', 'ID' or 'object_name') must be present.
+
+The keyword ext_map selects the extinction map to be used to compute the integrated color excess E(B-V) for any object in the sample. Alternatively, a numpy array of E(B-V) with same size as the number of objects can be given via the keyword 'ebv'.
+
+verbose=0 means that no output file is desired.
+
+Output data are stored in an astropy table, accessible through the instance attribute 'phot_table'.
 
 .. code-block:: console
 
-   (.venv) $ pip install lumache
+   f='1000stars.csv' #1000 random stars
+   p1=madys.SampleObject(f,id_type='DR3',ext_map='leike',verbose=0) #collects data 
+   p1.phot_table
 
-bCreating recipes
+From custom data
 ----------------
 
 To retrieve a list of random ingredients,
