@@ -73,20 +73,22 @@ A list of valid keywords that can be provided at inizialization can be found bel
 * surveys (1): list, optional. List of surveys where to extract photometric data from. Default: ['gaia','2mass'].
 * id_type (1): string, required. Type of IDs provided: must be one among 'DR2','DR3' or 'other'.
 * get_phot (1): bool or string, optional. Set to:
-   - True: to query the provided IDs;
-   - False: to recover photometric data from a previous execution; the filename and path must match the default one (see documentation).
-   - string: full path of the file to load photometric data from. The file should come from a previous execution.
+
+  - True: to query the provided IDs;
+  - False: to recover photometric data from a previous execution; the filename and path must match the default one (see documentation).
+  - string: full path of the file to load photometric data from. The file should come from a previous execution.
    Default: True.
 * simbad_query (1): bool, optional. Set to True to query objects without a 2MASS cross-match in SIMBAD. It can significantly slow down data queries. Default: True if n<100, False otherwise.
 * ebv: float or numpy array, optional. If set, uses the i-th element of the array as E(B-V) for the i-th star. Default: not set, computes E(B-V) through the map instead.
 * max_tmass_q (1): worst 2MASS photometric flag ('ph_qual') still considered reliable. Possible values, ordered by decreasing quality: 'A','B','C','D','E','F','U','X'. For a given choice, excludes all measurements with a lower quality flag. Default: 'A'.
 * max_wise_q (1): worst ALLWISE photometric flag ('ph_qual2') still considered reliable. Possible values, ordered by decreasing quality: 'A','B','C','U','Z','X'. For a given choice, excludes all measurements with a lower quality flag. Default: 'A'.
 * verbose: int, optional. Degree of verbosity of the various tasks performed by MADYS. It can be:
-   - 0: no file is saved, nothing is printed on the screen;
-   - 1: a .csv file with retrieved information is saved (1), few info are printed on the screen;
-   - 2: in addition to the output of 1, a log file is created;
-   - 3: in addition to the output of 2, .txt files are created when executing SampleObject.get_params().
-   Default: 2. However, if file is a list or a table and mock_file is not set, it is forcingly set to 0.
+  
+  - 0: no file is saved, nothing is printed on the screen;
+  - 1: a .csv file with retrieved information is saved (1), few info are printed on the screen;
+  - 2: in addition to the output of 1, a log file is created;
+  - 3: in addition to the output of 2, .txt files are created when executing SampleObject.get_params().
+  Default: 2. However, if file is a list or a table and mock_file is not set, it is forcingly set to 0.
 
 
 Attributes
@@ -97,11 +99,11 @@ Here the attributes of a ``SampleObject`` instance.
 * file: string. Corresponding to either file (1) or mock_file (2).
 * path: string. Working path, where all inputs and outputs are present.
 * log_file: string. Name of the log_file. Open it for details on the process outcome.
-* phot_table (1): astropy Table. Contains all retrieved data.
+* phot_table: astropy Table. Contains all retrieved data.
 * abs_phot: numpy array. Absolute magnitudes in the required filters.
 * abs_phot_err: numpy array. Errors on absolute magnitudes in the required filters.
-* par (1): numpy array. Parallaxes of the objects.
-* par_err (1): numpy array. Errors on parallaxes.
+* par: numpy array. Parallaxes of the objects.
+* par_err: numpy array. Errors on parallaxes.
 * filters: list. Set of filters, given either by filters of Gaia DR2+DR3 + 2MASS (1) or by column names (2).
 * surveys: list. Surveys used to extract photometric data.
 * mode: int. The execution mode.
