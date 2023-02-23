@@ -64,6 +64,7 @@ Customizable options
 A list of valid keywords that can be provided at inizialization can be found below. Here 1 stands for "only for mode 1", 2 for "only for mode 2".
 
 * file (1): string or list, required. It can be either:
+
    - a string, giving the full path of the file containing target names;
    - a list of IDs. Gaia IDs must begin by 'Gaia DR2 ' or 'Gaia DR3'.
    - file (2): astropy Table, required. Table containing target names and photometric data. See documentation for examples of valid inputs.
