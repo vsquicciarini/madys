@@ -52,6 +52,7 @@ Contents
    :maxdepth: 2
    :caption: Fundamentals
 
+   available_classes
    instance_creation
    catalog_queries
    extinction_model
