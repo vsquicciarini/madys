@@ -64,18 +64,18 @@ Customizable options
 A list of valid keywords that can be provided at inizialization can be found below. Here 1 stands for "only for mode 1", 2 for "only for mode 2".
 
 * file (1): string or list, required. It can be either:
-
    - a string, giving the full path of the file containing target names;
    - a list of IDs. Gaia IDs must begin by 'Gaia DR2 ' or 'Gaia DR3'.
    - file (2): astropy Table, required. Table containing target names and photometric data. See documentation for examples of valid inputs.
+
 * ext_map: string, required. Extinction map used. Select one among 'leike', 'stilism' and None.
 * mock_file: string, optional. Only used if file is a list or a table. Full path of a fictitious file, used to extract the working path and to name the outputs after it. If not set and verbose>=1, verbose changes to 0.
 * surveys (1): list, optional. List of surveys where to extract photometric data from. Default: ['gaia','2mass'].
 * id_type (1): string, required. Type of IDs provided: must be one among 'DR2','DR3' or 'other'.
 * get_phot (1): bool or string, optional. Set to:
-   -True: to query the provided IDs;
-   -False: to recover photometric data from a previous execution; the filename and path must match the default one (see documentation).
-   -string: full path of the file to load photometric data from. The file should come from a previous execution.
+   - True: to query the provided IDs;
+   - False: to recover photometric data from a previous execution; the filename and path must match the default one (see documentation).
+   - string: full path of the file to load photometric data from. The file should come from a previous execution.
    Default: True.
 * simbad_query (1): bool, optional. Set to True to query objects without a 2MASS cross-match in SIMBAD. It can significantly slow down data queries. Default: True if n<100, False otherwise.
 * ebv: float or numpy array, optional. If set, uses the i-th element of the array as E(B-V) for the i-th star. Default: not set, computes E(B-V) through the map instead.
