@@ -15,7 +15,9 @@ A valid input for mode 1 is, for instance, a .csv file. A column with IDs (named
 
 The keyword ``ext_map`` selects the extinction map to be used to compute the integrated color excess E(B-V) for any object in the sample (see HERE). Alternatively, a numpy array of E(B-V) with same size as the number of objects can be given via the keyword ``'ebv'``.
 
-.. code-block:: console
+A minimal working example is given by:
+
+.. code-block:: python
 
    f='1000stars.csv' #1000 random stars
    p1=madys.SampleObject(f,id_type='DR3',ext_map='leike') 
