@@ -74,6 +74,7 @@ A list of valid keywords that can be provided at inizialization can be found bel
   - True: to query the provided IDs;
   - False: to recover photometric data from a previous execution; the filename and path must match the default one (see documentation).
   - string: full path of the file to load photometric data from. The file should come from a previous execution.
+  
    Default: True.
 * ``simbad_query`` (1): bool, optional. Set to True to query objects without a 2MASS cross-match in SIMBAD. It can significantly slow down data queries. Default: True if n<100, False otherwise.
 * ``ebv``: float or numpy array, optional. If set, uses the i-th element of the array as E(B-V) for the i-th star. Default: not set, computes E(B-V) through the map instead.
