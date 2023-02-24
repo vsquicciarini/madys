@@ -8,10 +8,23 @@ A ``SampleObject`` instance can be initialized in two different ways:
 * mode 1: starting from object names, MADYS searchs for relevant information in all-sky catalogs;
 * mode 2: the instance is completely determined by the data given as input.
 
+In both cases, all the information related to the instance can be accessed through the instance attribute ``'phot_table'``.
+
 From object names
 ------------
 
 A valid input for mode 1 is, for instance, a .csv file. In this case, a column with IDs (named ``'source_id'``, ``'id'``, ``'ID'`` or ``'object_name'``) must be present. The type of IDs must be specified through the keyword ``id_type``. Possible values are ``'DR3'`` (if **all** the identifiers are taken from Gaia DR3), ``'DR2'`` (if **all** the identifiers are taken from Gaia DR2), or ``'other'`` (if **at least one** identifier refers to a different catalog, or if Gaia DR2 and Gaia DR3 identifiers are intermixed).
+
+By default, ``MADYS`` cross-matches information from `Gaia DR2 <https://ui.adsabs.harvard.edu/#abs/2018A%26A...616A...1G/abstract>`_, `Gaia DR3 <https://ui.adsabs.harvard.edu/#abs/2022arXiv220800211G/abstract>`_ and `2MASS <https://ui.adsabs.harvard.edu/abs/2006AJ....131.1163S/abstract>`_. It is possible to specify a different set of catalogs through the keyword ``surveys``, provided that the additional entries belong to the following:
+
+* ALLWISE (`Cutri et al. 2021 <https://ui.adsabs.harvard.edu/abs/2014yCat.2328....0C/abstract>`_);
+* Panstarrs DR1 (`Chambers et al. 2016 <https://ui.adsabs.harvard.edu/abs/2016arXiv161205560C/abstract>`_);
+* APASS DR9 (`Henden et al. 2016 <https://ui.adsabs.harvard.edu/abs/2016yCat.2336....0H/abstract>`_);
+* SDSS DR13 (`Albareti et al. 2017 <https://ui.adsabs.harvard.edu/abs/2017ApJS..233...25A/abstract>`_).
+
+.. note::
+
+   If you wish to add a catalog to the query to use it for parameter determination, please ensure beforehand that its filters are available in the theoretical model of interest (LINK HERE TO HOW TO CHECK IF A FILTER IS AVAILABLE FOR A MODEL).
 
 The keyword ``ext_map`` selects the extinction map to be used to compute the integrated color excess E(B-V) for any object in the sample (see HERE). Alternatively, a numpy array of E(B-V) with same size as the number of objects can be given via the keyword ``'ebv'``.
 
@@ -52,8 +65,6 @@ Using a real-life example, we provide here information about two planets in the 
    input_data=Table(dic)
 
    example_object=madys.SampleObject(input_data,ext_map='leike')
-
-In both cases, all the information related to the instance can be accessed through the instance attribute ``'phot_table'``.
 
 Customizable options
 ------------
