@@ -67,7 +67,7 @@ A list of valid keywords that can be provided at inizialization can be found bel
 * ``file`` (2): astropy Table, required. Table containing target names and photometric data.
 * ``id_type`` (1): string, required. Type of IDs provided: must be one among ``'DR2'``, ``'DR3'`` or ``'other'``.
 * ``ext_map``: string, required. Extinction map used. Possible values: ``'leike'``, ``'stilism'``, ``None`` (=no map is used).
-* ``mock_file``: string, optional. Only used if ``file`` is a list or a table. Full path of a fictitious file, used to extract the working path and to name the outputs after it. If not set and ``verbose``:math:`\geq 1`, ``verbose`` is automatically changed to 0.
+* ``mock_file``: string, optional. Only used if ``file`` is a list or a table. Full path of a fictitious file, used to extract the working path and to name the outputs after it. If not set and ``verbose``:math:`\ge 1`, ``verbose`` is automatically changed to 0.
 * ``surveys`` (1): list, optional. List of surveys whence photometric data is retrieved. Default: ``['gaia','2mass']``.
 * ``get_phot`` (1): bool or string, optional. Set to:
 
