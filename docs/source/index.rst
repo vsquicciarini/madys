@@ -54,7 +54,6 @@ Contents
 
    available_classes
    instance_creation
-   catalog_queries
    extinction_model
    photometric_quality
    
