@@ -96,7 +96,7 @@ Here we list the attributes of a ``SampleObject`` instance.
 
 * ``file``: string. Corresponding to either ``file`` (1) or ``mock_file`` (2).
 * ``path``: string. Working path, where all inputs and outputs can be found.
-* ``log_file``: string. Name of the log_file (if ``verbose`` `\geq 2`). Open the file for details on the process.
+* ``log_file``: string. Name of the log_file (if ``verbose`` `\ge 2`). Open the file for details on the process.
 * ``phot_table``: astropy Table. Contains all the information related to the instance.
 * ``abs_phot``: numpy array. Absolute magnitudes in the filters of interest.
 * ``abs_phot_err``: numpy array. Errors on absolute magnitudes in the filters of interest.
