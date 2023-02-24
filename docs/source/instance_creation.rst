@@ -32,7 +32,7 @@ An astropy table must be given as input, with column names corresponding to vali
 
 As an example, we provide here information about two planets in the direct-imaged HR8799 system:
 
-.. code-block:: console
+.. code-block:: python3
 
    J, dJ, H, dH, K, dK = 5.383, 0.027, 5.280, 0.018, 5.240, 0.018 #2MASS magnitude and uncertainties for the primary star
    par, par_err = 24.4620, 0.0455 #Gaia DR3 parallax
