@@ -34,8 +34,8 @@ No parameter is strictly required, but at one between ``'ra'`` and ``'l'``, one 
 
 Two extinction maps can be currently selected:
 
-– the STILISM 3D extinction map by `Lallement et al. (2019) <https://ui.adsabs.harvard.edu/abs/2019A%26A...625A.135L/abstract>`_: a Sun-centered (6000x6000x800) pc grid, with step equal to 5 pc;
-– the Galactic extinction catalog by `Leike et al. (2020) <https://ui.adsabs.harvard.edu/abs/2020A%26A...639A.138L/abstract>`_: a Sun-centered (740x740x540) pc grid with step equal to 1 pc.
+* the STILISM 3D extinction map by `Lallement et al. (2019) <https://ui.adsabs.harvard.edu/abs/2019A%26A...625A.135L/abstract>`_: a Sun-centered (6000x6000x800) pc grid, with step equal to 5 pc;
+* the Galactic extinction catalog by `Leike et al. (2020) <https://ui.adsabs.harvard.edu/abs/2020A%26A...639A.138L/abstract>`_: a Sun-centered (740x740x540) pc grid with step equal to 1 pc.
 
 The limitations of our approach for extinction determination are thoroughly discussed in our paper. In order to allow for greater flexibility while retaining the general operating scheme, two alternatives have been implemented:
 
@@ -47,6 +47,8 @@ The limitations of our approach for extinction determination are thoroughly disc
    example_object=madys.SampleObject(file,id_type='DR3',ext_map=None) 
 
 * the possibility to provide, as an argument of the ``ebv`` keyword, a numpy array ``ebv_vector`` containing as many E(B-V) values as the amount of input stars:
+
+.. code-block:: python
 
    file='1000stars.csv' #1000 random stars
    example_object=madys.SampleObject(file,id_type='DR3',ext_map=None,ebv=ebv_vector) 
