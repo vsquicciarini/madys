@@ -1,5 +1,5 @@
-Extinction model
-===
+Interstellar extinction
+====
 
 Extinction maps
 ------------
