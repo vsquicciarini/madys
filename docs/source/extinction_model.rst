@@ -74,4 +74,4 @@ whenever possible, or computed through Eq. 3 adopting as λ the
 mean wavelength indicated by the SVO Filter Profile Service
 (Rodrigo et al. 2012; Rodrigo & Solano 2020).
 
-<img src="ext_law.png" alt="Adopted extinction law.">
+.. image:: images/ext_law.png
