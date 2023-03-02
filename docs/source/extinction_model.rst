@@ -28,8 +28,8 @@ where ``'X'`` is any valid photometric filter or color (SEE HERE). Valid keyword
 
 No parameter is strictly required, but at one between ``'ra'`` and ``'l'``, one between ``'dec'`` and ``'b'``, one between ``'par'`` and ``'d'`` must be supplied. The outputs of the methods can be either:
 
-* a single float or numpy array, corresponding to the best estimate of reddening/extinction for the star(s), if ``error``==False`;
-* two floats or numpy arrays, corresponding to the same estimate(s) + associated uncertainties, if ``error``==True.
+* a single float or numpy array, corresponding to the best estimate of reddening/extinction for the star(s), if ``error`` is False;
+* two floats or numpy arrays, corresponding to the same estimate(s) + associated uncertainties, if ``error`` is True.
 
 Two extinction maps can be currently selected:
 
