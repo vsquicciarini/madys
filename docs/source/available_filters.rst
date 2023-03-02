@@ -29,14 +29,14 @@ Please notice the case-sensitive spelling.
 
    In order for a filter to be employed for parameter determination, it has to be supported by the model of interest. Please check it beforehand.
 
-.. list-table:: Weather forecast
+.. list-table:: Available filters
    :header-rows: 1
    :widths: 7 7 7 7 60 40 80
    :stub-columns: 1
 
    *  -  Filter
       -  Survey
-      -  Mean wvl (MICRON)
+      -  Mean wvl (µm)
       -  Abs. coeff.
       -  Description
       -  Reference
