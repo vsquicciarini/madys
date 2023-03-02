@@ -15,6 +15,7 @@ while information on a specific filter X can be returned by calling the same fun
    madys.info_filters('J')
 
 .. code-block::
+
   Quantity name: 'J'
   Description: 2MASS J-band filter
   Reference: Skrutskie et al., AJ 131, 1163 (2006)
