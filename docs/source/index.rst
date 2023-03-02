@@ -56,17 +56,18 @@ Contents
    instance_creation
    extinction_model
    photometric_quality
+   available_filters
    
 .. toctree::
    :maxdepth: 2
-   :caption: Core functionalities
+   :caption: Using MADYS
 
    computation_run
    available_models
    
 .. toctree::
    :maxdepth: 2
-   :caption: Visualizing the results
+   :caption: Plotting utilities
 
    plotting_functions
    cmds
