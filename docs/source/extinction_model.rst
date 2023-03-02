@@ -28,8 +28,8 @@ where ``'X'`` is any valid photometric filter or color (SEE HERE). Valid keyword
 
 No parameter is strictly required, but at one between ``'ra'`` and ``'l'``, one between ``'dec'`` and ``'b'``, one between ``'par'`` and ``'d'`` must be supplied. The outputs of the methods can be either:
 
-* a single float or numpy array, corresponding to the best estimate of reddening/extinction for the star(s), if ``error`` is False;
-* two floats or numpy arrays, corresponding to the same estimate(s) + associated uncertainties, if ``error`` is True.
+* a single float or numpy array, corresponding to the best estimate of reddening/extinction for the star(s), if ``error``==False`;
+* two floats or numpy arrays, corresponding to the same estimate(s) + associated uncertainties, if ``error``==True.
 
 Two extinction maps can be currently selected:
 
@@ -61,11 +61,10 @@ Given the limitations of our approach for extinction determination (see `our pap
    
 
 Extinction law
-------------  
+------------
 
-The conversion between extinction and reddening is mediated by a total-to-selective absorption ratio R = 3.16 (Wang & Chen 2019). The extinction law is obtained by combining the
-extinction law by Wang & Chen (2019) in the range [0:3; 2] µm and the diffuse average extinction by Gordon et al. (2021) in the range [6:5; 40] µm; a linear combination of the two is used in the intermediate range [2; 6:5] µm (see `our paper <https://ui.adsabs.harvard.edu/abs/2022A%26A...666A..15S/abstract>`_ for details).
+The conversion between extinction and reddening is mediated by a total-to-selective absorption ratio R = 3.16 (`Wang & Chen 2019 <https://ui.adsabs.harvard.edu/abs/2019ApJ...877..116W/abstract>`_). We obtained a new extinction law (shown below) by combining the extinction law by `Wang & Chen (2019) <https://ui.adsabs.harvard.edu/abs/2019ApJ...877..116W/abstract>`_ in the range [0.3; 2.0] µm and the diffuse average extinction by `Gordon et al. (2021) <https://ui.adsabs.harvard.edu/abs/2021ApJ...916...33G/abstract>`_  in the range [6.5; 40.0] µm; a linear combination of the two is used in the intermediate range [2.0; 6.5] µm (see `our paper <https://ui.adsabs.harvard.edu/abs/2022A%26A...666A..15S/abstract>`_ for details).
 
 .. image:: images/ext_law.png
 
-The adopted extinction law goes farther in the mid-infrared than most commonly used parametrizations, delving into interesting wavelength ranges that are amenable to JWST observations.
+The adopted extinction law goes farther in the mid-infrared than most commonly used parametrizations, delving into wavelength ranges of great scientific interest and now under the scrutiny of the James Webb Space Telescope.
