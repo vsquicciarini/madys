@@ -8,10 +8,11 @@ In ``MADYS``, particular attention is devoted to ensuring that only reliable pho
 
 For 2MASS and AllWISE, only sources with photometric flag ``ph_qual == 'A'`` are kept. If needed, a different value for the worst quality flag still considered reliable can be selected via the dedicated keywords ``max_tmass_q`` and ``max_wise_q``. From the documentation:
 
-   .. container:: myclass
 
-      * ``max_tmass_q`` (1): worst 2MASS photometric flag still considered reliable. Possible values, ordered by decreasing quality: 'A', 'B', 'C', 'D', 'E', 'F', 'U', 'X'. For a given choice, excludes all measurements with a lower quality flag. Default: 'A'.
-      * ``max_wise_q`` (1): worst ALLWISE photometric flag still considered reliable. Possible values, ordered by decreasing quality: 'A', 'B', 'C', 'U', 'Z', 'X'. For a given choice, excludes all measurements with a lower quality flag. Default: 'A'.
+::
+
+   * ``max_tmass_q`` (1): worst 2MASS photometric flag still considered reliable. Possible values, ordered by decreasing quality: 'A', 'B', 'C', 'D', 'E', 'F', 'U', 'X'. For a given choice, excludes all measurements with a lower quality flag. Default: 'A'.
+   * ``max_wise_q`` (1): worst ALLWISE photometric flag still considered reliable. Possible values, ordered by decreasing quality: 'A', 'B', 'C', 'U', 'Z', 'X'. For a given choice, excludes all measurements with a lower quality flag. Default: 'A'.
 
 
 
