@@ -31,7 +31,7 @@ Please notice the case-sensitive spelling.
 
 .. list-table:: Weather forecast
    :header-rows: 1
-   :widths: 7 7 7 7 60 20 60
+   :widths: 7 7 7 7 60 40 80
    :stub-columns: 1
 
    *  -  Filter
