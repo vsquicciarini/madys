@@ -12,7 +12,7 @@ In stand-alone mode, the X-band extinction towards a list of stars would be comp
 
 .. code-block:: python
 
-   result = SampleObject.interstellar_ext(ra=ra_array,dec=dec_array,par=parallax_array,ext_map='leike',color='X'):
+   result = SampleObject.interstellar_ext(ra=ra_array,dec=dec_array,par=parallax_array,ext_map='leike',color='X')
 
 where ``'X'`` is any valid photometric filter or color (SEE HERE). Valid keywords for this method are the following:
 
