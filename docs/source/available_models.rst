@@ -4,61 +4,77 @@ Available models
 Nomenclature
 ------------
 
-In its attempt to organize the jungle of evolutionary models published in the recent literature, MADYS establishes a taxonomical classification of models based on four levels of hierarchy. 
+In its attempt to organize the jungle of evolutionary models published in the recent literature, MADYS establishes a taxonomical classification of models based on four levels of hierarchy: 
 
-The first level is the **family** of models ( ∼
-  the same team behind). The second corresponds to a suite of models (those found in papers;  ∼
-  fixed input physics). The third is the version of the model, which might come in different flavours with varying boundary conditions. The fourth is the specific grid, defined by values of astrophysical parameters (e.g. metallicity). The last one corresponds to the file name.
+* the model family (L1), which can be thought as a container of all the models developed by a certain working team;
+* the model suite (L2), that should be characterized by a well-defined set of physical assumptions, equations, atmospheric and evolutionary codes; in general, a suite of model is described by one or more publications;
+* the model version (L3). The model suite can be distributed under different flavours, characterized by e.g. varying boundary conditions, treatments of dust, and "minor" differences;
+* the model grid (L4), that adds to the previous one the specification of up to six input parameters (metallicity, helium fraction, rotational velocity, alpha enhancement, fraction of stellar surface covered by star spots, and magnetic field.
 
-So, I have:
-
-L1 = model_family = "family" L2 = model_suite = "suite" L3 = model_version = "version" L4 = model_grid = "grid"
-
+For example
 Example:
 
-model_family: ATMO
-model_suite: ATMO2020
-model_version: ATMO2020-ceq
-model_grid: ATMO2020-ceq_p0.00
-For each of these levels, I want to define useful functions:
+.. code-block::
 
-model_family: which names, versions and grids belong to the family? --> available()
-model_suite: what is the age range, mass range and the list of filters for models in the suite? What are the customizable parameters? What are the available versions?
-model_version: same as above, apart from the last one ("available grids?"). Same functions should work with both;
-model_grid: what is the full path to the file? How can I extract data?
-Then, I need some functions to go from one level to another. Family does not need such a function, because it is never called explicitly (apart from the "available" function, which just lists its sublevels). Beware that the folders containing the models are named after families.
+  L1 = model_family: ATMO (ERC-ATMO @ University of Exeter)
+  L2 = model_suite: ATMO2020 (suite published in Phillips et al. 2020)
+  L3 = model_version: ATMO2020-ceq (version assuming chemical equilibrium)
+  L4 = model_grid: ATMO2020-ceq_p0.00 (solar metallicity)
 
-Suites are never called by the user.
+The class ``ModelHandler`` is meant to handle the model database of MADYS and to assist the user in:
 
-model_version -> model_grid is performed by version_to_grid (old name: _grid_from_parameters), which takes as additional input a dictionary of parameters which uniquely determines the grid.
+* understanding which models are available;
+* resolving the taxonomy of any of them;
+* downloading the corresponding files;
+* identifying the available filters and customizable parameters.
 
-model_grid -> model_version is performed by grid_to_version (old name: _parameters_from_grid), which returs both model_version and the dictionary of parameters which uniquely determines the grid.
+Many of these tasks are accomplished through the function :py:func:`ModelHandler.available`. In particular, the full model database with its taxonomic tree can be accessed through the command:
 
-The two functions above are one the inverse of the other.
+.. code-block:: python
 
-Versions shall be used as input in all the functions called by the user. Grids can be called only within available and within a function that downloads that model.
+   ModelHandler.available('full_model_list')
+
+Calling the same function with argument equal to a valid model suite or version will return -- if at least one grid is locally available -- a detailed verbose description of the model itself, including literature references, customizable parameters, age and mass ranges, taxonomical information and the list of surveys currently featured in the model itself. The range of age, mass and parameters is dynamically adjusted based on the files present in the working path of MADYS, giving precise information on what is actually available for use in MADYS. 
+
+.. code-block:: python
+
+   ModelHandler.available('mist')
+
+  
+  # isochrone model: MIST (v1.2)
+  # MESA revision number = 7503
+  # Basic references: Dotter, ApJS, 222, 8 (2016) + Choi et al., ApJ 823, 102 (2016)
+  # Solar mixture: Y = 0.2703, Z = 0.0142
+  # Photometric systems: 
+  # 2mass, bessell, gaia, hipparcos, hr, kepler, sdss, tess, tycho, wise
+  # Mass range (M_sun): [0.1, 149.5237]
+  # Age range (Myr): [0.1, 19952.6]
+  # Available metallicities: [-4.0,-3.5,-3.0,-2.5,-2.0,-1.75,-1.5,-1.25,-1.0,-0.75,-0.5,-0.25,0.0,0.25,0.5]
+  # Available rotational velocities: [0.0,0.4]
+  # Available alpha enhancements: [0.0]
+  # Available magnetic field strengths: [0]
+  # Available spot fractions: [0.0]
+  # Available helium contents: [0.2703]
+  # Model family: mist
+  # Model suite: mist
+  # Call it as: 'mist'
+
+If the function is called with no argument, all verbose information about all locally available model suites will be printed at once.
 
 
-.. code-block:: console
+Usage
+------------
+Whenever a model is required as input of a MADYS function, the user should intend it as a model version. The parameters uniquely specifying the model grid to be internally employed by the program must be supplied, if needed, by means of optional keywords named ``feh``, ``afe``, ``he``, ``v_vcrit``, ``fspot``, and ``B``.
 
-   (.venv) $ pip install lumache
+Model grids constitute the input of just one function, :py:func:`ModelHandler.download_model`; additionally, they can be accepted as input of :py:func:`ModelHandler.available`.
 
-Creating recipes
-----------------
 
-To retrieve a list of random ingredients,
-you can use the ``lumache.get_random_ingredients()`` function:
+Download models
+------------
+A user can in any moment download a model grid through the following function:
 
-.. autofunction:: lumache.get_random_ingredients
+.. code-block:: python
 
-The ``kind`` parameter should be either ``"meat"``, ``"fish"``,
-or ``"veggies"``. Otherwise, :py:func:`lumache.get_random_ingredients`
-will raise an exception.
+   ModelHandler.download_model(model_grid)
 
-.. autoexception:: lumache.InvalidKindError
-
-For example:
-
->>> import lumache
->>> lumache.get_random_ingredients()
-['shells', 'gorgonzola', 'parsley']
+This function is automatically called when attempting to use a combination of parameters that is best reproduced by a model grid that is not available in the current working path of MADYS. In this case, the program will ask whether to use the local best-matching model or to download and use the more suitable model available in the Zenodo repository associated to MADYS.
