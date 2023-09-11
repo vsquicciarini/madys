@@ -16,10 +16,10 @@ Example:
 
 .. code-block::
 
-  L1 = model_family: ATMO (ERC-ATMO @ University of Exeter)
-  L2 = model_suite: ATMO2020 (suite published in Phillips et al. 2020)
-  L3 = model_version: ATMO2020-ceq (version assuming chemical equilibrium)
-  L4 = model_grid: ATMO2020-ceq_p0.00 (solar metallicity)
+  L1 = model_family: ATMO #(ERC-ATMO @ University of Exeter)
+  L2 = model_suite: ATMO2020 #(suite published in Phillips et al. 2020)
+  L3 = model_version: ATMO2020-ceq #(version assuming chemical equilibrium)
+  L4 = model_grid: ATMO2020-ceq_p0.00 #(solar metallicity)
 
 The class ``ModelHandler`` is meant to handle the model database of MADYS and to assist the user in:
 
