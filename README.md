@@ -16,7 +16,7 @@ Finally, several dedicated plotting functions are included to allow a visual per
 
 Latest news:
 ------------
-Sep 09, 2023 - Version v1.0.0 published! New models added to the list: Dartmouth (magnetic and non-magnetic, Feiden 2016), solar-metallicity PARSEC v2.0 (Nguyen et al. 2022), last version of ATMO (Chabrier et al. 2023); added JWST filters to PARSEC (v1.2 and v2.0) isochrones, and Gaia, 2MASS, Panstarrs and HST filters to ATMO 2020. Inserted possibility to estimate synthetic photometry for fitted objects in different bands from the ones employed when deriving their parameters.
+Sep 09, 2023 - Version v1.0.0 published! Newly added models: Dartmouth (magnetic and non-magnetic, Feiden 2016), solar-metallicity PARSEC v2.0 (Nguyen et al. 2022), latest version of ATMO (Chabrier et al. 2023); added JWST filters to PARSEC (v1.2 and v2.0) isochrones, and Gaia, 2MASS, Panstarrs and HST filters to ATMO 2020. Inserted possibility to estimate synthetic photometry for fitted objects in bands not employed when deriving their parameters.
 
 Feb 17, 2023 - Changed default queried catalog from Gaia DR2 to Gaia DR3 when providing a list of stars with non-Gaia identifiers (i.e., with 'id_type'='other').
 
