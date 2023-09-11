@@ -16,6 +16,8 @@ Finally, several dedicated plotting functions are included to allow a visual per
 
 Latest news:
 ------------
+Sep 09, 2023 - Version v1.0.0 published! New models added to the list: Dartmouth (magnetic and non-magnetic, Feiden 2016), solar-metallicity PARSEC v2.0 (Nguyen et al. 2022), last version of ATMO (Chabrier et al. 2023); added JWST filters to PARSEC (v1.2 and v2.0) isochrones, and Gaia, 2MASS, Panstarrs and HST filters to ATMO 2020. Inserted possibility to estimate synthetic photometry for fitted objects in different bands from the ones employed when deriving their parameters.
+
 Feb 17, 2023 - Changed default queried catalog from Gaia DR2 to Gaia DR3 when providing a list of stars with non-Gaia identifiers (i.e., with 'id_type'='other').
 
 Jan 19, 2023 - Added the possibility to take into account uncertainties on E(B-V) values, which can now be provided at inizialization through a dedicated keyword 'ebv_err'.
@@ -71,17 +73,20 @@ Recent papers using `MADYS`:
 
 `MADYS` has already been used, in its various preliminary forms, for several publications, including: 
 
+* `An imaged 15 MJup companion within a hierarchical quadruple system`, [Chomez et al. 2023, A&A 676, L10](https://ui.adsabs.harvard.edu/abs/2023A%26A...676L..10C/abstract)
+* `BEAST detection of a brown dwarf and a low-mass stellar companion around the young bright B star HIP 81208`, [Viswanath et al. 2023, A&A 675, A54](https://ui.adsabs.harvard.edu/abs/2023A%26A...676L..10C/abstract)
+* `Resolved near-UV hydrogen emission lines at 40-Myr super-Jovian protoplanet Delorme 1 (AB)b. Indications of magnetospheric accretion`, [Ringqvist et al. 2023, A&A 669, L12](https://ui.adsabs.harvard.edu/abs/2023A%26A...669L..12R/abstract)
+* `Detecting planetary mass companions near the water frost-line using JWST interferometry`, [Ray et al. 2023, MNRAS 519, 2718](https://ui.adsabs.harvard.edu/abs/2023MNRAS.519.2718R/abstract)
 * `A scaled-up planetary system around a supernova progenitor`, [Squicciarini et al. 2022, A&A 664, A9](https://ui.adsabs.harvard.edu/abs/2022A%26A...664A...9S/abstract)
 * `Results from The COPAINS Pilot Survey: four new brown dwarfs and a high companion detection rate for accelerating stars`, [Bonavita et al. 2022, MNRAS 513, 5588](https://ui.adsabs.harvard.edu/abs/2022MNRAS.513.5588B/abstract)
 * `A wide-orbit giant planet in the high-mass b Centauri binary system`, [Janson et al. 2021, Natur.600..231J](https://ui.adsabs.harvard.edu/abs/2021Natur.600..231J/abstract)
 * `Unveiling the star formation history of the Upper Scorpius association through its kinematics`, [Squicciarini et al. 2021, MNRAS 507, 1381](https://ui.adsabs.harvard.edu/abs/2021MNRAS.507.1381S/abstract)
 * `New binaries from the SHINE survey`, [Bonavita et al. 2021, arXiv210313706B](https://ui.adsabs.harvard.edu/abs/2021arXiv210313706B/abstract)
 * `BEAST begins: sample characteristics and survey performance of the B-star Exoplanet Abundance Study`, [Janson, Squicciarini et al. 2021, A&A 646, A164](https://ui.adsabs.harvard.edu/abs/2021A%26A...646A.164J/abstract)
-* `Detecting planetary mass companions near the water frost-line using JWST interferometry`, [Ray et al. 2023, MNRAS 519, 2718](https://ui.adsabs.harvard.edu/abs/2023MNRAS.519.2718R/abstract)
 
 Authors
 -----------------------
-[Vito Squicciarini](https://orcid.org/0000-0002-3122-6809), LESIA - Observatoire de Paris, FR (vito.squicciarini@inaf.it)
+[Vito Squicciarini](https://orcid.org/0000-0002-3122-6809), LESIA - Observatoire de Paris, FR (vito.squicciarini@obspm.fr)
 
 [Mariangela Bonavita](https://orcid.org/0000-0002-7520-8389), The Open University, UK
 
