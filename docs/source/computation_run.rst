@@ -66,6 +66,7 @@ The output of :py:func:`SampleObject.get_params` is an instance of the ``FitPara
 * ``Teff_min``: numpy array. Minimum effective temperature estimates [K].
 * ``Teff_max``: numpy array. Maximum effective temperature estimates [K].
 * ``fit_status``: numpy array. Flag for the outcome of the fitting process, one element per star.
+
    * 0 - Successful fit.
    * 1 - All magnitudes for the star have an error beyond the maximum allowed threshold: age and mass determinations was not possible.
    * 2 - All magnitudes for the star are more than 0.2 mag away from their best theoretical match. Check age and mass range of the theoretical grid, or change the model if the current one does not cover the expected age/mass range for this star.
