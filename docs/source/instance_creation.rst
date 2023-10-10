@@ -24,9 +24,9 @@ By default, ``MADYS`` cross-matches information from `Gaia DR2 <https://ui.adsab
 
 .. note::
 
-   If you wish to add a catalog to the query to use it for parameter determination, please ensure beforehand that its filters are available in the theoretical model of interest (cp. `here <https://madys.readthedocs.io/en/latest/available_filters.html>`_).
+   If you wish to add a catalog to the query to use it for parameter determination, please ensure beforehand that its filters are available in the theoretical model of interest (cp. `Available filters <https://madys.readthedocs.io/en/latest/available_filters.html>`_).
 
-The keyword ``ext_map`` selects the extinction map to be used to compute the integrated color excess E(B-V) for any object in the sample (see HERE). Alternatively, a numpy array of E(B-V) with same size as the number of objects can be given via the keyword ``'ebv'``.
+The keyword ``ext_map`` selects the extinction map to be used to compute the integrated color excess E(B-V) for any object in the sample (cp. `Interstellar extinction <https://madys.readthedocs.io/en/latest/extinction_model.html>`_). Alternatively, a numpy array of E(B-V) with same size as the number of objects can be given via the keyword ``'ebv'``.
 
 A minimal working example is given by:
 
