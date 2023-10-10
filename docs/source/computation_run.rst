@@ -87,6 +87,7 @@ The output of :py:func:`SampleObject.get_params` is an instance of the ``FitPara
 * ``objects``: numpy array. List of analyzed objects. Corresponds to self.Gaia_ID of the parent ``SampleObject`` instance.
 * ``exec_command``: list. Each entry is the __repr__ of the IsochroneGrid object used within :py:func:`SampleObject.get_params`.
 * ``fitting_mode``: int. Fitting mode of the parent get_params process. It can be either:
+
    1: the age was fixed a priori to a single value, or the selected model_version only has one age;
       corresponding to case 1) for the keyword 'age_range' from SampleObject.get_params.
    2: corresponding to case 2) for the keyword 'age_range' from SampleObject.get_params.
