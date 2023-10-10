@@ -16,6 +16,7 @@ Let us compute the integrated extinction expected at the coordinates and distanc
 >>> SampleObject.plot_2D_ext(ra=[236,252], dec=[-30,-16], d=160, color='G',reverse_xaxis=True,cmap='gray_r',fontsize=18)
 
 The command will produce the following figure:
+
 .. image:: images/example_ext_map2.png
 
 It is possible, through the keyword ``ax``, to overplot the extinction map over an existing figure. Let us try, for instance, to plot some random points over the abovementioned extinction map:
