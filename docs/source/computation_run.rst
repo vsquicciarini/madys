@@ -36,7 +36,7 @@ If, e.g., there is a list of stars with different metallicities, a vector of ``f
 MADYS will identify as closest model the PARSEC v1.2 grid with [Fe/H]=+0.25; the star spot parameter will be ignored because it's not currently supported by PARSEC isochrones. The parameter values actually used in the computation will be accessible as homonymous attributes of the ``FitParams`` instance "result".
 
 
-Custom settings:
+Additional parameters can be optionally specified. They are meant to allow users to gauge the age range, the mass range, the computational speed, the management of photometric uncertainties and the outputs according to their needs:
 
 * mass_range: list, optional. A two-element list with minimum and maximum mass within the grid (M_sun). Default: not set; the mass_range is the intersection between a rough mass estimate based on G and K magnitudes and the dynamical range of the model itself.
 * age_range: list or numpy array, optional. It can be either:
@@ -115,7 +115,7 @@ The output of :py:func:`SampleObject.get_params` is an instance of the ``FitPara
 
 Averaging parameter estimates
 ----------------
-Starting from v1.0.1, a function :py:func:`SampleObject.average_results` allows the direct average of two or more `FitParams` isntances coming from the same underlying `SampleObject` instance. It is meant to give the user a way to estimate the inter-model dispersion by computing the mean and standard deviation of a sample of parameter estimates for the same input objects. For instance, the following set of commands:
+Starting from v1.0.1, a function :py:func:`SampleObject.average_results` allows the direct average of two or more ``FitParams`` instances coming from the same underlying ``SampleObject`` instance. It is meant to give the user a way to estimate the inter-model dispersion by computing the mean and standard deviation of a sample of parameter estimates for the same input objects. For instance, the following set of commands:
 
 .. code-block:: python
 
