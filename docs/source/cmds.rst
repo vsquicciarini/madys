@@ -25,7 +25,7 @@ Customizable parameters include the following:
 * plot_masses: numpy array or bool, optional. It can be either:
 
    * a numpy array containing the masses (in M_sun) of the tracks to be plotted.
-   * False, not to plot any track. Default: 0.1,0.3,0.5,0.7,0.85,1.0,1.3,2].
+   * False, not to plot any track. Default: [0.1,0.3,0.5,0.7,0.85,1.0,1.3,2].
 * all valid keywords for a ``IsochroneGrid`` object, optional.
 * ids: list or numpy array of integers, optional. Array of indices, selects the subset of input data to be drawn.
 * xlim: list, optional. A two-element list with minimum and maximum value for the x axis.
