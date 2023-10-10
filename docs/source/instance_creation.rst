@@ -38,7 +38,7 @@ A minimal working example is given by:
 From custom data
 ----------------
 
-Mode 2 does not perform a query in all-sky catalogs, taking instead all the information it needs from the user. Data should be provided through an astropy table with column names corresponding to valid filters (see HERE). Photometric uncertainties corresponding to a filter ``'x'`` should be labeled as ``'x_err'``.
+Mode 2 does not perform a query in all-sky catalogs, taking instead all the information it needs from the user. Data should be provided through an astropy table with column names corresponding to valid filters. Photometric uncertainties corresponding to a filter ``'x'`` should be labeled as ``'x_err'``.
 
 Using a real-life example, we provide here information about two planets in the direct-imaged HR8799 system (data from Zurlo et al. 2016):
 
