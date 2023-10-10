@@ -11,8 +11,7 @@ In its attempt to organize the jungle of evolutionary models published in the re
 * the model version (L3). The model suite can be distributed under different flavours, characterized by e.g. varying boundary conditions, treatments of dust, and "minor" differences;
 * the model grid (L4), that adds to the previous one the specification of up to six input parameters (metallicity, helium fraction, rotational velocity, alpha enhancement, fraction of stellar surface covered by star spots, and magnetic field.
 
-For example
-Example:
+For example:
 
 .. code-block::
 
