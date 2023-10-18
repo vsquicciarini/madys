@@ -1,6 +1,19 @@
 Release notes
 =====
 
+Version 1.1.0
+ * Created new class, CurveObject, to derive mass limits from contrast curves.
+ * Created an attribute of type astropy.Table for SampleObject instances, named quality_table; it contains information on whether and why a photometric measurement has been retained or discarded.
+ * Added two methods in FitParams and SampleObject classes that handle import/export of a FitParams instance into a .h5 file;
+ * Renamed 'isochrone_grid' attribute in FitParams class as 'exec_command'; added new attribute named 'model_grid', equivalent to that of the ModelHandler class.
+ * Speeded up SampleObject.get_params() and ModelHandler.available();
+ * Added 'additional_columns' specified in SampleObject.get_params() to output saved to file by FitParams.to_file();
+ * Improved the quality of the logs;
+ * Changed default value of keywords 'x_log' and 'y_log' from False to True in function IsochroneGrid.plot_iso_grid();
+ * Added dundler methods __repr__ and __eq__ to class FitParams;
+ * Automatically set keyword 'ext_map' to None if a manual E(B-V) vector is provided in SampleObject initialization;
+ * Fixed minor bugs related to the v0.5.0-beta -> v1.0.0 upgrade.
+
 Version 1.0.0
  * Added Dartmouth (magnetic and non magnetic) models (Feiden 2016).
  * Added new version of ATMO 2020 with a new EOS (Chabrier 2023), called ATMO 2023.
