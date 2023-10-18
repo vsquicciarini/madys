@@ -20,7 +20,7 @@ Latest news:
 ------------
 Oct 18, 2023 - Version v1.1.0 published! Several new functionalities added: a class to handle the conversion of direct imaging contrast curves into mass curves; functions to easily export/import SampleObject and FitParams instances; a new attribute of SampleObject containing information on photometric quality. Better exploitation of log files; better handling of output files and objects; general improvement of computational performances. 
 
-Oct 10, 2023 - MADYS has now a full documentation on readthedocs. Have a look at it!
+Oct 10, 2023 - MADYS has now a full documentation on [readthedocs](https://madys.readthedocs.io/en/latest/). Have a look at it!
 
 Sep 09, 2023 - Version v1.0.0 published! Newly added models: Dartmouth (magnetic and non-magnetic, Feiden 2016), solar-metallicity PARSEC v2.0 (Nguyen et al. 2022), latest version of ATMO (Chabrier et al. 2023); added JWST filters to PARSEC (v1.2 and v2.0) isochrones, and Gaia, 2MASS, Panstarrs and HST filters to ATMO 2020. Inserted possibility to estimate synthetic photometry for fitted objects in bands not employed when deriving their parameters.
 
