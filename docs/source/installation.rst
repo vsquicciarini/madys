@@ -27,6 +27,6 @@ After installing ``TAP``, the installation of ``MADYS`` can be smoothly performe
 Dependencies
 ----------------
 
-This package relies on usual packages for data science and astronomy: numpy (v1.18.1), scipy (v1.6.1), pandas (v1.1.4), matplotlib (v3.3.4), astropy (v4.3.1) and h5py (v3.2.1). In addition, it also requires astroquery (v0.4.2.dev0) and tabulate (v0.8.9).
+This package relies on usual packages for data science and astronomy: numpy (v1.18.1), scipy (v1.6.1), pandas (v1.1.4), matplotlib (v3.3.4), astropy (v4.3.1) and h5py (v3.2.1). In addition, it also requires astroquery (v0.4.2.dev0).
 
 As mentioned above, two additional dependencies are represented by TAP Gaia Query (v0.1) and lxml (v4.6.3).
