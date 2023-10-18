@@ -64,6 +64,7 @@ Contents
 
    computation_run
    available_models
+   contrast_curves
    
 .. toctree::
    :maxdepth: 2
