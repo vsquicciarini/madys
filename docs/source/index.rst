@@ -63,6 +63,7 @@ Contents
    :caption: Using MADYS
 
    computation_run
+   imaging_predictions
    available_models
    contrast_curves
    
