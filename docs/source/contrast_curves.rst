@@ -78,4 +78,4 @@ Starting from the object create above, it's easy to compute the corresponding ma
    results = curve.compute_mass_limits('atmo2020-ceq')
 
 
-If `file_type`='contrast_map', the program will additionally collapse the map along the azimuthal direction, yielding a (N-1)-dimensional output in addition to the N-dimensional mass curve.
+If ``file_type``='contrast_map', the program will additionally collapse the map along the azimuthal direction, yielding a (N-1)-dimensional output in addition to the N-dimensional mass curve.
