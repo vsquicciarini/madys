@@ -1,6 +1,10 @@
 Release notes
 =====
 
+Version 1.1.1
+ * Added '__eq__' dunder method (equality) to the SampleObject class.
+ * Fixed minor bugs (related to the '__repr__' method) caused by the v1.0.0 -> v1.1.0 upgrade.
+
 Version 1.1.0
  * Created new class, CurveObject, to derive mass limits from contrast curves.
  * Created an attribute of type astropy.Table for SampleObject instances, named quality_table; it contains information on whether and why a photometric measurement has been retained or discarded.
@@ -12,7 +16,7 @@ Version 1.1.0
  * Changed default value of keywords 'x_log' and 'y_log' from False to True in function IsochroneGrid.plot_iso_grid();
  * Added dundler methods __repr__ and __eq__ to class FitParams;
  * Automatically set keyword 'ext_map' to None if a manual E(B-V) vector is provided in SampleObject initialization;
- * Fixed minor bugs related to the v0.5.0-beta -> v1.0.0 upgrade.
+ * Fixed minor bugs caused by the v0.5.0-beta -> v1.0.0 upgrade.
 
 Version 1.0.0
  * Added Dartmouth (magnetic and non magnetic) models (Feiden 2016).
