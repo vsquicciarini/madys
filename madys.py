@@ -9,9 +9,9 @@ Given a list of stars, it:
 - assesses the quality of each photometric measurement;
 - uses reliable photometric data to derive physical parameters (notably ages and masses)
 of individual stars.
-In its first release, MADYS allows a selection of one among 17 theoretical models,
+In the current release, MADYS allows a selection of one among 20 theoretical models,
 many of which with several customizable parameters (metallicity, rotational velocity,
-etc). Have a look to the GitHub repository for additional details.
+etc). Have a look to the GitHub repository and to the Readthedocs page for additional details.
 
 Classes:
 - SampleObject
@@ -23,7 +23,7 @@ Classes:
 """
 import sys
 import os
-madys_path = os.path.dirname(os.path.realpath(__file__))
+madys_path=os.path.dirname(os.path.realpath(__file__))
 import copy
 import warnings
 import logging
@@ -1815,6 +1815,11 @@ class SampleObject(object):
     4) __str__
     Returns a verbose representation of the calling sequence.
 
+    4) __eq__
+    Two SampleObject instances are considered equal if the queried objects (as specified by the attribute ID) are the same.
+    Two instances with the same object names but a different order will yield False in the comparison. This is done to avoid
+    possible misinterpretations of the results based on indexing.
+    
     Methods (use help() to have more detailed info):
 
     1) get_params
@@ -1871,6 +1876,11 @@ class SampleObject(object):
                 self.path = os.path.dirname(self.file)
                 self._sample_name_ext()
         
+        if isinstance(self.file, list):
+            self.file = [str(i).replace(u'\xa0', u' ') for i in self.file]
+        if isinstance(file, list):
+            file = [str(i).replace(u'\xa0', u' ') for i in file]
+            
         stop_init = kwargs['stop_init'] if 'stop_init' in kwargs else False
         if stop_init:
             if self.verbose>1:
@@ -2018,7 +2028,7 @@ class SampleObject(object):
             self._print_log('info','Data query: ended.')
 
             self.good_phot, self.quality_table = self._check_phot(**kwargs)
-            
+
             nf=len(self.filters)
 
             query_keys={'G':'dr3_gmag_corr','Gbp':'dr3_phot_bp_mean_mag','Grp':'dr3_phot_rp_mean_mag','G2':'dr2_phot_g_mean_mag',
@@ -2042,6 +2052,8 @@ class SampleObject(object):
                 except (ValueError,TypeError):
                     phot[:,i]=MaskedColumn(self.good_phot[query_keys[self.filters[i]]],dtype=float).filled(np.nan)
                     phot_err[:,i]=MaskedColumn(self.good_phot[query_keys[self.filters[i]+'_err']],dtype=float).filled(np.nan)
+                except KeyError:
+                    continue
 
             self.app_phot=phot
             self.app_phot_err=phot_err
@@ -2101,7 +2113,10 @@ class SampleObject(object):
                     new_input = {}
                     for key in new.__dict__[j]:
                         if key == 'file':
-                            new_input[key] = list(np.array(new.__dict__[j][key])[i])
+                            try:
+                                new_input[key] = list(np.array(new.__dict__[j][key])[i])
+                            except IndexError:
+                                new_input[key] = list(np.array(new.ID['ID'])[i])
                         else:
                             new_input[key] = new.__dict__[j][key]
                     new.__dict__[j] = new_input
@@ -2137,23 +2152,23 @@ class SampleObject(object):
             if isinstance(l,list):
                 s+="['"+"','".join(l)+"'], "
             else:
-                s+="'"+l+"', "
+                s+=f"'{l}', "
                 s=s.replace('\\','/')
 
             ext_map = self._SampleObject__input['ext_map']
-            s+=f'ext_map={ext_map}, '
+            s+=f"ext_map='{ext_map}', "
 
             for i in self._SampleObject__input:
                 if i=='file': continue
                 elif i=='ext_map': continue
                 elif i=='mock_file':
-                    s+=i+'='+"'"+self._SampleObject__input[i]+"'"
-                    s=s.replace('\\','/')
+                    s += f"{i}='{self._SampleObject__input[i]}'"
+                    s = s.replace('\\','/')
                 elif isinstance(self._SampleObject__input[i],str):
-                    s+=i+"='"+str(self._SampleObject__input[i])+"'"
+                    s += f"{i}='{str(self._SampleObject__input[i])}'"
                 elif isinstance(self._SampleObject__input[i],list):
-                    l=[str(j) for j in self._SampleObject__input[i]]
-                    s+=i+'=['+','.join(l)+']'
+                    l = [f"'{j}'" for j in self._SampleObject__input[i]]
+                    s += f"{i}=[{','.join(l)}]"
                 elif isinstance(self._SampleObject__input[i],np.ndarray): s+=i+'=np.'+np.array_repr(self._SampleObject__input[i])
                 else: s+=i+'='+str(self._SampleObject__input[i])
                 s+=', '
@@ -2169,15 +2184,17 @@ class SampleObject(object):
 
             for i in self._SampleObject__input:
                 if isinstance(self._SampleObject__input[i],list):
-                    l=[str(j) for j in self._SampleObject__input[i]]
-                    s+=i+'=['+','.join(l)+']'
+                    l = [f"'{j}'" for j in self._SampleObject__input[i]]
+                    s += f"{i}=[{','.join(l)}]"
                 elif isinstance(self._SampleObject__input[i],np.ndarray): s+=i+'=np.'+np.array_repr(self._SampleObject__input[i])
                 elif i=='file': continue
                 elif i=='mock_file':
-                    s+=i+'='+"'"+self._SampleObject__input[i]+"'"
+                    s += f"{i}='{str(self._SampleObject__input[i])}'"
                     s=s.replace('\\','/')
                 elif i=='ext_map': continue
-                else: s+=i+'='+str(self._SampleObject__input[i])
+                elif isinstance(self._SampleObject__input[i],str): 
+                    s += f"{i}='{str(self._SampleObject__input[i])}'"
+                else: s += f"{i}={str(self._SampleObject__input[i])}"
                 s+=', '
             if s.endswith(', '): s=s[:-2]
             s+=')'
@@ -2231,6 +2248,11 @@ class SampleObject(object):
             s=s.replace('=nan','=np.nan')
             return s
         else: raise ValueError('Has the value for self.mode been modified? Restore it to 1 or 2.')
+            
+    
+    def __eq__(self, other):
+        return np.array_equal(np.array(self.ID['ID']), np.array(other.ID['ID']))
+            
 
     @staticmethod
     def _convert_table_ndarray(data, columns = None, dtypes = None, masked = None, mask = None):
@@ -5768,9 +5790,9 @@ class CurveObject(object):
         - 'app_mag_error': float. Uncertainty on 'app_mag' [mag];
         - 'band': string. Filter which the map refers to. It should be a valid filter name for MADYS;
         - 'age': float. Stellar age [Myr];
-        - 'age': float. Uncertainty on stellar age [Myr].
+        - 'age_error': float. Uncertainty on stellar age [Myr].
     - data_unit: string, optional. Choose 'magnitude' if the map is expressed in magnitudes, 'flux' if in flux contrast. Default: 'flux'.
-    - rescale_flux = float, optional. Renormalization constant the flux is to be multiplied by. Default: 1.
+    - rescale_flux: float, optional. Renormalization constant the flux is to be multiplied by. Default: 1.
     
     Attributes:
     - file: string. Corresponding to input 'file'.
@@ -5790,6 +5812,7 @@ class CurveObject(object):
     - mag_limits_app_err: numpy array. Uncertainties on limit apparent magnitudes.
     - separations: numpy array. Input separations, if 'file_type'='contrast_separation'; zero-filled array otherwise.
     - band: string. Input stellar_parameters['band'].
+    - platescale: float. Platescale of the instrument FOV [mas/px].
 
     Built-in methods:
 
@@ -5822,6 +5845,11 @@ class CurveObject(object):
         self.stellar_parameters = stellar_parameters
         self.file_type = file_type
         
+        try:
+            self.platescale = fits.getheader(self.file)['PIXTOARC']
+        except KeyError:
+            self.platescale = float(input('Platescale not found. Please insert a value [mas/px]: '))
+            
         necessary_parameters = ['parallax', 'parallax_error', 'ebv', 'ebv_error', 'app_mag', 'app_mag_error', 'band', 'age', 'age_error']
         n_params = len(necessary_parameters)
 
@@ -6112,10 +6140,7 @@ class CurveObject(object):
             - mass_curve: numpy array. Output 1D curve.
         """
         
-        try:
-            platescale = fits.getheader(self.file)['PIXTOARC']
-        except KeyError:
-            platescale = input('Platescale not found. Please insert a value [mas/px]')
+        platescale = self.platescale
 
         shape = data.shape
         if center is None:
