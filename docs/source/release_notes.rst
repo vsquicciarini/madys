@@ -1,7 +1,7 @@
 Release notes
 =====
 
-Version 1.1.1
+Version 1.1.2
  * Added '__eq__' dunder method (equality) to the SampleObject class.
  * Fixed minor bugs (related to the '__repr__' method) caused by the v1.0.0 -> v1.1.0 upgrade.
 
