@@ -15,29 +15,4 @@ For 2MASS and AllWISE, only sources with photometric flag ``ph_qual == 'A'`` are
    * ``max_wise_q`` (1): worst ALLWISE photometric flag still considered reliable. Possible values, ordered by decreasing quality: 'A', 'B', 'C', 'U', 'Z', 'X'. For a given choice, excludes all measurements with a lower quality flag. Default: 'A'.
 
 
-
-To use Lumache, first install it using pip:
-
-.. code-block:: console
-
-   (.venv) $ pip install lumache
-
-Creating recipes
-----------------
-
-To retrieve a list of random ingredients,
-you can use the ``lumache.get_random_ingredients()`` function:
-
-.. autofunction:: lumache.get_random_ingredients
-
-The ``kind`` parameter should be either ``"meat"``, ``"fish"``,
-or ``"veggies"``. Otherwise, :py:func:`lumache.get_random_ingredients`
-will raise an exception.
-
-.. autoexception:: lumache.InvalidKindError
-
-For example:
-
->>> import lumache
->>> lumache.get_random_ingredients()
-['shells', 'gorgonzola', 'parsley']
+All information related to photometric quality can be retrieved from a ``SampleObject`` attribute named ``quality_table``.
