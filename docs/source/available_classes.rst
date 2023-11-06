@@ -1,7 +1,7 @@
 Available classes
 =====
 
-In its current form, MADYS comprises four classes which serve different purposes:
+In its current form, MADYS comprises five classes which serve different purposes:
 
 * ``SampleObject``: it allows one to create a catalog of objects will full astrometric, kinematic and photometric information. See `here <https://madys.readthedocs.io/en/latest/instance_creation.html>`_;
 * ``ModelHandler``: handles data and metadata of local isochrone files, allowing one to inspect the locally available models and to download new ones. See `here <https://madys.readthedocs.io/en/latest/available_models.html>`_;
