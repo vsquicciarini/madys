@@ -18,6 +18,8 @@ Finally, several dedicated plotting functions are included to allow a visual per
 
 Latest news:
 ------------
+Jan 22, 2023 - Version v1.2.0 published! A more accurate parameter derivation was introduced when providing [age_opt, age_min, age_max] triplets; SampleObject instances can now be merged; a higher degree of control of plotting options is now possible; fixed minor bugs.
+
 Oct 18, 2023 - Version v1.1.0 published! Several new functionalities added: a class to handle the conversion of direct imaging contrast curves into mass curves; functions to easily export/import SampleObject and FitParams instances; a new attribute of SampleObject containing information on photometric quality. Better exploitation of log files; better handling of output files and objects; general improvement of computational performances. 
 
 Oct 10, 2023 - MADYS has now a full documentation on [readthedocs](https://madys.readthedocs.io/en/latest/). Have a look at it!
