@@ -23,7 +23,7 @@ Classes:
 """
 import sys
 import os
-madys_path=os.path.dirname(os.path.realpath(__file__))
+madys_path = os.path.dirname(os.path.realpath(__file__))
 import copy
 import warnings
 import logging
@@ -59,7 +59,7 @@ gaia = GaiaArchive()
 vizier = TAPVizieR()
 
 dt = h5py.special_dtype(vlen=str)
-MADYS_VERSION = 'v1.1.0'
+MADYS_VERSION = 'v1.2.0'
 
 
 
@@ -1764,7 +1764,7 @@ class SampleObject(object):
     - surveys (1): list, optional. List of surveys where to extract photometric data from. Default: ['gaia','2mass'].
     - id_type (1): string, required. Type of IDs provided: must be one among 'DR2','DR3' or 'other'.
     - simbad_query (1): bool, optional. Set to True to query objects without a 2MASS cross-match in SIMBAD. It can significantly slow down data queries. Default: True if n<100, False otherwise.
-    - allwise_cross_match (1): bool, optional. Set to True to recover possible missing 2MASS cross-matches via ALLWISE. Default: True.
+    - allwise_cross_match (1): bool, optional. Set to True to recover possible missing 2MASS cross-matches via ALLWISE. It can significantly slow down data queries. Default: True if n<100, False otherwise.
     - ebv: float or numpy array, optional. If set, uses the i-th element of the array as E(B-V) for the i-th star. Default: not set, computes E(B-V) through the map instead.
     - ebv_err: float or numpy array, optional. Error on ebv, it should have its same type. If not set or None, no error is assumed. Default: not set.
     - max_tmass_q (1): worst 2MASS photometric flag ('ph_qual') still considered reliable. Possible values, ordered by decreasing quality: 'A','B','C','D','E','F','U','X'. For a given choice, excludes all measurements with a lower quality flag. Default: 'A'.
@@ -1852,6 +1852,8 @@ class SampleObject(object):
     10) import_from_file
     Alternative initializer for the class. It imports the instance from a .h5 file. Complementary to export_to_file(), which performs the opposite operation. 
 
+    11) merge
+    Merges two or more SampleObject instances into a single one. 
     """
 
     def __init__(self, file, **kwargs):
@@ -1960,7 +1962,7 @@ class SampleObject(object):
                 
             nst=len(self.ID)
             simbad_query = kwargs['simbad_query'] if 'simbad_query' in kwargs else nst<100
-            allwise_cross_match = kwargs['allwise_cross_match'] if 'allwise_cross_match' in kwargs else True
+            allwise_cross_match = kwargs['allwise_cross_match'] if 'allwise_cross_match' in kwargs else nst<100
 
         if self.verbose>1:
             logging.shutdown()
@@ -2020,6 +2022,7 @@ class SampleObject(object):
             
             try:
                 self._get_phot(simbad_query,allwise_cross_match)
+                
             except ConnectionError:
                 msg = 'Search stopped: connection issues are impeding the query. Usually they are temporary: we suggest trying again in a few minutes.'
                 self._print_log('error', msg)
@@ -2099,9 +2102,10 @@ class SampleObject(object):
 
 
     def __getitem__(self,i):
-        
+
         if isinstance(i,str): return self.__dict__[i]
-        
+        elif isinstance(i,int): i = [i]
+
         new=copy.deepcopy(self)
         for j in new.__dict__.keys():
             try:
@@ -2121,7 +2125,7 @@ class SampleObject(object):
                             new_input[key] = new.__dict__[j][key]
                     new.__dict__[j] = new_input
                     continue
-                    
+                elif hasattr(new.__dict__[j], '__len__') == False: continue
                 new.__dict__[j]=new.__dict__[j][i]
             except TypeError:
                 continue
@@ -2138,6 +2142,7 @@ class SampleObject(object):
             if 'phot_table' in new.__dict__.keys():
                 new.good_phot=Table(new.good_phot)
                 new.phot_table=Table(new.phot_table)
+                new.quality_table=Table(new.quality_table)
 
         return new
 
@@ -2440,6 +2445,100 @@ class SampleObject(object):
 
         return instance
            
+        
+    @classmethod
+    def merge(cls, list_of_instances, indices = None):
+        
+        """
+        Merges two or more SampleObject instances into a single one.
+            Input:
+            - list_of_instances: list, required. List of SampleObject instances.
+            - indices: list, optional. List of numpy array of indices that will be used to reorder the final star list.
+              No repeated elements must be present in any of the arrays, nor in the concatenated array of arrays.
+              The total number of elements of the concatenated array must match the length of the final object.
+              Ex.: taken two instances with 3 and 2 elements, a valid 'indices' list would be [np.array([4,2,0]),np.array([1,3])].
+              The first element of the first input instance will be sent to row index 4, the second one to 2, and so on.
+            Output:
+            - instance: the merged SampleObject instance.
+        This method is currently supported only for mode 1. The following keywords must be equal for all instances:
+        'mode', 'surveys', 'filters'. Additionally, the MADYS version that produced the instances must be the same.
+        
+        """
+
+
+        n = len(list_of_instances)
+        check_equal = ['_SampleObject__madys_version', 'mode', 'surveys', 'filters']
+
+        for i in range(1, n):
+            if list_of_instances[0]._SampleObject__input['ext_map'] != list_of_instances[i]._SampleObject__input['ext_map']:
+                raise ValueError(f"Databases 0 and {i} can't be merged: the ext_map employed is different.")
+
+        for col in check_equal:
+            for i in range(1, n):
+                try:
+                    if list_of_instances[0].__dict__[col] != list_of_instances[i].__dict__[col]:
+                        raise ValueError(f"Databases 0 and {i} can't be merged: keyword {col} assumes different values.")
+                except ValueError:
+                    if (list_of_instances[0].__dict__[col] != list_of_instances[i].__dict__[col]).any():
+                        raise ValueError(f"Databases 0 and {i} can't be merged: keyword {col} assumes different values.")
+
+        n_obj = np.sum([len(obj) for obj in list_of_instances])
+
+        if indices is not None:
+            if isinstance(indices, list) == False:
+                raise TypeError("'indices' must be a list!")
+            if len(indices) != n:
+                raise ValueError("'indices' must be an array with the same number of elements as 'list_of_instances'.")
+            for i, el in enumerate(indices):
+                if isinstance(el, np.ndarray) == False:
+                    raise TypeError("Each element of 'indices' must be a numpy array.")
+                elif 'int' not in str(type(el[0])):
+                    raise TypeError("Each element of 'indices' must be a numpy array of type int.")
+                elif len(el) != len(list_of_instances[i]):
+                    raise ValueError("Each element of 'indices' must have the same size as its corresponding instance in 'list_of_instances'.")
+                elif len(np.unique(el)) < len(el):
+                    raise ValueError("Repeated entry in the following index array: {0}. Every element should be unique.".format(el))
+                elif len(np.unique(el)) < len(el):
+                    raise ValueError("Repeated entry in the following index array: {0}. Every element should be unique.".format(el))
+
+            conc_indices = np.concatenate(indices)
+            if len(np.unique(conc_indices)) < n_obj:
+                raise ValueError("Repeated entry in the final index array: {0}. Every element should be unique.".format(conc_indices))
+
+
+        instance = copy.deepcopy(list_of_instances[0])
+
+        for attr in instance.__dict__.keys():
+            val = instance.__dict__[attr]
+            if attr in check_equal: continue
+            elif attr == '_SampleObject__input':
+                continue
+            elif (isinstance(val, Table)) | (isinstance(val, Column)):
+                instance.__dict__[attr] = vstack([inst.__dict__[attr] for inst in list_of_instances])
+                if indices is not None:
+                    instance.__dict__[attr] = instance.__dict__[attr][conc_indices]
+            elif isinstance(val, np.ndarray):
+                if len(val.shape) == 1:
+                    instance.__dict__[attr] = np.concatenate([inst.__dict__[attr] for inst in list_of_instances])
+                    if indices is not None:
+                        instance.__dict__[attr] = instance.__dict__[attr][conc_indices]
+                elif len(val.shape) == 2:
+                    instance.__dict__[attr] = np.vstack([inst.__dict__[attr] for inst in list_of_instances])
+                    if indices is not None:
+                        instance.__dict__[attr] = instance.__dict__[attr][conc_indices, :]
+                else:
+                    raise ValueError(f'Unrecognized data shape: {type(val)}')
+
+        instance._SampleObject__logger = None
+        instance.verbose = 0
+        instance.file = ''
+
+        instance._SampleObject__input['file'] = list(np.array(instance.ID['ID']))
+        if len(np.unique([inst._SampleObject__id_type for inst in list_of_instances])) > 1: 
+            instance._SampleObject__id_type = 'other'
+            instance._SampleObject__input['id_type'] = 'other'
+
+        return instance
             
 
     ############################################# catalog queries ############################################
@@ -2831,7 +2930,13 @@ class SampleObject(object):
                 names=['dr3_gmag_corr', 'dr3_gflux_corr','dr3_phot_bp_rp_excess_factor_corr', 'dr3_phot_g_mean_mag_error', 'dr3_phot_bp_mean_mag_error', 'dr3_phot_rp_mean_mag_error', 'dr2_phot_bp_rp_excess_factor_corr', 'dr2_g_mag_error', 'dr2_bp_mag_error', 'dr2_rp_mag_error'],
                 units=["mag", "'electron'.s**-1", "", "mag", "mag", "mag", "", "mag", "mag", "mag"],
                 descriptions=['dr3 G-band mean mag corrected as per Riello et al. (2021)', 'dr3 G-band mean flux corrected as per Riello et al. (2021)', 'dr3 BP/RP excess factor corrected as per Riello et al. (2021)','dr3 Error on G-band mean mag', 'dr3 Error on BP-band mean mag', 'dr3 Error on RP-band mean mag', 'DR2 BP/RP excess factor corrected as per Squicciarini et al. (2021)', 'DR2 Error on G-band mean mag', 'DR2 Error on BP-band mean mag', 'DR2 Error on RP-band mean mag'])
-            data.append(hstack([self.ID, t, t_ext]))
+            
+            if len(t) == 0:
+                message = "The required objects do not appear to be in Gaia. MADYS can't be run in mode 1 with no Gaia data."
+                self._print_log('error', message)
+                raise ValueError(message) from None
+            else:
+                data.append(hstack([self.ID, t, t_ext]))
 
         with warnings.catch_warnings():
             warnings.simplefilter('ignore')
@@ -3374,8 +3479,9 @@ class SampleObject(object):
         w,=np.where(np.isnan(x[:,0])==False)
         return x[w,:]
 
+    
     def _get_agemass(self, model_version, **kwargs):
-
+        
         GK = where_v(np.array(['G', 'K']), self.filters)
         if 'mass_range' in kwargs: kwargs['mass_range'] = IsochroneGrid._get_mass_range(kwargs['mass_range'], model_version, dtype='mass', **kwargs)
         elif np.max(GK) < len(self.filters): kwargs['mass_range'] = IsochroneGrid._get_mass_range(self.abs_phot[:,GK], model_version, **kwargs)
@@ -3468,9 +3574,8 @@ class SampleObject(object):
 
         app_phot = self.app_phot[:,true_filter_index]-red
 
-        phot, phot_err = SampleObject._mask_bad_photometry(phot, phot_err)
-        app_phot, app_phot_err = SampleObject._mask_bad_photometry(phot, phot_err, data = app_phot, errors = app_phot_err)
-
+        phot, phot_err = SampleObject._mask_bad_photometry(phot, phot_err, max_phot_err = self.ph_cut)
+        app_phot, app_phot_err = SampleObject._mask_bad_photometry(phot, phot_err, data = app_phot, errors = app_phot_err, max_phot_err = self.ph_cut)
 
         code = np.full(n_objects, 5, dtype=int)
         m_fit, m_min, m_max = np.full(n_objects,np.nan), np.full(n_objects,np.nan), np.full(n_objects,np.nan)
@@ -3529,11 +3634,8 @@ class SampleObject(object):
 
         all_maps, hot_p, all_solutions = [], [], []
 
-        iso_data_r = iso_data.reshape([n_masses*n_ages,l[2]])
-        n_masses_x_ages = n_masses*n_ages
         chi2_min = np.full(n_objects, np.nan)
         len_sample = kwargs['n_tot'] if 'n_tot' in kwargs else len(self)
-        
             
         with warnings.catch_warnings():
             warnings.simplefilter('ignore')
@@ -3587,16 +3689,23 @@ class SampleObject(object):
 
                     if save_maps: all_maps.append(chi2)
                     value, index = SampleObject._min_v(chi2)
-                    chi2_min[i] = value
+                    chi2_min[i] = value                    
                     index = index[0]
+                    
+                    nominal_mass = iso_mass[index]
 
                     used_mass_index = closest(iso_mass_log,[iso_mass_log[index]-0.3,iso_mass_log[index]+0.3])
                     n_est = n_try*(i_age[i,2]-i_age[i,1]+1)
                     ind_array = np.zeros(n_est, dtype=int)                
 
-
                     iso_data_r = iso_data[used_mass_index[0]:used_mass_index[1]][:, i_age[i,1]:i_age[i,2]+1][:,:,w2]
-                    
+                    if np.sum(np.isnan(np.nanmin(iso_data_r, axis = 0))) > 0:
+                        self._print_log('info',f'All magnitudes for star {i} are more than 0.2 mag away from their best theoretical match. Check age and mass range of the theoretical grid, or change the model if the current one does not cover the expected age/mass range for this star.')
+                        all_solutions.append({})
+                        all_maps.append([])
+                        hot_p.append([])
+                        code[i]=2
+                        continue
                     
                     if n_loops == 0:
                         sigma = ((iso_data_r[:,:,:,None]-phot1[i,w2,:])/phot_err1[i,w2,:])**2
@@ -3614,19 +3723,24 @@ class SampleObject(object):
                         sigma = np.concatenate(sigma, axis=3)
                     
                     if len(w2) > 1:
-                        chi2_denom = np.sum(np.isnan(iso_data[used_mass_index[0]:used_mass_index[1],:,w2])==False,axis=2)-1
+                        chi2_denom = np.sum(np.isnan(iso_data[used_mass_index[0]:used_mass_index[1],:,w2][:, i_age[i,1]:i_age[i,2]+1])==False,axis=2)-1
                         chi2 = nansumwrapper(sigma, axis=2)/chi2_denom[:, :, None]
                     else:
                         chi2 = nansumwrapper(sigma, axis=2)
-
-                    ind_array = (used_mass_index[0]+np.nanargmin(chi2, axis=0)).ravel()
-
-                    m_min[i],m_fit[i],m_max[i]=10**np.percentile(iso_mass_log[ind_array],[16,50,84])
+                        
+                    ind_array = (used_mass_index[0]+np.nanargmin(chi2, axis=0))
+                    m_perc = np.nanpercentile(iso_mass_log[ind_array], [16, 84], axis = 1)
+                    m_min[i], m_fit[i], m_max[i] = 10**np.nanmin(m_perc), nominal_mass, 10**np.nanmax(m_perc)
                     code[i]=0
-                    
+        
                     for p in range(n_params):
-                        rep_ages=np.tile(np.arange(i_age[i,1],i_age[i,2]+1),n_try)
-                        additional_params[i,:,p] = np.percentile(phys_data[ind_array,rep_ages,p],[16,50,84])
+                        age_vector = np.arange(i_age[i,1],i_age[i,2]+1)
+                        rep_ages = np.tile(age_vector,n_try).reshape(len(age_vector), n_try)
+
+                        param_estimates = phys_data[ind_array,rep_ages,p]
+                        param_perc = np.nanpercentile(param_estimates, [16, 84], axis = 1)
+                    
+                        additional_params[i,:,p] = np.nanmin(param_perc), phys_data[index,i00,p], np.nanmax(param_perc)
 
                 dic={'age':a_fit, 'age_min':a_min, 'age_max':a_max,
                      'mass':m_fit, 'mass_min':m_min, 'mass_max':m_max,
@@ -3745,7 +3859,8 @@ class SampleObject(object):
                 dic['fit_status'] = code
 
             else:
-
+                n_masses_x_ages = n_masses*n_ages
+                iso_data_r = iso_data.reshape([n_masses_x_ages,l[2]])
                 sigma = np.full((n_masses_x_ages,n_filters),np.nan)
                 phot1, phot_err1 = np.zeros(phot.shape + (n_try,)), np.zeros(phot.shape + (n_try,))
                 for j in range(n_try): phot1[:,:,j], phot_err1[:,:,j] = SampleObject.app_to_abs_mag(app_phot+app_phot_err*np.random.normal(size=phot.shape),self.par+self.par_err*np.random.normal(size=n_objects),app_mag_error=app_phot_err,parallax_error=self.par_err)
@@ -4018,7 +4133,6 @@ class SampleObject(object):
         dic['model_grid'] = np.array(list([th_model.__dict__['model_grid']])*n_objects, dtype=object)
         dic['is_true_fit'] = True
         dic['units'] = {'mass':m_unit, 'age':'Myr', 'Teff': 'K', 'radius': r_unit}
-
 
         return FitParams(dic)
 
@@ -4315,6 +4429,8 @@ class SampleObject(object):
             - groups: list or numpy array of integers, optional. Draws different groups of stars in different colors. The i-th element is a number, indicating to which group the i-th star belongs. Default: None.
             - group_list: list or numpy array of strings, optional. Names of the groups defined by the 'groups' keyword. No. of elements must match the no. of groups. Default: None.
             - label_points: bool, optional. Draws a label next to each point, specifying its row index. Default: True.
+            - s: int, optional. Size of the drawn circles. It follows the scaling conventions of plt.scatter(). Default: 50.
+            - alpha: float, optional. Opacity (between 0 and 1) of the drawn circles. Default: 1 (completely opaque).
             - return_points: bool, optional. If True, returns the plotted points as arrays. Default: False.
             Output:
             - x: numpy array. x coordinates of the plotted points. Only returned if return_points=True.
@@ -4388,14 +4504,22 @@ class SampleObject(object):
         label_points = kwargs['label_points'] if 'label_points' in kwargs else True
         groups = kwargs['groups'] if 'groups' in kwargs else None
         group_names = kwargs['group_names'] if 'group_names' in kwargs else None
-        s = kwargs['s'] if 's' in kwargs else 50
+        if (groups is not None) & (group_names is None):
+            raise ValueError("Keyword 'group_names' must be set if groups is set. Please provide group names for the groups you are drawing in different colors.") from None
+        elif group_names is not None:
+            if len(group_names) != len(np.unique(groups)):
+                raise ValueError(f"You provided {len(group_names)} groups but I see {len(np.unique(groups))} groups in the 'groups' vector.")
+
+        size_scatter = kwargs['s'] if 's' in kwargs else 50
+        size_errorbar = (size_scatter/400)**0.5*20
+        alpha = kwargs['alpha'] if 'alpha' in kwargs else 1
 
         npo = len(x) if hasattr(x,'__len__') else 1
 
         if (type(groups)==type(None)):
             if (type(col_err)==type(None)) & (type(mag_err)==type(None)):
-                ax.scatter(x, y, s=s, facecolors='none', edgecolors='black')
-            else: ax.errorbar(x, y, yerr=mag_err, xerr=col_err, fmt='o', color='black')
+                ax.scatter(x, y, s=size_scatter, facecolors='none', edgecolors='black', alpha = alpha)
+            else: ax.errorbar(x, y, yerr=mag_err, xerr=col_err, fmt='o', color='black', ms = size_errorbar, alpha = alpha)
         else:
             nc=max(groups)
             colormap = plt.cm.gist_ncar
@@ -4404,8 +4528,8 @@ class SampleObject(object):
                 w,=np.where(groups==j)
                 if len(w)>0:
                     if (type(col_err)==type(None)) & (type(mag_err)==type(None)):
-                        ax.scatter(x[w], y[w], s=s, facecolors='none', edgecolors=colorst[j], label=group_names[j])
-                    else: ax.errorbar(x[w], y[w], yerr=mag_err[w], xerr=col_err[w], fmt='o', color=colorst[j], label=group_names[j])
+                        ax.scatter(x[w], y[w], s=size_scatter, facecolors='none', edgecolors=colorst[j], label=group_names[j], alpha = alpha)
+                    else: ax.errorbar(x[w], y[w], yerr=mag_err[w], xerr=col_err[w], fmt='o', color=colorst[j], label=group_names[j], ms = size_errorbar, alpha = alpha)
 
         if label_points==True:
             po=(np.linspace(0,npo-1,num=npo,dtype=int)).astype('str')
@@ -5650,6 +5774,13 @@ class FitParams(object):
         adviced to use this function with caution.
             Input:
             - results: list or tuple, required. Every element should represent a FitParams instance; all instances should come from the analysis of the same SampleObject instance.
+            - minimum_error: float, optional. Relative error (between 0 and 1) that will be assigned by default to every final parameter if its error is smaller than minimum_error. Default: None (=0).
+            - cuts: dict, optional. Conditions to apply to each input instance: only stars satisfying all these conditions will be kept.
+              Example: we want to average three datasets, but we only want to consider hotter stars than 2000 K for the first model,
+              and stars between 0.3 and 0.7 M_sun for the second model; no condition is needed for the third model.
+              Multiple conditions are handled through lists. We would write something like that:
+              cuts = {0: 'Teff > 2000', 1: ['mass > 0.3', 'mass < 0.7']}.
+              Default: None (no condition applied, i.e. all information is retained).
             Output:
             - new_instance: FitParams instance with average values for the parameters. Please notice that the format of some attributes is different from the usual one
               because they incorporate information coming from more than a single get_params() execution.
@@ -5741,11 +5872,12 @@ class FitParams(object):
             new_instance.__dict__['fit_status'] = np.nanmin([res['fit_status'] for res in results], axis=0)
             new_instance.__dict__['objects'] = results[0]['objects']
 
-            for col in ['all_solutions']:
-                values = []
-                for i in range(n_stars):
-                    values.append([res[col][i] for res in results])
-                new_instance.__dict__[col] = values                
+            if np.sum(['all_solutions' in res.__dict__.keys() for res in results]) == len(results):
+                for col in ['all_solutions']:
+                    values = []
+                    for i in range(n_stars):
+                        values.append([res[col][i] for res in results])
+                    new_instance.__dict__[col] = values                
             
             for col in ['model_grid','exec_command']:
                 values = [res[col] for res in results]
@@ -5792,7 +5924,7 @@ class CurveObject(object):
         - 'age': float. Stellar age [Myr];
         - 'age_error': float. Uncertainty on stellar age [Myr].
     - data_unit: string, optional. Choose 'magnitude' if the map is expressed in magnitudes, 'flux' if in flux contrast. Default: 'flux'.
-    - rescale_flux: float, optional. Renormalization constant the flux is to be multiplied by. Default: 1.
+    - rescale_flux = float, optional. Renormalization constant the flux is to be multiplied by. Default: 1.
     
     Attributes:
     - file: string. Corresponding to input 'file'.
@@ -5812,7 +5944,6 @@ class CurveObject(object):
     - mag_limits_app_err: numpy array. Uncertainties on limit apparent magnitudes.
     - separations: numpy array. Input separations, if 'file_type'='contrast_separation'; zero-filled array otherwise.
     - band: string. Input stellar_parameters['band'].
-    - platescale: float. Platescale of the instrument FOV [mas/px].
 
     Built-in methods:
 
@@ -5849,7 +5980,7 @@ class CurveObject(object):
             self.platescale = fits.getheader(self.file)['PIXTOARC']
         except KeyError:
             self.platescale = float(input('Platescale not found. Please insert a value [mas/px]: '))
-            
+             
         necessary_parameters = ['parallax', 'parallax_error', 'ebv', 'ebv_error', 'app_mag', 'app_mag_error', 'band', 'age', 'age_error']
         n_params = len(necessary_parameters)
 
