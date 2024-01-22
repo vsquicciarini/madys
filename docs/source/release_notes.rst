@@ -8,11 +8,10 @@ Version 1.2.0
  * Better control of plotting options (transparency, symsize) in SampleObject.CMD.
  * Added verbose description of minimum_error and cuts to FitParams.average_results().
  * Created a new classmethod to SampleObject that allows for merging several instances into a single one.
- * Added '__eq__' dunder method (equality) to the SampleObject class. Two SampleObject instances are considered equal if the queried objects (as specified by the attribute ID) are the same and have the same ordering.
  * Fixed minor bugs caused by the v1.0.0 -> v1.1.0 upgrade.
 
 Version 1.1.2
- * Added '__eq__' dunder method (equality) to the SampleObject class.
+ * Added '__eq__' dunder method (equality) to the SampleObject class. Two SampleObject instances are considered equal if the queried objects (as specified by the attribute ID) are the same and have the same ordering.
  * Fixed minor bugs (related to the '__repr__' method) caused by the v1.0.0 -> v1.1.0 upgrade.
 
 Version 1.1.0
