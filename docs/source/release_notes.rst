@@ -1,6 +1,20 @@
 Release notes
 =====
 
+Version 1.3.0
+ * modified CurveObject class:
+	- input .fits header is now inherited by output file;
+	- a verbose description of the input setting is stored in the output file's header;
+	- possibility to add coronagraphic mask; if set, mask radius is automatically recovered for SPHERE and GPI;
+	- two possibilities for the age range now exist: a Gaussian age distribution, specified by 'age' and 'age_error', or a box [age_opt, age_min, age_max];
+	- added possibility to compute extinction as usually done in MADYS (integration of 3D maps).
+ * added Gaia DR3 ra and dec error to the automatic research done by SampleObject at initialization.  
+ * added Hipparcos catalog (van Leeuwen et al. 2007) to the automatic research done by SampleObject at initialization.
+ * added long-term Gaia DR3 - Hipparcos proper motion to SampleObject's instance.phot_table computed as in Kervella et al. (2022).
+ * added a new type of 'id_type' for SampleObject instances: 'HIP'. Use it if ALL input stars have input names from the Hipparcos catalog (e.g., HIP 31414). In such cases, setting to 'other' will work, but some cross-matches between Gaia and Hipparcos might not be recovered. 
+ * improved ADQL catalog queries, with higher completeness rates of catalog cross-matches.
+ * improved general readability of the code following Docstring Conventions (PEP 8).
+
 Version 1.2.0
  * A more accurate parameter derivation was introduced when providing [age_opt, age_min, age_max] triplets.
  * SampleObject: default value for keyword 'allwise_cross_match' is now False unless n_objects < 100. 
