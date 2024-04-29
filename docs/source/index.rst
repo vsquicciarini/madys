@@ -38,27 +38,27 @@ Attribution
 --------
 Please cite `Squicciarini & Bonavita (2022) <https://ui.adsabs.harvard.edu/abs/2022A%26A...666A..15S/abstract>`_ whenever you publish results obtained with MADYS.
 
-Our code is also featured in the Astrophysics Source Code Library (`[ascl:2206.018] <https://ascl.net/2206.018>`_) and in the NASA EMAC platform (`[EMAC 2311-001] <https://emac.gsfc.nasa.gov?cid=2311-001>`_)
+Our code is also featured in the Astrophysics Source Code Library (`[ascl:2206.018] <https://ascl.net/2206.018>`_) and in the NASA EMAC platform (`[EMAC 2311-001] <https://emac.gsfc.nasa.gov?cid=2311-001>`_).
 
 
 |pic1| |pic2| |pic3|
 
 .. |pic1| image:: images/github.jpg
-   :align: center
+   :align: middle
    :alt: github logo
    :height: 150px
    :width: 150px
    :target: https://github.com/vsquicciarini/madys
 
 .. |pic2| image:: images/ascl.jpg
-   :align: center
+   :align: middle
    :alt: ascl logo
    :height: 150px
    :width: 150px
    :target: https://ascl.net/2206.018
 
 .. |pic3| image:: images/emac.png
-   :align: center
+   :align: middle
    :alt: emac logo
    :height: 150px
    :width: 300px
