@@ -12,7 +12,8 @@ The tool can be installed by following the guidelines provided in the :doc:`inst
 Features
 --------
 
-* ability to automatically *retrieve* and *cross-match* photometry from several catalogs, including `Gaia DR2 <https://ui.adsabs.harvard.edu/#abs/2018A%26A...616A...1G/abstract>`_, `Gaia DR3 <https://ui.adsabs.harvard.edu/#abs/2022arXiv220800211G/abstract>`_, `2MASS <https://ui.adsabs.harvard.edu/abs/2006AJ....131.1163S/abstract>`_, `ALLWISE <https://ui.adsabs.harvard.edu/abs/2014yCat.2328....0C/abstract>`_, `Panstarrs DR1 <https://ui.adsabs.harvard.edu/abs/2016arXiv161205560C/abstract>`_, `APASS DR9 <https://ui.adsabs.harvard.edu/abs/2016yCat.2336....0H/abstract>`_ and `SDSS DR13 <https://ui.adsabs.harvard.edu/abs/2017ApJS..233...25A/abstract>`_;
+* parameter estimation for directly-imaged objects based on the measured photometry;
+* ability to automatically *retrieve* and *cross-match* photometry from several catalogs, including `Gaia DR2 <https://ui.adsabs.harvard.edu/#abs/2018A%26A...616A...1G/abstract>`_, `Gaia DR3 <https://ui.adsabs.harvard.edu/#abs/2022arXiv220800211G/abstract>`_, `Hipparcos <https://ui.adsabs.harvard.edu/abs/2007A%26A...474..653V/abstract>`_, `2MASS <https://ui.adsabs.harvard.edu/abs/2006AJ....131.1163S/abstract>`_, `ALLWISE <https://ui.adsabs.harvard.edu/abs/2014yCat.2328....0C/abstract>`_, `Panstarrs DR1 <https://ui.adsabs.harvard.edu/abs/2016arXiv161205560C/abstract>`_, `APASS DR9 <https://ui.adsabs.harvard.edu/abs/2016yCat.2336....0H/abstract>`_ and `SDSS DR13 <https://ui.adsabs.harvard.edu/abs/2017ApJS..233...25A/abstract>`_;
 * possibility to assess the quality of photometric measurements and to impose custom rejection thresholds;
 * possibility to create custom tables of objects to be analyzed, such as companions discovered in direct imaging observations;
 * possibility to estimate interstellar extinction by integration of published 3D extinction maps;
@@ -20,6 +21,8 @@ Features
 * largest availability of models to date;
 * capability to handle thousands of objects at once;
 * presence of several dedicated plotting functions allowing a visual perception of the numerical output;
+* conversion of contrast limits from direct imaging observations into mass limits;
+* possibility to obtain individual astrophysical parameters for unresolved binaries, provided a mass ratio or a contrast measurement is available;
 * extensive documentation, including a large variety of examples showing the possible applications of the tool.
 
 Caveats & Bugs
@@ -35,7 +38,31 @@ Attribution
 --------
 Please cite `Squicciarini & Bonavita (2022) <https://ui.adsabs.harvard.edu/abs/2022A%26A...666A..15S/abstract>`_ whenever you publish results obtained with MADYS.
 
-Our code is also featured in the Astrophysics Source Code Library under the identifier  `[ascl:2206.018] <https://ascl.net/2206.018>`_.
+Our code is also featured in the Astrophysics Source Code Library (`[ascl:2206.018] <https://ascl.net/2206.018>`_) and in the NASA EMAC platform (`[EMAC 2311-001] <https://emac.gsfc.nasa.gov?cid=2311-001>`_)
+
+
+|pic1| |pic2| |pic3|
+
+.. |pic1| image:: images/github.jpg
+   :align: center
+   :alt: github logo
+   :height: 150px
+   :width: 150px
+   :target: https://github.com/vsquicciarini/madys
+
+.. |pic2| image:: images/ascl.jpg
+   :align: center
+   :alt: ascl logo
+   :height: 150px
+   :width: 150px
+   :target: https://ascl.net/2206.018
+
+.. |pic3| image:: images/emac.png
+   :align: center
+   :alt: emac logo
+   :height: 150px
+   :width: 300px
+   :target: https://emac.gsfc.nasa.gov?cid=2311-001
 
 
 Contents
