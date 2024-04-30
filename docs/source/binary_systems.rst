@@ -3,7 +3,7 @@ Fitting unresolved binaries
 
 Starting from v1.3.0, MADYS provides a straightforward way to derive the parameters of both components of an unresolved binary system. Given the ubiquity of short-period binaries and the biases these systems introduce in any effort dealing with the age and mass distribution of a stellar sample, this feature of the program will be beneficial to a large variety of statistical studies focused on directly imaged exoplanets or on the stars themselves.
 
-Given the limited information used my MADYS to derive stellar parameters, no attempt is made to leave the secondary-to-primary ratio as a free parameter; instead, the user can specify either a secondary-to-primary mass ratio (through the keyword ``secondary_q``) or a magnitude difference (through the keyword ``secondary_contrast``) in a suitable band when running the :py:func:`SampleObject.get_params` method.
+Given the limited information used by MADYS to derive stellar parameters, no attempt is made to leave the secondary-to-primary ratio as a free parameter; instead, the user can specify either a secondary-to-primary mass ratio (through the keyword ``secondary_q``) or a magnitude difference (through the keyword ``secondary_contrast``) in a suitable band when running the :py:func:`SampleObject.get_params` method.
 
 Let's suppose that a ``SampleObject`` instance is creating containing a list of two stars. 
 
