@@ -90,6 +90,7 @@ Contents
    :caption: Using MADYS
 
    computation_run
+   binary_systems
    imaging_predictions
    available_models
    contrast_curves
