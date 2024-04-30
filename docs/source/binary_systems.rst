@@ -1,4 +1,4 @@
-Parameter determination
+Fitting unresolved binaries
 =====
 
 Usage
