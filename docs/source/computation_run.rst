@@ -35,6 +35,7 @@ If, e.g., there is a list of stars with different metallicities, a vector of ``f
 
 MADYS will identify as closest model the PARSEC v1.2 grid with [Fe/H]=+0.25; the star spot parameter will be ignored because it's not currently supported by PARSEC isochrones. The parameter values actually used in the computation will be accessible as homonymous attributes of the ``FitParams`` instance "result".
 
+Introduced in v1.3.0, two dedicated keyword allow the simultaneous fit of the two components of unresolved binary systems: refer to `this page <https://madys.readthedocs.io/en/latest/binary_systems.html>`_ for additional information.
 
 Additional parameters can be optionally specified. They are meant to allow users to gauge the age range, the mass range, the computational speed, the management of photometric uncertainties and the outputs according to their needs:
 
@@ -47,6 +48,8 @@ Additional parameters can be optionally specified. They are meant to allow users
     * a 2D numpy array with 3 columns. The i-th row is used as (mean_age,lower_age,upper_age) for the i-th star; mean_age is used as in case 2), and [lower_age, upper_age] are used as in case 3).
   Default: [1,1000].
 
+* secondary_q: float or list or numpy array, optional. Secondary-to-primary mass ratios (i.e., under the assumption that the targets are unresolved binaries). Zero values correspond to single stars. If list or numpy array, the i-th element refers to the i-th star. Default: None (=single star model). See `here <https://madys.readthedocs.io/en/latest/binary_systems.html>`_ for additional information.
+* secondary_contrast: dict, optional. Secondary-to-primary magnitude difference in the band specified by the key name (i.e., under the assumption that the targets are unresolved binaries). np.inf values correspond to single stars. Only one key must be provided. The corresponding value must be a float, list or numpy array. If list or numpy array, the i-th element refers to the i-th star. Default: None (=single star model). See `here <https://madys.readthedocs.io/en/latest/binary_systems.html>`_ for additional information.
 * n_steps: list, optional. Number of (mass, age) steps of the interpolated grid. Default: [1000,500].
 * n_try: int, optional. Number of Monte Carlo iteractions for each star used to take photometric uncertainties into account. Default: 1000.
 * fill_value: array-like or (array-like, array_like) or “extrapolate”, optional. How the interpolation over mass deals with values outside the original range. Default: np.nan. See scipy.interpolate.interp1d for details.
