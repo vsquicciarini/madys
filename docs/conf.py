@@ -1,223 +1,226 @@
-"""
-Shared Sphinx configuration using sphinx-multiproject.
-
-To build each project, the ``PROJECT`` environment variable is used.
-
-.. code:: console
-
-   $ make html  # build default project
-   $ PROJECT=dev make html  # build the dev project
-
-for more information read https://sphinx-multiproject.readthedocs.io/.
-"""
-
 import os
-import sys
 
-from multiproject.utils import get_project
+# You can use sphinx-quickstart to create your own conf.py file!
+# After that, you have to edit a few things.  See below.
 
-sys.path.append(os.path.abspath("_ext"))
+# Select nbsphinx and, if needed, other Sphinx extensions:
 extensions = [
-    "multiproject",
-    "myst_parser",
-    # For testing, conditionally disable the custom 404 pages on dev docs
-    # "notfound.extension",
-    "sphinx_copybutton",
-    "sphinx_design",
-    "sphinx_tabs.tabs",
-    "sphinx-prompt",
-    "sphinx.ext.autodoc",
-    "sphinx.ext.autosectionlabel",
-    "sphinx.ext.extlinks",
-    "sphinx.ext.intersphinx",
-    "sphinxcontrib.httpdomain",
-    "sphinxcontrib.video",
-    "sphinxemoji.sphinxemoji",
-    "sphinxext.opengraph",
+    'nbsphinx',
+    'sphinxcontrib.bibtex',  # for bibliographic references
+    'sphinxcontrib.rsvgconverter',  # for SVG->PDF conversion in LaTeX output
+    'sphinx_last_updated_by_git',  # get "last updated" from Git
+    'sphinx_codeautolink',  # automatic links from code to documentation
+    'sphinx.ext.intersphinx',  # links to other Sphinx projects (e.g. NumPy)
 ]
 
-multiproject_projects = {
-    "user": {
-        "use_config_file": False,
-        "config": {
-            "project": "Read the Docs user documentation",
-            "html_title": "Read the Docs user documentation",
-        },
-    },
-    "dev": {
-        "use_config_file": False,
-        "config": {
-            "project": "Read the Docs developer documentation",
-            "html_title": "Read the Docs developer documentation",
-        },
-    },
-}
-
-docset = get_project(multiproject_projects)
-
-# Disable custom 404 on dev docs
-if docset == "user":
-    extensions.append("notfound.extension")
-
-ogp_site_name = "Read the Docs Documentation"
-ogp_use_first_image = True  # https://github.com/readthedocs/blog/pull/118
-ogp_image = "https://docs.readthedocs.io/en/latest/_static/img/logo-opengraph.png"
-# Inspired by https://github.com/executablebooks/MyST-Parser/pull/404/
-ogp_custom_meta_tags = [
-    '<meta name="twitter:card" content="summary_large_image" />',
-]
-ogp_enable_meta_description = True
-ogp_description_length = 300
-
-templates_path = ["_templates"]
-
-# This may be elevated as a general issue for documentation and behavioral
-# change to the Sphinx build:
-# This will ensure that we use the correctly set environment for canonical URLs
-# Old Read the Docs injections makes it point only to the default version,
-# for instance /en/stable/
-html_baseurl = os.environ.get("READTHEDOCS_CANONICAL_URL", "/")
-
-master_doc = "index"
-copyright = "Read the Docs, Inc & contributors"
-version = "11.21.1"
-release = version
-exclude_patterns = ["_build", "shared", "_includes"]
-default_role = "obj"
-intersphinx_cache_limit = 14  # cache for 2 weeks
-intersphinx_timeout = 3  # 3 seconds timeout
+# These projects are also used for the sphinx_codeautolink extension:
 intersphinx_mapping = {
-    "python": ("https://docs.python.org/3.10/", None),
-    "django": (
-        "https://docs.djangoproject.com/en/stable/",
-        "https://docs.djangoproject.com/en/stable/_objects/",
-    ),
-    "sphinx": ("https://www.sphinx-doc.org/en/master/", None),
-    "pip": ("https://pip.pypa.io/en/stable/", None),
-    "nbsphinx": ("https://nbsphinx.readthedocs.io/en/latest/", None),
-    "myst-nb": ("https://myst-nb.readthedocs.io/en/stable/", None),
-    "ipywidgets": ("https://ipywidgets.readthedocs.io/en/stable/", None),
-    "jupytext": ("https://jupytext.readthedocs.io/en/stable/", None),
-    "ipyleaflet": ("https://ipyleaflet.readthedocs.io/en/latest/", None),
-    "poliastro": ("https://docs.poliastro.space/en/stable/", None),
-    "myst-parser": ("https://myst-parser.readthedocs.io/en/stable/", None),
-    "writethedocs": ("https://www.writethedocs.org/", None),
-    "jupyterbook": ("https://jupyterbook.org/en/stable/", None),
-    "executablebook": ("https://executablebooks.org/en/latest/", None),
-    "rst-to-myst": ("https://rst-to-myst.readthedocs.io/en/stable/", None),
-    "rtd": ("https://docs.readthedocs.io/en/stable/", None),
-    "rtd-dev": ("https://dev.readthedocs.io/en/latest/", None),
-    "rtd-blog": ("https://blog.readthedocs.com/", None),
-    "jupyter": ("https://docs.jupyter.org/en/latest/", None),
+    'IPython': ('https://ipython.readthedocs.io/en/stable/', None),
+    'matplotlib': ('https://matplotlib.org/', None),
+    'numpy': ('https://docs.scipy.org/doc/numpy/', None),
+    'pandas': ('https://pandas.pydata.org/docs/', None),
+    'python': ('https://docs.python.org/3/', None),
 }
 
-# Intersphinx: Do not try to resolve unresolved labels that aren't explicitly prefixed.
-# The default setting for intersphinx_disabled_reftypes can cause some pretty bad
-# breakage because we have rtd and rtd-dev stable versions in our mappings.
-# Hence, if we refactor labels, we won't see broken references, since the
-# currently active stable mapping keeps resolving.
-# Recommending doing this on all projects with Intersphinx.
-# https://www.sphinx-doc.org/en/master/usage/extensions/intersphinx.html#confval-intersphinx_disabled_reftypes
-intersphinx_disabled_reftypes = ["*"]
+# Don't add .txt suffix to source files:
+html_sourcelink_suffix = ''
 
-myst_enable_extensions = [
-    "deflist",
-]
-htmlhelp_basename = "ReadTheDocsdoc"
-latex_documents = [
-    (
-        "index",
-        "ReadTheDocs.tex",
-        "Read the Docs Documentation",
-        "Eric Holscher, Charlie Leifer, Bobby Grace",
-        "manual",
-    ),
-]
-man_pages = [
-    (
-        "index",
-        "read-the-docs",
-        "Read the Docs Documentation",
-        ["Eric Holscher, Charlie Leifer, Bobby Grace"],
-        1,
-    )
+# List of arguments to be passed to the kernel that executes the notebooks:
+nbsphinx_execute_arguments = [
+    "--InlineBackend.figure_formats={'svg', 'pdf'}",
 ]
 
-language = "en"
+# Environment variables to be passed to the kernel:
+os.environ['MY_DUMMY_VARIABLE'] = 'Hello from conf.py!'
 
-locale_dirs = [
-    f"{docset}/locale/",
-]
-gettext_compact = False
-
-html_theme = "sphinx_rtd_theme"
-html_static_path = ["_static", f"{docset}/_static"]
-html_css_files = ["css/custom.css", "css/sphinx_prompt_css.css"]
-html_js_files = ["js/expand_tabs.js"]
-
-html_logo = "img/logo.svg"
-html_theme_options = {
-    "logo_only": True,
-}
-html_context = {
-    # Fix the "edit on" links.
-    # TODO: remove once we support different rtd config
-    # files per project.
-    "conf_py_path": f"/docs/{docset}/",
-    "display_github": True,
-    "github_user": "readthedocs",
-    "github_repo": "readthedocs.org",
-    "github_version": "main",
-    # Use to generate the Plausible "data-domain" attribute from the template
-    "plausible_domain": f"{os.environ.get('READTHEDOCS_PROJECT')}.readthedocs.io",
+nbsphinx_thumbnails = {
+    'gallery/thumbnail-from-conf-py': 'gallery/a-local-file.png',
+    'gallery/*-rst': 'images/notebook_icon.png',
+    'orphan': '_static/favicon.svg',
 }
 
-# See dev/style_guide.rst for documentation
-rst_epilog = """
-.. |org_brand| replace:: Read the Docs Community
-.. |com_brand| replace:: Read the Docs for Business
-.. |git_providers_and| replace:: GitHub, Bitbucket, and GitLab
-.. |git_providers_or| replace:: GitHub, Bitbucket, or GitLab
+# This is processed by Jinja2 and inserted before each notebook
+nbsphinx_prolog = r"""
+{% set docname = 'doc/' + env.doc2path(env.docname, base=None)|string %}
+
+.. raw:: html
+
+    <div class="admonition note">
+      This page was generated from
+      <a class="reference external" href="https://github.com/spatialaudio/nbsphinx/blob/{{ env.config.release|e }}/{{ docname|e }}">{{ docname|e }}</a>.
+      Interactive online version:
+      <span style="white-space: nowrap;"><a href="https://mybinder.org/v2/gh/spatialaudio/nbsphinx/{{ env.config.release|e }}?filepath={{ docname|e }}"><img alt="Binder badge" src="https://mybinder.org/badge_logo.svg" style="vertical-align:text-bottom"></a>.</span>
+      <a href="{{ env.docname.split('/')|last|e + '.ipynb' }}" class="reference download internal" download>Download notebook</a>.
+      <script>
+        if (document.location.host) {
+          let nbviewer_link = document.createElement('a');
+          nbviewer_link.setAttribute('href',
+            'https://nbviewer.org/url' +
+            (window.location.protocol == 'https:' ? 's/' : '/') +
+            window.location.host +
+            window.location.pathname.slice(0, -4) +
+            'ipynb');
+          nbviewer_link.innerHTML = 'Or view it on <em>nbviewer</em>';
+          nbviewer_link.classList.add('reference');
+          nbviewer_link.classList.add('external');
+          document.currentScript.replaceWith(nbviewer_link, '.');
+        }
+      </script>
+    </div>
+
+.. raw:: latex
+
+    \nbsphinxstartnotebook{\scriptsize\noindent\strut
+    \textcolor{gray}{The following section was generated from
+    \sphinxcode{\sphinxupquote{\strut {{ docname | escape_latex }}}} \dotfill}}
 """
 
-# Activate autosectionlabel plugin
-autosectionlabel_prefix_document = True
+# This is processed by Jinja2 and inserted after each notebook
+nbsphinx_epilog = r"""
+{% set docname = 'doc/' + env.doc2path(env.docname, base=None)|string %}
+.. raw:: latex
 
-# sphinx-notfound-page
-# https://github.com/readthedocs/sphinx-notfound-page
-notfound_context = {
-    "title": "Page Not Found",
-    "body": """
-<h1>Page Not Found</h1>
+    \nbsphinxstopnotebook{\scriptsize\noindent\strut
+    \textcolor{gray}{\dotfill\ \sphinxcode{\sphinxupquote{\strut
+    {{ docname | escape_latex }}}} ends here.}}
+"""
 
-<p>Sorry, we couldn't find that page.</p>
+mathjax3_config = {
+    'tex': {'tags': 'ams', 'useLabelIds': True},
+}
 
-<p>Try using the search box or go to the homepage.</p>
+# https://sphinxcontrib-bibtex.readthedocs.io/en/latest/usage.html
+bibtex_bibfiles = ['references.bib']
+bibtex_reference_style = 'author_year'
+
+# Support for notebook formats other than .ipynb
+nbsphinx_custom_formats = {
+    '.pct.py': ['jupytext.reads', {'fmt': 'py:percent'}],
+    '.md': ['jupytext.reads', {'fmt': 'Rmd'}],
+}
+
+# Import Matplotlib to avoid this message in notebooks:
+# "Matplotlib is building the font cache; this may take a moment."
+import matplotlib.pyplot
+
+# -- The settings below this line are not specific to nbsphinx ------------
+
+master_doc = 'index'
+
+project = 'nbsphinx'
+author = 'Matthias Geier'
+copyright = '2020, ' + author
+html_show_copyright = False
+
+linkcheck_ignore = [
+    r'http://localhost:\d+/',
+    'https://github.com/spatialaudio/nbsphinx/compare/',
+    # 418 Client Error: Unknown for url: https://ieeexplore.ieee.org/document/5582063/
+    'https://doi.org/10.1109/MCSE.2010.119',
+]
+
+nitpicky = True
+
+# -- Get version information and date from Git ----------------------------
+
+try:
+    from subprocess import check_output
+    release = check_output(['git', 'describe', '--tags', '--always'])
+    release = release.decode().strip()
+    today = check_output(['git', 'show', '-s', '--format=%ad', '--date=short'])
+    today = today.decode().strip()
+except Exception:
+    release = '<unknown>'
+    today = '<unknown date>'
+
+# -- Options for HTML output ----------------------------------------------
+
+html_favicon = 'favicon.svg'
+html_title = project + ' version ' + release
+html_theme = 'sizzle'
+html_theme_options = {
+    'globaltoc_collapse': True,
+    'globaltoc_depth': 3,
+    'project_logo_name': project,
+    'show_index': False,
+    'show_filter': False,
+}
+html_show_sourcelink = False
+
+# -- Options for LaTeX output ---------------------------------------------
+
+# See https://www.sphinx-doc.org/en/master/latex.html
+latex_elements = {
+    'papersize': 'a4paper',
+    'printindex': '',
+    'sphinxsetup': r"""
+HeaderFamily=\rmfamily\bfseries,
+div.note_border-TeXcolor={HTML}{E0E0E0},
+div.note_border-width=0.5pt,
+div.note_box-decoration-break=slice,
+div.warning_border-TeXcolor={HTML}{E0E0E0},
+div.warning_border-width=1.5pt,
+div.warning_background-TeXcolor={HTML}{FBFBFB},
+div.warning_box-decoration-break=slice,
+div.topic_box-shadow=none,
+div.topic_border-TeXcolor={HTML}{E0E0E0},
+div.topic_border-width=0.5pt,
+div.topic_box-decoration-break=slice,
+""",
+    'fontpkg': r"""
+\usepackage{mathpazo}
+\linespread{1.05}  % see http://www.tug.dk/FontCatalogue/urwpalladio/
+\setmainfont{TeX Gyre Pagella}[Numbers=OldStyle]
+\setmonofont{Latin Modern Mono Light}[Numbers=Lining]
+""",
+    'preamble': r"""
+\urlstyle{tt}
 """,
 }
-linkcheck_retries = 2
-linkcheck_timeout = 1
-linkcheck_workers = 10
-linkcheck_ignore = [
-    r"http://127\.0\.0\.1",
-    r"http://localhost",
-    r"http://community\.dev\.readthedocs\.io",
-    r"https://yourproject\.readthedocs\.io",
-    r"https?://docs\.example\.com",
-    r"https://foo\.readthedocs\.io/projects",
-    r"https://github\.com.+?#L\d+",
-    r"https://github\.com/readthedocs/readthedocs\.org/issues",
-    r"https://github\.com/readthedocs/readthedocs\.org/pull",
-    r"https://docs\.readthedocs\.io/\?rtd_search",
-    r"https://readthedocs\.org/search",
-    # This page is under login
-    r"https://readthedocs\.org/accounts/gold",
+
+latex_engine = 'lualatex'
+latex_use_xindy = False
+
+latex_table_style = ['booktabs']
+
+latex_documents = [
+    (master_doc, 'nbsphinx.tex', project, author, 'howto'),
 ]
 
-extlinks = {
-    "rtd-issue": ("https://github.com/readthedocs/readthedocs.org/issues/%s", "#%s"),
-}
+latex_show_urls = 'footnote'
+latex_show_pagerefs = True
 
-# Disable epub mimetype warnings
-suppress_warnings = ["epub.unknown_project_files"]
+# -- Work-around to get LaTeX References at the same place as HTML --------
 
+# See https://github.com/mcmtroffaes/sphinxcontrib-bibtex/issues/156
+
+import sphinx.builders.latex.transforms
+
+class DummyTransform(sphinx.builders.latex.transforms.BibliographyTransform):
+
+    def run(self, **kwargs):
+        pass
+
+sphinx.builders.latex.transforms.BibliographyTransform = DummyTransform
+
+# -- Options for EPUB output ----------------------------------------------
+
+# These are just defined to avoid Sphinx warnings related to EPUB:
+version = release
+suppress_warnings = ['epub.unknown_project_files']
+
+# -- Set default HTML theme (if none was given above) ---------------------
+
+if 'html_theme' not in globals():
+    try:
+        import insipid_sphinx_theme
+    except ImportError:
+        pass
+    else:
+        html_theme = 'insipid'
+        html_copy_source = False
+        html_permalinks_icon = '#'
+
+if globals().get('html_theme') == 'insipid':
+    # This controls optional content in index.rst:
+    tags.add('insipid')
