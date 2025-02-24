@@ -98,7 +98,7 @@ Recent papers using `MADYS`:
 
 Authors
 -----------------------
-[Vito Squicciarini](https://orcid.org/0000-0002-3122-6809), LESIA - Observatoire de Paris, FR (vito.squicciarini@obspm.fr)
+[Vito Squicciarini](https://orcid.org/0000-0002-3122-6809), University of Exeter, UK (v.squicciarini@exeter.ac.uk)
 
 [Mariangela Bonavita](https://orcid.org/0000-0002-7520-8389), The Open University, UK
 
