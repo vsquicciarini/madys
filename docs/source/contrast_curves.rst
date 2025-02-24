@@ -27,8 +27,7 @@ The basic inputs needed to create an instance are therefore:
 * file: string, required. Full path to the .fits file containing the input curve;
 * file_type: string, required. It can be either:
 
-   * 'contrast_separation', if a 1D curve(separation) with shape (n_points, 2) is provided; the first column is assumed to
-    correspond to contrasts, the second one to separations;
+   * 'contrast_separation', if a 1D curve(separation) with shape (n_points, 2) is provided; the first column is assumed to correspond to contrasts, the second one to separations;
    * 'contrast_map', if a 2D curve(x, y) is provided. A 3D map (lambda, x, y) is accepted too.
 
 * stellar_parameters: dict, required. A dictionary containing information for the star under consideration. The following keywords must be present:
@@ -41,7 +40,11 @@ The basic inputs needed to create an instance are therefore:
    * 'app_mag_error': float. Uncertainty on 'app_mag' [mag];
    * 'band': string. Filter which the map refers to. It should be a valid filter name for MADYS;
    * 'age': float. Stellar age [Myr];
+  and one between:
    * 'age_error': float. Uncertainty on stellar age [Myr].
+  or the doublet:
+   * 'age_min': float. Lower value for stellar age [Myr].
+   * 'age_max': float. Upper value for stellar age [Myr].
 
 * data_unit: string, optional. Choose 'magnitude' if the map is expressed in magnitudes, 'flux' if in flux contrast. Default: 'flux'.
 * rescale_flux = float, optional. Renormalization constant the flux is to be multiplied by. Default: 1.
