@@ -61,9 +61,20 @@ Note that, when using for the first time an extinction map, `MADYS` will downloa
 Requirements
 ------------
 
-This package relies on usual packages for data science and astronomy: [numpy](https://numpy.org/) (v1.18.1), [scipy](https://www.scipy.org/) (v1.6.1), [pandas](https://pandas.pydata.org/) (v1.1.4), [matplotlib](https://matplotlib.org/) (v3.3.4), [astropy](https://www.astropy.org/) (v4.3.1) and [h5py](https://www.h5py.org/) (v3.2.1).
+This package relies on usual packages for data science and astronomy: [numpy](https://numpy.org/), [scipy](https://www.scipy.org/), [pandas](https://pandas.pydata.org/), [matplotlib](https://matplotlib.org/), [astropy](https://www.astropy.org/) and [h5py](https://www.h5py.org/). In addition, it also requires [astroquery](https://github.com/astropy/astroquery/) and [TAP Gaia Query](https://github.com/mbonav/tapGaia). The latter package might require the installation of [lxml](https://lxml.de/).
 
-In addition, it also requires [astroquery](https://github.com/astropy/astroquery/) (v0.4.2.dev0) and [TAP Gaia Query](https://github.com/mbonav/tapGaia) (v0.1). The latter package might require the installation of [lxml](https://lxml.de/) (v4.6.3).
+The current version is guaranteed to work with the following versions of these packages:
+* numpy <= v1.18.1;
+* scipy <= v1.6.1;
+* pandas <= v1.1.4;
+* matplotlib <= v3.3.4;
+* astropy <= v4.3.1;
+* astroquery <= v0.4.7;
+* h5py <= v3.2.1;
+* tap <= v0.1;
+* lxml <= v4.6.3.
+
+For the moment being, the only known compatibility issue is related to astroquery, which we explicitly require to be <= v0.4.7 during installation. Additional version requirements will be introduced in future releases if any compatibility issue arises.
 
 
 Examples
