@@ -10,15 +10,15 @@ This repository hosts the code of `MADYS`: the Manifold Age Determination for Yo
 
 Harmonising the heterogeneity of publicly-available isochrone grids, the tool allows to choose amongst several models, many of which with customisable astrophysical parameters. Particular attention has been dedicated to the categorization of these models, labeled through a four-level taxonomical classification.
 
-At the moment of writing, MADYS includes 20 models, 153 isochrone grids, and more then 250 photometric filters (a thorough description of each of them is provided). However, despite our efforts, the model list is far from being complete. If you wish a new model to be included in a new version of `MADYS`, or a new set of photometric filters to be added to the current list, feel free to get in contact with us.
+At the moment of writing, MADYS includes 21 models, 153 isochrone grids, and more then 250 photometric filters (a thorough description of each of them is provided). However, despite our efforts, the model list is far from being complete. If you wish a new model to be included in a new version of `MADYS`, or a new set of photometric filters to be added to the current list, feel free to get in contact with us.
 
-Five classes are defined to handle a large variety of possible applications, spanning from the characterization of directly-imaged planets to the study of stellar associations. Notably, large direct imaging survey will benefit from `MADYS`' capability to compute planetary masses corresponding to detection limits of direct imaging observations.
+Six classes are defined to handle a large variety of possible applications, spanning from the characterization of directly-imaged planets to the study of stellar associations. Notably, large direct imaging survey will benefit from `MADYS`' capability to compute planetary masses corresponding to detection limits of direct imaging observations.
 
 Finally, several dedicated plotting functions are included to allow a visual perception of the numerical output.
 
 Latest news:
 ------------
-Nov 17, 2025 - Version v2.0.0 published! A new class, DetectionMap, now handles the conversion of contrast curves to mass curves and detection probability maps, including the possibility to extrapolate outside a model's dynamical range; expanded roster of available filters for several substellar models; improved ADQL queries; added several new plotting functions.
+Nov 17, 2025 - Version v2.0.0 published! A new class, DetectionMap, now handles the conversion of contrast curves to mass curves and detection probability maps, including the possibility to extrapolate outside a model's dynamical range; added new patchwork models connecting BEX and ATMO/Ames-Dusty/Ames-Cond; expanded roster of available filters for several substellar models; improved ADQL queries; added several new plotting functions.
 
 Apr 28, 2024 - Version v1.3.0 published! Expanded the features of the CurveObject class; added Hipparcos catalog and Gaia DR3-Hipparcos proper motion to the automatic ADQL query done by SampleObject; increased completeness of catalog cross-matches; improved readability of code following Docstring Conventions (PEP 8).
 
