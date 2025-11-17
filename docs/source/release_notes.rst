@@ -1,7 +1,35 @@
 Release notes
 =====
 
+Version 2.0.1
+ * Added a new class DetectionMap, which is expected to supersede CurveObject in future releases. This class allows for linear extrapolation of the grids along age and/or mass.
+ * Added new piece-wise models that combine BEX grids with other grids: BEX-Dusty, BEX-Cond, BEX-Dusty, BEX-ATMO.
+ * Fixed some minor issues in Gaia queries:
+
+   - '' entries (e.g., 'tmass_id' when no id is present) are now masked, consistently with other columns;
+   - introduced a small function to recover Gaia stars that are not resolved in Simbad when id_type='other';
+   - Hipparcos and 2MASS helper functions now support repeated entries in the star list;
+   - fixed a bug that made the program crash when encountering columns of type np.int64;
+   - fixed a bug occurring for sources in 2MASSI (2MASS incremental), whose name led to an error;
+   - added the possibility to used masked arrays as inputs. Masked values are treated as np.nan;
+   - fixed a bug which caused the 'radial_velocity' column to come from Gaia DR2 instead of DR3. Now Gaia DR2 RVs are named 'dr2_rv', and DR3 RVs are named 'dr3_rv'.
+ * Added an option "close" to FitParams.plot_maps() to leave the plot open if desired.
+ * In class CurveObject:
+
+   - fixed a bug in compute_mass_limits() that appeared if the nominal age happened to be coincident with one of the sampled ages;
+   - when collapsing a 2D mass map into a 1D mass maps, only separations for which at least 50% of the pixels are sampled are retained;
+   - introduced a new keyword 'minimum_contrast' when initializing the instance to allow neglecting contrasts better than a certain threshold;
+   - in compute_mass_limits(), inserted a verbose warning in the output file's header informing, when a matrix full of nan is returned, if this is due to the dynamical range of the model.
+ * Introduced a method extract_parameter_from_table() in the SampleObject class to extract astrometric data from an existing instance's phot_table.
+ * In SampleObject.CMD() and underlying functions (SampleObject.plot_photometry(), IsochroneGrid.plot_isochrones()):
+
+   - a new keyword 'fontsize_parameters' allows specifying several plotting parameters, mostly related to the size of the various elements of the plot;
+   - the keyword 'label_points' now accepts a numpy array to label every point in the CMD with custom labels.
+ * Fixed a bug in SampleObject.get_params(): if a triplet of ages was given, but the chosen isochrone model did not cover this age range, it used to crash. Now it returns nan with status code = 2 (same as if the photometry is thought to lie outside of the isochrone dynamical age-mass range).
+ * in IsochroneGrid.plot_iso_grid(), two new keywords 'close' and 'mass_units' allow one to export the plot and to change the x-axis unit.
+
 Version 1.3.0
+ * Unresolved binaries can now be fitted assuming a mass ratio or a flux ratio.
  * Modified CurveObject class:
 
    - input .fits header is now inherited by output file;
