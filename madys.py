@@ -70,7 +70,7 @@ except ModuleNotFoundError:
 gaia = GaiaArchive()
 
 dt = h5py.special_dtype(vlen=str)
-MADYS_VERSION = 'v2.0.0'
+MADYS_VERSION = 'v2.0.1'
 
 
 
