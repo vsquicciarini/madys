@@ -3,7 +3,7 @@ Release notes
 
 Version 2.0.1
  * Added a new class DetectionMap, which is expected to supersede CurveObject in future releases. This class allows for linear extrapolation of the grids along age and/or mass.
- * Added new piece-wise models that combine BEX grids with other grids: BEX-Dusty, BEX-Cond, BEX-Dusty, BEX-ATMO.
+ * Added new piecewise models that combine BEX grids with other grids: BEX-Dusty, BEX-Cond, BEX-Dusty, BEX-ATMO.
  * Fixed some minor issues in Gaia queries:
 
    - '' entries (e.g., 'tmass_id' when no id is present) are now masked, consistently with other columns;
