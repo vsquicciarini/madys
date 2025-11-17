@@ -10,7 +10,7 @@ This repository hosts the code of `MADYS`: the Manifold Age Determination for Yo
 
 Harmonising the heterogeneity of publicly-available isochrone grids, the tool allows to choose amongst several models, many of which with customisable astrophysical parameters. Particular attention has been dedicated to the categorization of these models, labeled through a four-level taxonomical classification.
 
-At the moment of writing, MADYS includes 20 models, 140 isochrone grids, and more then 250 photometric filters (a thorough description of each of them is provided). However, despite our efforts, the model list is far from being complete. If you wish a new model to be included in a new version of `MADYS`, or a new set of photometric filters to be added to the current list, feel free to get in contact with us.
+At the moment of writing, MADYS includes 20 models, 153 isochrone grids, and more then 250 photometric filters (a thorough description of each of them is provided). However, despite our efforts, the model list is far from being complete. If you wish a new model to be included in a new version of `MADYS`, or a new set of photometric filters to be added to the current list, feel free to get in contact with us.
 
 Five classes are defined to handle a large variety of possible applications, spanning from the characterization of directly-imaged planets to the study of stellar associations. Notably, large direct imaging survey will benefit from `MADYS`' capability to compute planetary masses corresponding to detection limits of direct imaging observations.
 
@@ -18,6 +18,8 @@ Finally, several dedicated plotting functions are included to allow a visual per
 
 Latest news:
 ------------
+Nov 17, 2025 - Version v2.0.0 published! A new class, DetectionMap, now handles the conversion of contrast curves to mass curves and detection probability maps, including the possibility to extrapolate outside a model's dynamical range; expanded roster of available filters for several substellar models; improved ADQL queries; added several new plotting functions.
+
 Apr 28, 2024 - Version v1.3.0 published! Expanded the features of the CurveObject class; added Hipparcos catalog and Gaia DR3-Hipparcos proper motion to the automatic ADQL query done by SampleObject; increased completeness of catalog cross-matches; improved readability of code following Docstring Conventions (PEP 8).
 
 Jan 22, 2024 - Version v1.2.0 published! A more accurate parameter derivation was introduced when providing [age_opt, age_min, age_max] triplets; SampleObject instances can now be merged; a higher degree of control of plotting options is now possible; fixed minor bugs.
@@ -46,7 +48,9 @@ Catalog queries are mediated by the [TAP Gaia Query](https://github.com/mfouesne
 ```sh
 pip install git+https://github.com/mfouesneau/tap
 ```
-Please make sure you use the command above, as just using `pip install tap` will download **a different**, although eponymous, package. 
+Please make sure you use the command above, as just using `pip install tap` will download **a different**, although homonymous, package.
+If not installed on your machine, the `git` command can be installed following [this guide](https://github.com/git-guides/install-git).
+
 
 Note that TAP Gaia Query might require the installation of [lxml](https://lxml.de/) (v4.6.3).
 
@@ -61,7 +65,7 @@ Note that, when using for the first time an extinction map, `MADYS` will downloa
 Requirements
 ------------
 
-This package relies on usual packages for data science and astronomy: [numpy](https://numpy.org/), [scipy](https://www.scipy.org/), [pandas](https://pandas.pydata.org/), [matplotlib](https://matplotlib.org/), [astropy](https://www.astropy.org/) and [h5py](https://www.h5py.org/). In addition, it also requires [astroquery](https://github.com/astropy/astroquery/) and [TAP Gaia Query](https://github.com/mbonav/tapGaia). The latter package might require the installation of [lxml](https://lxml.de/).
+This package relies on usual packages for data science and astronomy: [numpy](https://numpy.org/), [scipy](https://www.scipy.org/), [pandas](https://pandas.pydata.org/), [matplotlib](https://matplotlib.org/), [astropy](https://www.astropy.org/) and [h5py](https://www.h5py.org/). In addition, it also requires [astroquery](https://github.com/astropy/astroquery/), [TAP Gaia Query](https://github.com/mbonav/tapGaia), and [scikit-image](https://scikit-image.org/docs/0.25.x/user_guide/install.html). TAP might require the installation of [lxml](https://lxml.de/).
 
 The current version is guaranteed to work with the following versions of these packages:
 * numpy <= v1.18.1;
@@ -72,7 +76,8 @@ The current version is guaranteed to work with the following versions of these p
 * astroquery <= v0.4.7;
 * h5py <= v3.2.1;
 * tap <= v0.1;
-* lxml <= v4.6.3.
+* lxml <= v4.6.3;
+* scikit-image <= v0.25.
 
 For the moment being, the only known compatibility issue is related to astroquery, which we explicitly require to be <= v0.4.7 during installation. Additional version requirements will be introduced in future releases if any compatibility issue arises.
 
@@ -96,6 +101,11 @@ Recent papers using `MADYS`:
 
 `MADYS` has already been employed, starting from its preliminary forms, in several publications, including: 
 
+* `Disk Evolution Study Through Imaging of Nearby Young Stars (DESTINYS): V721 CrA and BN CrA have wide and structured disks in polarised IR`, [Columba et al. 2025, arXiv:2511.01717](https://ui.adsabs.harvard.edu/abs/2025arXiv251101717C/abstract)
+* `The SPHERE infrared survey for exoplanets (SHINE): IV. Complete observations, data reduction and analysis, detection performances, and final results`, [Chomez et al. 2025, A&A 697, A99](https://ui.adsabs.harvard.edu/abs/2025A%26A...697A..99C/abstract)
+* `The COBREX archival survey: Improved constraints on the occurrence rate of wide-orbit substellar companions: I. A uniform re-analysis of 400 stars from the GPIES survey`, [Squicciarini et al. 2025, A&A 693, A54](https://ui.adsabs.harvard.edu/abs/2025A%26A...693A..54S/abstract)
+* `Population of giant planets around B stars from the first part of the BEAST survey`, [Delorme et al. 2024, A&A 692, A263](https://ui.adsabs.harvard.edu/abs/2024A%26A...692A.263D/abstract)
+* `Young stellar objects from the LAMOST and ZTF surveys: Physical properties, classification, and light curve analysis`, [Zhang et al. 2024, A&A 686, A269](https://ui.adsabs.harvard.edu/abs/2024A%26A...686A.269Z/abstract)
 * `An imaged 15 MJup companion within a hierarchical quadruple system`, [Chomez et al. 2023, A&A 676, L10](https://ui.adsabs.harvard.edu/abs/2023A%26A...676L..10C/abstract)
 * `BEAST detection of a brown dwarf and a low-mass stellar companion around the young bright B star HIP 81208`, [Viswanath et al. 2023, A&A 675, A54](https://ui.adsabs.harvard.edu/abs/2023A%26A...676L..10C/abstract)
 * `Resolved near-UV hydrogen emission lines at 40-Myr super-Jovian protoplanet Delorme 1 (AB)b. Indications of magnetospheric accretion`, [Ringqvist et al. 2023, A&A 669, L12](https://ui.adsabs.harvard.edu/abs/2023A%26A...669L..12R/abstract)
