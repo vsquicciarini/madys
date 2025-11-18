@@ -185,9 +185,23 @@ Let us create now a detection probability map:
 Detection probability maps: advanced
 ----------------
 
+Sometimes, the dynamical range of a model are not sufficient to cover the entire age/mass range that is desirable. An example is provided in the image below:
+
 .. image:: images/example_dpm_no_extrapolation.png
 
-.. image:: images/example_dpm_grid_coverage.png
+where the dotted area indicates the region where the model matrix is nan-filled. This can be seen explicitly by calling the helper function :py:func:`DetectionMap.visualize_grid_coverage`:
+
+.. code-block:: python
+   curve.visualize_grid_coverage('SPH_H', 'atmo2023-ceq')
+
+.. image:: images/example_grid_coverage.png
+
+In such cases, the user might consider activating the extrapolation option (see `here <https://madys.readthedocs.io/en/latest/contrast_curves.html#detection-probability-maps-advanced>`_ for usage and caveats).
+
+
+.. code-block:: python
+   dpm = curve.DImode_from_contrasts('atmo2023-ceq', plot=True, extrapolate=True)
+
 
 .. image:: images/example_dpm_extrapolation.png
 
