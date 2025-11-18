@@ -1,12 +1,12 @@
 Contrast curves
 =====
 
-Creation of a CurveObject instance
+Creation of a DetectionMap instance
 ----------------
 
-In addition to the characterization of stars and substellar objects, MADYS provides another particularly useful feature for the high-contrast imaging (HCI) community: namely, the capability to convert detection limit curves of a HCI observation into mass limit curves.
+In addition to the characterization of stars and substellar objects, MADYS provides another particularly useful feature for the high-contrast imaging (HCI) community: namely, the capability to convert detection limit curves of a HCI observation into mass limit curves and completeness maps.
 
-The computation is mediated by the ``CurveObject`` class. Let us analyze the syntax needed to initialize an instance:
+The computation is mediated by the ``DetectionMap`` class. Let us analyze the syntax needed to initialize an instance:
 
 
 .. code-block:: python
@@ -20,34 +20,42 @@ The computation is mediated by the ``CurveObject`` class. Let us analyze the syn
              'age_error': 7.
             }
 
-   curve = CurveObject(file, 'contrast_map', params)
+   curve = DetectionMap(file, 'contrast_map', params)
    
 The basic inputs needed to create an instance are therefore:
 
-* file: string, required. Full path to the .fits file containing the input curve;
+* file: path-like, numpy array or tuple, required. Input contrast curve. It can be:
+
+   * if file_type = 'contrast_separation':
+      * a 2D numpy array, with size (n_points, 2), where the first column stores contrasts, the second one separations in arcsec;
+      * a tuple (contrasts, separations), with the two items being numpy arrays as in 1);
+      * a valid .fits file containing the data, formatted as in the array case.
+   * if file_type = 'contrast_map':
+      * a 2D numpy array, with size (n_x, n_y), representing the contrasts achieved for any pixel in the original image;
+      * a valid .fits file containing the data, formatted as in the array case.
 * file_type: string, required. It can be either:
-
-   * 'contrast_separation', if a 1D curve(separation) with shape (n_points, 2) is provided; the first column is assumed to correspond to contrasts, the second one to separations;
-   * 'contrast_map', if a 2D curve(x, y) is provided. A 3D map (lambda, x, y) is accepted too.
-
+      * 'contrast_separation', if a 1D curve(separation) with shape (n_points, 2) is provided;
+      * 'contrast_map', if a 2D curve(x, y) is provided. A 3D map (lambda, x, y) is accepted too.
 * stellar_parameters: dict, required. A dictionary containing information for the star under consideration. The following keywords must be present:
+      * 'parallax': float. Stellar parallax [mas];
+      * 'parallax_error': float. Uncertainty on stellar parallax [mas];
+      * 'app_mag': float. Apparent magnitude of the star in the 'band' band [mag];
+      * 'app_mag_error': float. Uncertainty on 'app_mag' [mag];
+      * 'band': string or list. Filter(s) which the map refers to. It (They) should be valid filter name(s) for MADYS. If the input map is a 3D map (band, x, y), a list can be used to attribute the individual slices along the first axis to different bands. In this case, the program will convert each slice individually and then take (pixel-wise) the best mass limits.
+      * 'age': float. Stellar age [Myr];
 
-   * 'parallax': float. Stellar parallax [mas];
-   * 'parallax_error': float. Uncertainty on stellar parallax [mas];
-   * 'ebv': float. E(B-V) reddening for the star [mag];
-   * 'ebv_error': float. Uncertainty on E(B-V) [mag];
-   * 'app_mag': float. Apparent magnitude of the star in the 'band' band [mag];
-   * 'app_mag_error': float. Uncertainty on 'app_mag' [mag];
-   * 'band': string. Filter which the map refers to. It should be a valid filter name for MADYS;
-   * 'age': float. Stellar age [Myr];
-  and one between:
-   * 'age_error': float. Uncertainty on stellar age [Myr].
-  or the doublet:
-   * 'age_min': float. Lower value for stellar age [Myr].
-   * 'age_max': float. Upper value for stellar age [Myr].
+  one between:
+      * 'age_error': float. Uncertainty on stellar age [Myr]. It must be larger than 0.
+      * a couple 'age_min', 'age_max': float. Lower and upper values for stellar age [Myr]. 'age', 'age_min', 'age_max' must strictly satisfy the relation: age_min < age < age_max.
+  For extinction, two possibility exist:
+      * either it is set explicitly through the following doublet of keywords:
+         * 'ebv': float. E(B-V) reddening for the star [mag];
+         * 'ebv_error': float. Uncertainty on E(B-V) [mag];
+      * or coordinates must be specified to allow the program to estimate E(B-V):
+         * 'ra': float. Right ascension of the star [deg];
+         * 'dec': float. Declination of the star [deg].
+         * 'ext_map': string, optional. 3D extinction map used for the computation. Possible values: 'leike', 'stilism'. Default: 'leike'. In this case, the error on ebv is always set to 0.
 
-* data_unit: string, optional. Choose 'magnitude' if the map is expressed in magnitudes, 'flux' if in flux contrast. Default: 'flux'.
-* rescale_flux = float, optional. Renormalization constant the flux is to be multiplied by. Default: 1.
 
 Once created, the instance possesses the following attributes:
 
