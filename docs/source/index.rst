@@ -84,6 +84,7 @@ Contents
    extinction_model
    photometric_quality
    available_filters
+   available_models
    
 .. toctree::
    :maxdepth: 2
@@ -92,7 +93,6 @@ Contents
    computation_run
    binary_systems
    imaging_predictions
-   available_models
    contrast_curves
    
 .. toctree::
