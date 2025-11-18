@@ -122,14 +122,14 @@ The output of :py:func:`DetectionMap.compute_mass_limits` is a dictionary, conta
 
 .. code-block:: python
 
-mass_array = mass_limits['map_1D'][0, :, 0]
-separation_array = mass_limits['map_1D'][0, :, 1]
+   mass_array = mass_limits['map_1D'][0, :, 0]
+   separation_array = mass_limits['map_1D'][0, :, 1]
 
-plt.plot(separation_array, mass_array)
-plt.yscale('log')
-plt.xlabel('separation [arcsec]')
-plt.ylabel(r'mass [$M_{Jup}$]')
-plt.show()
+   plt.plot(separation_array, mass_array)
+   plt.yscale('log')
+   plt.xlabel('separation [arcsec]')
+   plt.ylabel(r'mass [$M_{Jup}$]')
+   plt.show()
 
 .. image:: images/example_mass_curve.png
 
@@ -172,7 +172,7 @@ Default: 'shape' = 'cos_i'.
 
 .. note::
 
-``xlog`` and ``ylog`` are False by default in ExoDMC. However, we strongly advise the user to set ``xlog`` and ``ylog`` to True to avoid losing sensitivity at the low-mass and the low-sma edges, where the most interesting information is found.
+   ``xlog`` and ``ylog`` are False by default in ExoDMC. However, we strongly advise the user to set ``xlog`` and ``ylog`` to True to avoid losing sensitivity at the low-mass and the low-sma edges, where the most interesting information is found.
 
 .. code-block:: python
 dpm = curve.DImode_from_contrasts('atmo2023-ceq', plot=True)
