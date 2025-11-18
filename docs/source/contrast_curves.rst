@@ -24,25 +24,25 @@ The computation is mediated by the ``DetectionMap`` class. Let us analyze the sy
    
 The basic inputs needed to create an instance are therefore:
 
-* file: path-like, numpy array or tuple, required. Input contrast curve. It can be:
+* ``file``: path-like, numpy array or tuple, required. Input contrast curve. It can be:
 
-   * if file_type = 'contrast_separation':
+   * if ``file_type`` = 'contrast_separation':
 
       * a 2D numpy array, with size (n_points, 2), where the first column stores contrasts, the second one separations in arcsec;
       * a tuple (contrasts, separations), with the two items being numpy arrays as in 1);
       * a valid .fits file containing the data, formatted as in the array case. In this case, two keywords ``OBJECT`` and ``PIXTOARC`` are expected in the header, corresponding to the name of the star and the platescale in mas/px.
 
-   * if file_type = 'contrast_map':
+   * if ``file_type`` = 'contrast_map':
 
       * a 2D numpy array, with size (n_x, n_y), representing the contrasts achieved for any pixel in the original image;
       * a valid .fits file containing the data, formatted as in the array case.
 
-* file_type: string, required. It can be either:
+* ``file_type``: string, required. It can be either:
 
       * 'contrast_separation', if a 1D curve(separation) with shape (n_points, 2) is provided;
       * 'contrast_map', if a 2D curve(x, y) is provided. A 3D map (lambda, x, y) is accepted too.
 
-* stellar_parameters: dict, required. A dictionary containing information for the star under consideration. The following keywords must be present:
+* ``stellar_parameters``: dict, required. A dictionary containing information for the star under consideration. The following keywords must be present:
 
       * 'parallax': float. Stellar parallax [mas];
       * 'parallax_error': float. Uncertainty on stellar parallax [mas];
@@ -80,29 +80,29 @@ Finally, an optional dictionary can be provided through the keyword ``exodmc_par
 
 Once created, the instance possesses the following attributes:
 
-* file: path-like, numpy array or tuple. Corresponding to input 'file'.
-* file_type: string. Corresponding to input 'file_type'.
-* stellar_parameters: dict. Corresponding to input 'stellar_parameters'.
-* data_unit: string. Corresponding to input 'data_unit'.
-* rescale_flux: float. Corresponding to input 'rescale_flux'.
-* minimum contrast: float. Corresponding to input 'minimum_contrast'.
-* contrasts: numpy array. Renormalized contrast curve (flux ratio).
-* contrasts_mag: numpy array. Renormalized contrast curve (magnitude contrast).
-* header: fits.Header(). Header of the input file (empty header if file is not a filepath).
-* abs_phot: numpy array. Absolute magnitudes in the required filters.
-* abs_phot_err: numpy array. Uncertainties on absolute magnitudes in the required filters.
-* abs_phot: numpy array. Apparent magnitudes in the required filters.
-* abs_phot_err: numpy array. Uncertainties on apparent magnitudes in the required filters.
-* mag_limits: numpy array. Limit absolute magnitudes corresponding to input curve.
-* mag_limits_err: numpy array. Uncertainties on limit absolute magnitudes.
-* mag_limits_app: numpy array. Limit apparent magnitudes corresponding to input curve.
-* mag_limits_app_err: numpy array. Uncertainties on limit apparent magnitudes.
-* separations: numpy array. Input separations, if 'file_type'='contrast_separation'; zero-filled array otherwise.
-* band: string. Input stellar_parameters['band'].
-* platescale: float. Platescale of the instrument FOV [mas/px].
-* object: string. Object name.
-* exodmc_object: ExoDMC instance. It defines the grid of parameters across which DPM are evaluated.
-* mass_limits: dict. It stores the mass_limits produced by :py:func:`DetectionMap.compute_mass_limits` to avoid repeating the computation if the model does not change.
+* ``file``: path-like, numpy array or tuple. Corresponding to input 'file'.
+* ``file_type``: string. Corresponding to input 'file_type'.
+* ``stellar_parameters``: dict. Corresponding to input 'stellar_parameters'.
+* ``data_unit``: string. Corresponding to input 'data_unit'.
+* ``rescale_flux``: float. Corresponding to input 'rescale_flux'.
+* ``minimum contrast``: float. Corresponding to input 'minimum_contrast'.
+* ``contrasts``: numpy array. Renormalized contrast curve (flux ratio).
+* ``contrasts_mag``: numpy array. Renormalized contrast curve (magnitude contrast).
+* ``header``: fits.Header(). Header of the input file (empty header if file is not a filepath).
+* ``abs_phot``: numpy array. Absolute magnitudes in the required filters.
+* ``abs_phot_err``: numpy array. Uncertainties on absolute magnitudes in the required filters.
+* ``abs_phot``: numpy array. Apparent magnitudes in the required filters.
+* ``abs_phot_err``: numpy array. Uncertainties on apparent magnitudes in the required filters.
+* ``mag_limits``: numpy array. Limit absolute magnitudes corresponding to input curve.
+* ``mag_limits_err``: numpy array. Uncertainties on limit absolute magnitudes.
+* ``mag_limits_app``: numpy array. Limit apparent magnitudes corresponding to input curve.
+* ``mag_limits_app_err``: numpy array. Uncertainties on limit apparent magnitudes.
+* ``separations``: numpy array. Input separations, if 'file_type'='contrast_separation'; zero-filled array otherwise.
+* ``band``: string. Input stellar_parameters['band'].
+* ``platescale``: float. Platescale of the instrument FOV [mas/px].
+* ``object``: string. Object name.
+* ``exodmc_object``: ExoDMC instance. It defines the grid of parameters across which DPM are evaluated.
+* ``mass_limits``: dict. It stores the mass_limits produced by :py:func:`DetectionMap.compute_mass_limits` to avoid repeating the computation if the model does not change.
 
 
 
@@ -131,7 +131,7 @@ plt.xlabel('separation [arcsec]')
 plt.ylabel(r'mass [$M_{Jup}$]')
 plt.show()
 
-.. image:: images/example_.png
+.. image:: images/example_mass_curve.png
 
 
 Detection probability maps
@@ -143,38 +143,41 @@ MADYS employs ExoDMC (`Bonavita 2020 <https://ui.adsabs.harvard.edu/abs/2020ascl
 
 As mentioned above, the parameters of ExoDMC can be set using the keyword ``exodmc_parameters`` when the instance is initialized. The dictionary can have the following keywords:
 
-* x_min: float. Lower limit for grid x axis (default = 1);
-* x_max: float. Upper limit for grid x axis (default = 1000)
-* nx: int. Number of steps in the grid x axis (default = 100)
-* xlog: bool. If True the x axis will be uniformly spaced in log
-* y_min: float. Lower limit for grid y axis (default = 0.5)
-* y_max: float. Upper limit for grid y axis (default = 75)
-* ny: int. Number of steps in the grid y axis (default = 100)
-* ylog: bool. If True the y axis will be uniformly spaced in log
-* ngen: float. Number of orbital elements sets to be generated for each point in the grid (default=1000).
-* e_params: dict. Specifies the parameters needed to define the eccentricity distribution. If used, the following keys can/must be present:
-      * shape: string, required. Desired eccentricity distribution. Can be uniform ('uniform') or Gaussian ('gauss')
-      * mean: float, optional. Only used if shape = 'gauss'. Mean of the gaussian eccentricity distribution.
-      * sigma: float, optional. Only used if shape = 'gauss'. Standard deviation of the gaussian eccentricity distribution.
-      * min: float, optional. Only used if shape = 'uniform'. Lower eccentricity value to be considered.
-      * max: float, optional. Only used if shape = 'uniform'. Upper eccentricity value to be considered.
+* ``x_min``: float. Lower limit for grid x axis (default = 1);
+* ``x_max``: float. Upper limit for grid x axis (default = 1000)
+* ``nx``: int. Number of steps in the grid x axis (default = 100)
+* ``xlog``: bool. If True the x axis will be uniformly spaced in log
+* ``y_min``: float. Lower limit for grid y axis (default = 0.5)
+* ``y_max``: float. Upper limit for grid y axis (default = 75)
+* ``ny``: int. Number of steps in the grid y axis (default = 100)
+* ``ylog``: bool. If True the y axis will be uniformly spaced in log
+* ``ngen``: float. Number of orbital elements sets to be generated for each point in the grid (default=1000).
+* ``e_params``: dict. Specifies the parameters needed to define the eccentricity distribution. If used, the following keys can/must be present:
+
+      * 'shape': string, required. Desired eccentricity distribution. Can be uniform ('uniform') or Gaussian ('gauss')
+      * 'mean': float, optional. Only used if shape = 'gauss'. Mean of the gaussian eccentricity distribution.
+      * 'sigma': float, optional. Only used if shape = 'gauss'. Standard deviation of the gaussian eccentricity distribution.
+      * 'min': float, optional. Only used if shape = 'uniform'. Lower eccentricity value to be considered.
+      * 'max': float, optional. Only used if shape = 'uniform'. Upper eccentricity value to be considered.
   
   Default: 'shape' = 'gauss', 'mean' = 0, 'sigma' = 0.3.
 
-* i_params: dict. Specifies the parameters needed to define the inclination distribution. If used, the following keys can/must be present:
+* ``i_params``: dict. Specifies the parameters needed to define the inclination distribution. If used, the following keys can/must be present:
 
-      * shape: string, required. Desired inclination distribution. Can be uniform in cos(i) ('cos_i') or Gaussian ('gauss')
-      * mean: float, optional. Only used if shape = 'gauss'. Mean of the gaussian inclination distribution [rad].
-      * sigma: float, optional. Only used if shape = 'gauss'. Standard deviation of the gaussian inclination distribution [rad].
+      * 'shape': string, required. Desired inclination distribution. Can be uniform in cos(i) ('cos_i') or Gaussian ('gauss')
+      * 'mean': float, optional. Only used if shape = 'gauss'. Mean of the gaussian inclination distribution [rad].
+      * 'sigma': float, optional. Only used if shape = 'gauss'. Standard deviation of the gaussian inclination distribution [rad].
 
 Default: 'shape' = 'cos_i'.
 
-We strongly advise the user to set ``xlog`` and ``ylog`` to True.
+.. note::
+
+``xlog`` and ``ylog`` are False by default in ExoDMC. However, we strongly advise the user to set ``xlog`` and ``ylog`` to True to avoid losing sensitivity at the low-mass and the low-sma edges, where the most interesting information is found.
 
 .. code-block:: python
 dpm = curve.DImode_from_contrasts('atmo2023-ceq', plot=True)
 
-.. image:: images/example_.png
+.. image:: images/example_dpm.png
 
 
 
