@@ -102,25 +102,79 @@ Once created, the instance possesses the following attributes:
 * platescale: float. Platescale of the instrument FOV [mas/px].
 * object: string. Object name.
 * exodmc_object: ExoDMC instance. It defines the grid of parameters across which DPM are evaluated.
-* mass_limits: dict. It stores the mass_limits produced by compute_mass_limits() to avoid repeating the computation if the model does not change.
+* mass_limits: dict. It stores the mass_limits produced by :py:func:`DetectionMap.compute_mass_limits` to avoid repeating the computation if the model does not change.
 
 
 
 Creation of mass curves
 ----------------
 
-Starting from the object create above, it's easy to compute the corresponding mass curve through the function :py:func:`CurveObject.compute_mass_limits`:
+Starting from the object create above, it's easy to compute the corresponding mass curve through the function :py:func:`DetectionMap.compute_mass_limits`:
 
 .. code-block:: python
 
-   results = curve.compute_mass_limits('atmo2020-ceq')
+   mass_limits = curve.compute_mass_limits('atmo2020-ceq')
 
 
 If ``file_type``='contrast_map', the program will additionally collapse the map along the azimuthal direction, yielding a (N-1)-dimensional output in addition to the N-dimensional mass curve.
 
+The output of :py:func:`DetectionMap.compute_mass_limits` is a dictionary, containing several outputs depending on the input type. In particular, the 1D mass curve -- stored in the kwyrods ``map_1D`` -- is a 3D numpy array where the first axis has three elements, corresponding to each of [age_opt, age_min, age_max]; the second axis represent the length of the two arrays; the third axis has two indices, one for the separation and one for the mass curve.
+
+.. code-block:: python
+
+mass_array = mass_limits['map_1D'][0, :, 0]
+separation_array = mass_limits['map_1D'][0, :, 1]
+
+plt.plot(separation_array, mass_array)
+plt.yscale('log')
+plt.xlabel('separation [arcsec]')
+plt.ylabel(r'mass [$M_{Jup}$]')
+plt.show()
+
+.. image:: images/example_.png
 
 
+Detection probability maps
+----------------
 
-      If not set, the class assumes the standard parameters. Refer to the documentation of ExoDMC for info about the keywords.
+A completeness map, or detection probability map, is a way to account for the observational biases underlying a direct imaging observation. Given a planet mass and a semi-major axis, it quantifies the probability that such a planet be detectable in the observation. This is particularly important in the context of surveys, where the true occurrence rate of planets must take into account the uneven coverage of the parameter space.
+
+MADYS employs ExoDMC (`Bonavita 2020 <https://ui.adsabs.harvard.edu/abs/2020ascl.soft10008B/abstract>`_) to create a grid of orbital parameters. For each planet mass and semi-major axis, 1000 orbits are randomly generated; after estimating the resulting projected separation, the planet's flux (estimated from its mass and age) is compared to the contrast limit at that separation. 
+
+As mentioned above, the parameters of ExoDMC can be set using the keyword ``exodmc_parameters`` when the instance is initialized. The dictionary can have the following keywords:
+
+* x_min: float. Lower limit for grid x axis (default = 1);
+* x_max: float. Upper limit for grid x axis (default = 1000)
+* nx: int. Number of steps in the grid x axis (default = 100)
+* xlog: bool. If True the x axis will be uniformly spaced in log
+* y_min: float. Lower limit for grid y axis (default = 0.5)
+* y_max: float. Upper limit for grid y axis (default = 75)
+* ny: int. Number of steps in the grid y axis (default = 100)
+* ylog: bool. If True the y axis will be uniformly spaced in log
+* ngen: float. Number of orbital elements sets to be generated for each point in the grid (default=1000).
+* e_params: dict. Specifies the parameters needed to define the eccentricity distribution. If used, the following keys can/must be present:
+      * shape: string, required. Desired eccentricity distribution. Can be uniform ('uniform') or Gaussian ('gauss')
+      * mean: float, optional. Only used if shape = 'gauss'. Mean of the gaussian eccentricity distribution.
+      * sigma: float, optional. Only used if shape = 'gauss'. Standard deviation of the gaussian eccentricity distribution.
+      * min: float, optional. Only used if shape = 'uniform'. Lower eccentricity value to be considered.
+      * max: float, optional. Only used if shape = 'uniform'. Upper eccentricity value to be considered.
+  
+  Default: 'shape' = 'gauss', 'mean' = 0, 'sigma' = 0.3.
+
+* i_params: dict. Specifies the parameters needed to define the inclination distribution. If used, the following keys can/must be present:
+
+      * shape: string, required. Desired inclination distribution. Can be uniform in cos(i) ('cos_i') or Gaussian ('gauss')
+      * mean: float, optional. Only used if shape = 'gauss'. Mean of the gaussian inclination distribution [rad].
+      * sigma: float, optional. Only used if shape = 'gauss'. Standard deviation of the gaussian inclination distribution [rad].
+
+Default: 'shape' = 'cos_i'.
+
+We strongly advise the user to set ``xlog`` and ``ylog`` to True.
+
+.. code-block:: python
+dpm = curve.DImode_from_contrasts('atmo2023-ceq', plot=True)
+
+.. image:: images/example_.png
+
 
 
