@@ -134,7 +134,7 @@ The output of :py:func:`DetectionMap.compute_mass_limits` is a dictionary, conta
 .. image:: images/example_mass_curve.png
 
 
-Detection probability maps
+Detection probability maps: basics
 ----------------
 
 A completeness map, or detection probability map, is a way to account for the observational biases underlying a direct imaging observation. Given a planet mass and a semi-major axis, it quantifies the probability that such a planet be detectable in the observation. This is particularly important in the context of surveys, where the true occurrence rate of planets must take into account the uneven coverage of the parameter space.
@@ -174,10 +174,22 @@ Default: 'shape' = 'cos_i'.
 
    ``xlog`` and ``ylog`` are False by default in ExoDMC. However, we strongly advise the user to set ``xlog`` and ``ylog`` to True to avoid losing sensitivity at the low-mass and the low-sma edges, where the most interesting information is found.
 
+Let us create now a detection probability map:
+
 .. code-block:: python
-dpm = curve.DImode_from_contrasts('atmo2023-ceq', plot=True)
+   dpm = curve.DImode_from_contrasts('atmo2023-ceq', plot=True)
 
 .. image:: images/example_dpm.png
+
+
+Detection probability maps: advanced
+----------------
+
+.. image:: images/example_dpm_no_extrapolation.png
+
+.. image:: images/example_dpm_grid_coverage.png
+
+.. image:: images/example_dpm_extrapolation.png
 
 
 
