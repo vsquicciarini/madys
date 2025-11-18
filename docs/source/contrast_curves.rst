@@ -27,16 +27,23 @@ The basic inputs needed to create an instance are therefore:
 * file: path-like, numpy array or tuple, required. Input contrast curve. It can be:
 
    * if file_type = 'contrast_separation':
+
       * a 2D numpy array, with size (n_points, 2), where the first column stores contrasts, the second one separations in arcsec;
       * a tuple (contrasts, separations), with the two items being numpy arrays as in 1);
-      * a valid .fits file containing the data, formatted as in the array case.
+      * a valid .fits file containing the data, formatted as in the array case. In this case, two keywords ``OBJECT`` and ``PIXTOARC`` are expected in the header, corresponding to the name of the star and the platescale in mas/px.
+
    * if file_type = 'contrast_map':
+
       * a 2D numpy array, with size (n_x, n_y), representing the contrasts achieved for any pixel in the original image;
       * a valid .fits file containing the data, formatted as in the array case.
+
 * file_type: string, required. It can be either:
+
       * 'contrast_separation', if a 1D curve(separation) with shape (n_points, 2) is provided;
       * 'contrast_map', if a 2D curve(x, y) is provided. A 3D map (lambda, x, y) is accepted too.
+
 * stellar_parameters: dict, required. A dictionary containing information for the star under consideration. The following keywords must be present:
+
       * 'parallax': float. Stellar parallax [mas];
       * 'parallax_error': float. Uncertainty on stellar parallax [mas];
       * 'app_mag': float. Apparent magnitude of the star in the 'band' band [mag];
@@ -45,27 +52,43 @@ The basic inputs needed to create an instance are therefore:
       * 'age': float. Stellar age [Myr];
 
   one between:
+
       * 'age_error': float. Uncertainty on stellar age [Myr]. It must be larger than 0.
       * a couple 'age_min', 'age_max': float. Lower and upper values for stellar age [Myr]. 'age', 'age_min', 'age_max' must strictly satisfy the relation: age_min < age < age_max.
+
   For extinction, two possibility exist:
+
       * either it is set explicitly through the following doublet of keywords:
+
          * 'ebv': float. E(B-V) reddening for the star [mag];
          * 'ebv_error': float. Uncertainty on E(B-V) [mag];
+
       * or coordinates must be specified to allow the program to estimate E(B-V):
+
          * 'ra': float. Right ascension of the star [deg];
          * 'dec': float. Declination of the star [deg].
          * 'ext_map': string, optional. 3D extinction map used for the computation. Possible values: 'leike', 'stilism'. Default: 'leike'. In this case, the error on ebv is always set to 0.
 
 
+In addition to this, a dictionary is required to be supplied through the keyword ``sequence_parameters`` if ``file`` is not a path to provide missing information. Its keywords are:
+
+      * 'OBJECT': string. Name of the star;
+      * 'PIXTOARC': float. Platescale [mas/px] (only mandatory if file_type = 'contrast_separation').
+
+Finally, an optional dictionary can be provided through the keyword ``exodmc_parameters``. This specifies the parameters of the grid for all the completeness maps created from this instance.
+
+
 Once created, the instance possesses the following attributes:
 
-* file: string. Corresponding to input 'file'.
+* file: path-like, numpy array or tuple. Corresponding to input 'file'.
 * file_type: string. Corresponding to input 'file_type'.
 * stellar_parameters: dict. Corresponding to input 'stellar_parameters'.
 * data_unit: string. Corresponding to input 'data_unit'.
 * rescale_flux: float. Corresponding to input 'rescale_flux'.
+* minimum contrast: float. Corresponding to input 'minimum_contrast'.
 * contrasts: numpy array. Renormalized contrast curve (flux ratio).
 * contrasts_mag: numpy array. Renormalized contrast curve (magnitude contrast).
+* header: fits.Header(). Header of the input file (empty header if file is not a filepath).
 * abs_phot: numpy array. Absolute magnitudes in the required filters.
 * abs_phot_err: numpy array. Uncertainties on absolute magnitudes in the required filters.
 * abs_phot: numpy array. Apparent magnitudes in the required filters.
@@ -77,6 +100,10 @@ Once created, the instance possesses the following attributes:
 * separations: numpy array. Input separations, if 'file_type'='contrast_separation'; zero-filled array otherwise.
 * band: string. Input stellar_parameters['band'].
 * platescale: float. Platescale of the instrument FOV [mas/px].
+* object: string. Object name.
+* exodmc_object: ExoDMC instance. It defines the grid of parameters across which DPM are evaluated.
+* mass_limits: dict. It stores the mass_limits produced by compute_mass_limits() to avoid repeating the computation if the model does not change.
+
 
 
 Creation of mass curves
@@ -90,3 +117,10 @@ Starting from the object create above, it's easy to compute the corresponding ma
 
 
 If ``file_type``='contrast_map', the program will additionally collapse the map along the azimuthal direction, yielding a (N-1)-dimensional output in addition to the N-dimensional mass curve.
+
+
+
+
+      If not set, the class assumes the standard parameters. Refer to the documentation of ExoDMC for info about the keywords.
+
+
