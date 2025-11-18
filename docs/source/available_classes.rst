@@ -7,5 +7,5 @@ In its current form, MADYS comprises six classes which serve different purposes:
 * ``ModelHandler``: handles data and metadata of local isochrone files, allowing one to inspect the locally available models and to download new ones. See `here <https://madys.readthedocs.io/en/latest/available_models.html>`_;
 * ``IsochroneGrid``: builds and handles the isochronal grid used for parameter determination. Usually not be called directly;
 * ``FitParams``: stores the result of an isochronal analysis performed upon a SampleObject instance. See `here <https://madys.readthedocs.io/en/latest/computation_run.html#the-fitparams-class>`_;
-* ``CurveObject``: enables the conversion of a contrast curve (i.e., detection limits) from a direct imaging survey into a mass limit curve. Superseded by DetectionMap. See HERE.
-* ``DetectionMap``: enables the conversion of a contrast curve (i.e., detection limits) from a direct imaging survey into a mass limit curve and a compleness (i.e., detection probability) map. Supersedes CurveObject. See HERE.
+* ``CurveObject``: enables the conversion of a contrast curve (i.e., detection limits) from a direct imaging survey into a mass limit curve. Superseded by DetectionMap;
+* ``DetectionMap``: enables the conversion of a contrast curve (i.e., detection limits) from a direct imaging survey into a mass limit curve and a compleness (i.e., detection probability) map. Supersedes CurveObject. See `here <https://madys.readthedocs.io/en/latest/contrast_curves.html>`_.
