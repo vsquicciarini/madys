@@ -77,3 +77,34 @@ A user can in any moment download a model grid through the following function:
    ModelHandler.download_model(model_grid)
 
 This function is automatically called when attempting to use a combination of parameters that is best reproduced by a model grid that is not available in the current working path of MADYS. In this case, the program will ask whether to use the local best-matching model or to download and use the more suitable model available in the Zenodo repository associated to MADYS.
+
+
+Model extrapolation
+------------
+Starting from v2.0.0, all models in MADYS can be linearly extrapolated outside their dynamical range. This functionality was introduced to meet a need of the JWST community, which often stumbles across situations where the performances of JWST are so deep that they breach the mass/temperature range where substellar evolutionary models are computed.
+
+Given a DetectionMap `instance <https://madys.readthedocs.io/en/latest/contrast_curves.html>`_, extrapolation can be turned by means of the ``extrapolation`` keyword:
+
+.. code-block:: python
+
+   dpm = instance.DImode_from_contrasts('atmo2023-ceq', plot=True, extrapolate=True)
+
+The option is inherited from the ``IsochroneGrid``, and it can be used there as well.
+
+.. note::
+
+   As usual with extrapolation, this feature must be used with a grain of salt. The reason why models are not computed outside certain temperature ranges is because some of their assumptions — related to physical or chemical processes, or to the neglect of certain species — break down. In addition to this, the linear extrapolation of magnitudes is a rough first order approximation, sacrificing accuracy for numerical robustness.
+
+
+Piecewise models
+------------
+For the same reasons underlying the extrapolation feature, we provide a custom model that is assembled in a piecewise way by connecting the BEX suite ($M ∈ [0.02, 2]~M_J$) and the ATMO 2023 suite ($M ∈ [0.5, 75]~M_J$). An example of an interpolated mass track is shown here:
+
+.. image:: images/bexatmo_interpolation.png
+
+For the BEX part, we employ the bex-petitcode-clear version; for ATMO, we leave to the user the choice among the three versions available therein.
+
+Two additional models named BEX-Dusty and BEX-Cond, employed in the framework of the `SHINE <https://ui.adsabs.harvard.edu/abs/2021A%26A...651A..72V/abstract>`_ survey, are provided too.
+
+
+
