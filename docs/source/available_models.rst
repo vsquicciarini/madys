@@ -100,7 +100,7 @@ Piecewise models
 ------------
 For the same reasons underlying the extrapolation feature, we provide a custom model that is assembled in a piecewise way by connecting the BEX suite ($M ∈ [0.02, 2]~M_J$) and the ATMO 2023 suite ($M ∈ [0.5, 75]~M_J$). An example of an interpolated mass track is shown here:
 
-.. image:: images/bexatmo_interpolation.png
+.. image:: images/bex-atmo_interpolation.png
 
 For the BEX part, we employ the bex-petitcode-clear version; for ATMO, we leave to the user the choice among the three versions available therein.
 
