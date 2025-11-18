@@ -129,4 +129,7 @@ Attribution
 -----------------------
 Please cite [Squicciarini & Bonavita (2022)](https://ui.adsabs.harvard.edu/abs/2022A%26A...666A..15S/abstract) whenever you publish results obtained with `MADYS`.
 
+Acknowledgements
+-----------------------
+We would like to thank Raffaele Gratton, Antoine Chomez, Sebastian Marino, Kellen Lawson, Aarynn Carter, Giovanni Strampelli for the insightful discussions and the useful tips that contributed to the improvement of this tool.
 
