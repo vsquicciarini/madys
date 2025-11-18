@@ -6,8 +6,8 @@ project = 'MADYS'
 copyright = '2022, Vito Squicciarini'
 author = 'Vito Squicciarini'
 
-release = '0.5'
-version = '0.5.0'
+release = '2.0'
+version = '2.0.1'
 
 # -- General configuration
 
