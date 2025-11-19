@@ -83,7 +83,7 @@ Model extrapolation
 ------------
 Starting from v2.0.0, all models in MADYS can be linearly extrapolated outside their dynamical range. This functionality was introduced to meet a need of the JWST community, which often stumbles across situations where the performances of JWST are so deep that they breach the mass/temperature range where substellar evolutionary models are computed.
 
-Given a DetectionMap `instance <https://madys.readthedocs.io/en/latest/contrast_curves.html>`_, extrapolation can be turned by means of the ``extrapolation`` keyword:
+Given a DetectionMap `instance <https://madys.readthedocs.io/en/latest/contrast_curves.html>`_, extrapolation can be turned by means of the ``extrapolate`` keyword:
 
 .. code-block:: python
 
