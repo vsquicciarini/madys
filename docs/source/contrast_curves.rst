@@ -113,17 +113,17 @@ Starting from the object create above, it's easy to compute the corresponding ma
 
 .. code-block:: python
 
-   mass_limits = curve.compute_mass_limits('atmo2020-ceq')
+   mass_limits_dict = curve.compute_physical_limits('atmo2020-ceq')
 
 
 If ``file_type``='contrast_map', the program will additionally collapse the map along the azimuthal direction, yielding a (N-1)-dimensional output in addition to the N-dimensional mass curve.
 
-The output of :py:func:`DetectionMap.compute_mass_limits` is a dictionary, containing several outputs depending on the input type. In particular, the 1D mass curve -- stored in the kwyrods ``map_1D`` -- is a 3D numpy array where the first axis has three elements, corresponding to each of [age_opt, age_min, age_max]; the second axis represent the length of the two arrays; the third axis has two indices, one for the separation and one for the mass curve.
+The output of :py:func:`DetectionMap.compute_mass_limits` is a dictionary, which stores as many dictionaries as the number of filters in ``curve.band``. Each of these subdictionaries contains several outputs depending on the input type. The 1D arrays for separations and mass maps are stored under the keywords ``separation``, ``mass_map_1D``, ``mass_map_1D_min``, ``mass_map_1D_max``, where the last two indicate the lower and upper mass limits. If ``curve.file_type`` == 'contrast_map', the additional 2D curves are stored under the keywords ``mass_map_2D``, ``mass_map_2D_min``, ``mass_map_2D_max``. In the example above:
 
 .. code-block:: python
 
-   mass_array = mass_limits['map_1D'][0, :, 0]
-   separation_array = mass_limits['map_1D'][0, :, 1]
+   mass_array = mass_limits_dict['SPH_K1']['mass_map_1D']
+   separation_array = mass_limits_dict['SPH_K1']['separation']
 
    plt.plot(separation_array, mass_array)
    plt.yscale('log')
@@ -214,7 +214,8 @@ In such cases, the user might consider activating the extrapolation option (see 
 
 .. image:: images/example_dpm_extrapolation.png
 
-Temperature mass curves & DPM
+
+Temperature curves & DPM
 ----------------
 
 In alternative to the detection probability in the (sma, mass) plane, one might be interested in computing the detection probability of a planet in the (sma, Teff) plane. This map can be obtained by means of the keyword ``include_teff``:
@@ -228,3 +229,17 @@ In alternative to the detection probability in the (sma, mass) plane, one might 
 .. note::
 
 	For the sake of code optimization, temperature DPMs are computed from mass DPMs via a change of variables. Therefore, a too narrow mass grid might imply an incomplete coverage of the Teff space -- which might lead to a nan-filled or with a largely extrapolated Teff map. For this reason, we suggest keeping the default value of ``y_max`` (100 M_J) when computing Teff DPMs. In this case, the plotting of mass DPMs can be easily adjusted using the function :py:func:`plot_completeness_map`.
+
+Detection limits in the temperature space can be determined in the same way as mass limits:
+
+.. code-block:: python
+
+   teff_limits_dict = curve.compute_physical_limits('atmo2020-ceq', quantity='Teff')
+
+In analogy with their mass curves, these curves are stored under the keywords ``Teff_map_1D``, ``Teff_map_1D_min``, ``Teff_map_1D_max`` (and ``Teff_map_2D``, ``Teff_map_2D_min``, ``Teff_map_2D_max`` if the input map is 2D). It is possible to compute mass and Teff limits in one shot, by setting ``quantity``=['mass', 'Teff'].
+
+
+Saving curves & DPMs
+----------------
+
+The contrast curves can be exported to .fits files using the keyword ``to_file`` in :py:func:`compute_physical_limits`. A full path to the output file can be specified; alternatively, the boolean value ``True`` will create a file for each of the 1D/2D mass/Teff limits named ``self.object+'_mass/Teff_limits_1D/2D_'+model_version+'.fits``. These files contain a header specifying how to read the data, and detailing the stellar parameters used to handle the conversion.
