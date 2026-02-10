@@ -102,6 +102,7 @@ Contents
 
    plotting_functions
    cmds
+   plotting_dpms
    
    
    
