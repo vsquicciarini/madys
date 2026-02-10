@@ -52,16 +52,16 @@ Methods:
 
 1) set_grid
 Change range or resolution of grid over companions are generated.
-	- x_min: float, optional argument, lower limit for grid x axis (default = 1)
-	- x_max: float, optional argument, upper limit for grid x axis (default = 1000)
-	- nx: int, optional argument, number of steps in the grid x axis (default = 100)
-	- xlog: boolean, optional argument. If True the x axis will be uniformly spaced in log
-	- y_min: float, optional argument, lower limit for grid y axis (default = 0.5)
-	- y_max: float, optional argument, upper limit for grid y axis (default = 75)
-	- ny: int, optional argument, number of steps in the grid y axis (default = 100)
-	- ylog: boolean, optional argument. If True the y axis will be uniformly spaced in log
-	- ngen: float, optional argument, default=1000. Number of orbital elements sets to be generated for each point in the grid.
-		All orbital parameters are uniformly distributed by default, except for the eccentricity.
+	- x_min: float, optional. Lower limit for grid x axis (default = 1)
+	- x_max: float, optional. Upper limit for grid x axis (default = 1000)
+	- nx: int, optional. Number of steps in the grid x axis (default = 100)
+	- xlog: boolean, optional. If True the x axis will be uniformly spaced in log
+	- y_min: float, optional. Lower limit for grid y axis (default = 0.5)
+	- y_max: float, optional. Upper limit for grid y axis (default = 75)
+	- ny: int, optional. Number of steps in the grid y axis (default = 100)
+	- ylog: boolean, optional. If True the y axis will be uniformly spaced in log
+	- ngen: float, optional. Number of orbital elements sets to be generated for each point in the grid.
+		All orbital parameters are uniformly distributed by default, except for the eccentricity. Default: 1000.
 	- e_params: dict, optional. Specifies the parameters needed to define the eccentricity distribution. If used, the following keys can/must be present:
             - shape: string, required. Desired eccentricity distribution. Can be uniform ('uniform') or Gaussian ('gauss')
             - mean: float, optional. Only used if shape = 'gauss'. Mean of the gaussian eccentricity distribution.
@@ -74,6 +74,9 @@ Change range or resolution of grid over companions are generated.
             - mean: float, optional. Only used if shape = 'gauss'. Mean of the gaussian inclination distribution [rad].
             - sigma: float, optional. Only used if shape = 'gauss'. Standard deviation of the gaussian inclination distribution [rad].
             Default: 'shape' = 'cos_i'.
+        - rho_visibility: dict, optional. Correction to be applied to account for the non-complete field-of-view coverage at all separations. If used, the following keys must be present:
+            - separation: numpy array. Array of separations [arcsec].
+            - visibility: numpy array. Fraction of the circumference, defined by a radius equal to separation, that is within the field of view.   
 
 2) DImode
 	Estimates the detection probability map for DI data.
@@ -102,6 +105,7 @@ class exodmc(object):
     def set_grid(self, x_min=0.1, x_max=1000., nx=100, logx=False, y_min=0.1, y_max=100., ny=100, logy=False, ngen=1000, 
                  e_params={'shape': 'gauss', 'mean': 0, 'sigma': 0.3},
                  i_params={'shape': 'cos_i'},
+                 rho_visibility=None
                  ):
 
         self.x_min = x_min
@@ -181,6 +185,15 @@ class exodmc(object):
         self.rad=(np.sqrt(x2**2 + y2**2)).T
         self.rho=(self.rad[:,np.newaxis]*(self.sma[:,np.newaxis]/self.dpc)).T # projected separation in AU
 
+        if rho_visibility is not None:
+            if isinstance(rho_visibility, dict) == False:
+                raise TypeError('The argument "rho_visibility" must be a dictionaty with keywords "separation" and "visibility"')
+            if ('separation' not in rho_visibility.keys()) | ('visibility' not in rho_visibility.keys()):
+                raise TypeError('The argument "rho_visibility" must be a dictionaty with keywords "separation" and "visibility"')
+
+            vis_f = interpolate.interp1d(rho_visibility['separation'], rho_visibility['visibility'], bounds_error=False, fill_value=(1, 0))
+            self.rho_visibility = vis_f(self.rho)
+
 
     def DImode(self, xlim, ylim, lxunit='as', lyunit='Mjup', verbose=True, plot=True, savefig=True):
 
@@ -199,6 +212,12 @@ class exodmc(object):
 
                     if lxunit == 'au': xlim[ll] = xlim[ll]/self.dpc[ll]
                     if lxunit == 'mas': xlim[ll] = xlim[ll]/1000.
+                        
+                    if 'rho_visibility' in self.__dict__.keys():
+                        values = self.rho_visibility[ll]
+                    else:
+                        values = np.ones_like(self.rho[0])
+                        
 
                     s=np.array(np.where(ylim[ll] < self.y_max))
                     if np.size(s) > 1:
@@ -209,13 +228,17 @@ class exodmc(object):
                     mm=np.where((self.M2 > min_mass) & (self.M2 < max_mass))
                     for i in range(self.x_nsteps):
                             ff=np.where((self.rho[ll,i].any() < np.min(xlim[ll])) & (self.rho[ll,i].any() > np.max(xlim[ll])))
+                                
                             for j in range(self.y_nsteps):
                                     if (self.M2[j] > min_mass and self.M2[j] < max_mass):
-                                            index=np.where(rlim[i]<self.M2[j])
-                                            if np.size(index) > 1: det[i,j,index]=1
-                            if np.size(ff) > 1: det[i,j,ff]=0
-                            mm=np.where(self.M2 > max_mass)[0]
-                            if np.size(mm) != 0: det[:,mm,:]=np.tile(det[:,mm[0]-1,:][:,np.newaxis,:], [np.size(mm),1])
+                                            index=np.where(rlim[i] < self.M2[j])
+                                            if np.size(index) > 1: 
+                                                det[i,j,index] = values[i, index] #1 self.rho_visibility[ll][i] self.rho[ll][i]
+                            if np.size(ff) > 1: 
+                                det[i,j,ff] = 0
+                            mm = np.where(self.M2 > max_mass)[0]
+                            if np.size(mm) != 0: 
+                                det[:,mm,:] = np.tile(det[:,mm[0]-1,:][:,np.newaxis,:], [np.size(mm),1])
                     map=np.sum(det, axis=2)/self.norb
                     detmap.append(map)
                     self.detflag.append(det)
