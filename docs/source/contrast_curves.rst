@@ -177,7 +177,16 @@ Default: 'shape' = 'cos_i'.
 Let us create now a detection probability map:
 
 .. code-block:: python
+
+   dpm = curve.compute_completeness_map('atmo2023-ceq', plot=True)
+
+or equivalently:
+
+.. code-block:: python
+
    dpm = curve.DImode_from_contrasts('atmo2023-ceq', plot=True)
+
+
 
 .. image:: images/example_dpm.png
 
