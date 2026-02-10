@@ -219,7 +219,9 @@ Temperature mass curves & DPM
 
 In alternative to the detection probability in the (sma, mass) plane, one might be interested in computing the detection probability of a planet in the (sma, Teff) plane. This map can be obtained by means of the keyword ``include_teff``:
 
+
 .. code-block:: python
+
    dpm = curve.compute_completeness_map('atmo2023-ceq', plot=True, include_teff=True)
 
 
