@@ -1,4 +1,4 @@
-Contrast curves
+Contrast curves & DPMs
 =====
 
 Creation of a DetectionMap instance
