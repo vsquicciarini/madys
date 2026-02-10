@@ -209,10 +209,20 @@ In such cases, the user might consider activating the extrapolation option (see 
 
 
 .. code-block:: python
-   dpm = curve.DImode_from_contrasts('atmo2023-ceq', plot=True, extrapolate=True)
+   dpm = curve.compute_completeness_map('atmo2023-ceq', plot=True, extrapolate=True)
 
 
 .. image:: images/example_dpm_extrapolation.png
 
+Temperature mass curves & DPM
+----------------
+
+In alternative to the detection probability in the (sma, mass) plane, one might be interested in computing the detection probability of a planet in the (sma, Teff) plane. This map can be obtained by means of the keyword ``include_teff``:
+
+.. code-block:: python
+   dpm = curve.compute_completeness_map('atmo2023-ceq', plot=True, include_teff=True)
 
 
+.. note::
+
+	For the sake of code optimization, temperature DPMs are computed from mass DPMs via a change of variables. Therefore, a too narrow mass grid might imply an incomplete coverage of the Teff space -- which might lead to a nan-filled or with a largely extrapolated Teff map. For this reason, we suggest keeping the default value of ``y_max`` (100 M_J) when computing Teff DPMs. In this case, the plotting of mass DPMs can be easily adjusted using the function :py:func:`plot_completeness_map`.
