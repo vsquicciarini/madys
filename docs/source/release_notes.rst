@@ -1,32 +1,42 @@
 Release notes
 =====
 
+Version 2.1.0
+ * added possibility to compute physical maps and completeness maps as a function of Teff instead of mass.
+ * renamed function :py:func:`DImode_from_contrasts` to :py:func:`compute_completeness_map`. The old name can still be used to ensure retrocompatibility.
+ * added functions :py:func:`plot_completeness_map` and :py:func:`get_map_contours` to allow for advanced plotting of DPMs and extracting contour curves.
+ * added new keyword ``rho_visibility`` to give an user the possibility to define the probability for a point of given separation to be within the field of view of the image
+ * added **kwargs to :py:func:`DetectionMap.compute_completeness_map` to allow for usage of optional model parameters (e.g. metallicity).
+ * added a sanity check on the input of DetectionMap in case this is an array or a tuple;
+ * fixed a bug in :py:func:`DetectionMap.compute_completeness_map` that sometimes created unphysical wiggles in correspondence of the stellar magnitude.
+ * fixed a bug in :py:func:`SampleObject.export_to_file` raised after v2.0.0 due to new attribute SimbadIDs.
+
 Version 2.0.1
  * Added a new class DetectionMap, which is expected to supersede CurveObject in future releases. This class allows for linear extrapolation of the grids along age and/or mass.
  * Added new piecewise models that combine BEX grids with other grids: BEX-Dusty, BEX-Cond, BEX-Dusty, BEX-ATMO.
  * Fixed some minor issues in Gaia queries:
 
-   - '' entries (e.g., 'tmass_id' when no id is present) are now masked, consistently with other columns;
-   - introduced a small function to recover Gaia stars that are not resolved in Simbad when id_type='other';
+   - '' entries (e.g., ``tmass_id`` when no id is present) are now masked, consistently with other columns;
+   - introduced a small function to recover Gaia stars that are not resolved in Simbad when id_type=``other``;
    - Hipparcos and 2MASS helper functions now support repeated entries in the star list;
    - fixed a bug that made the program crash when encountering columns of type np.int64;
    - fixed a bug occurring for sources in 2MASSI (2MASS incremental), whose name led to an error;
    - added the possibility to used masked arrays as inputs. Masked values are treated as np.nan;
-   - fixed a bug which caused the 'radial_velocity' column to come from Gaia DR2 instead of DR3. Now Gaia DR2 RVs are named 'dr2_rv', and DR3 RVs are named 'dr3_rv'.
- * Added an option "close" to FitParams.plot_maps() to leave the plot open if desired.
+   - fixed a bug which caused the ``radial_velocity`` column to come from Gaia DR2 instead of DR3. Now Gaia DR2 RVs are named ``dr2_rv``, and DR3 RVs are named ``dr3_rv``.
+ * Added an option ``close`` to :py:func:`FitParams.plot_maps` to leave the plot open if desired.
  * In class CurveObject:
 
-   - fixed a bug in compute_mass_limits() that appeared if the nominal age happened to be coincident with one of the sampled ages;
+   - fixed a bug in :py:func:`compute_mass_limits` that appeared if the nominal age happened to be coincident with one of the sampled ages;
    - when collapsing a 2D mass map into a 1D mass maps, only separations for which at least 50% of the pixels are sampled are retained;
-   - introduced a new keyword 'minimum_contrast' when initializing the instance to allow neglecting contrasts better than a certain threshold;
-   - in compute_mass_limits(), inserted a verbose warning in the output file's header informing, when a matrix full of nan is returned, if this is due to the dynamical range of the model.
- * Introduced a method extract_parameter_from_table() in the SampleObject class to extract astrometric data from an existing instance's phot_table.
- * In SampleObject.CMD() and underlying functions (SampleObject.plot_photometry(), IsochroneGrid.plot_isochrones()):
+   - introduced a new keyword ``minimum_contrast`` when initializing the instance to allow neglecting contrasts better than a certain threshold;
+   - in :py:func:`compute_mass_limits`, inserted a verbose warning in the output file's header informing, when a matrix full of nan is returned, if this is due to the dynamical range of the model.
+ * Introduced a method :py:func:`extract_parameter_from_table` in the SampleObject class to extract astrometric data from an existing instance's phot_table.
+ * In :py:func:`SampleObject.CMD` and underlying functions (:py:func:`SampleObject.plot_photometry`, :py:func:`IsochroneGrid.plot_isochrones`):
 
-   - a new keyword 'fontsize_parameters' allows specifying several plotting parameters, mostly related to the size of the various elements of the plot;
-   - the keyword 'label_points' now accepts a numpy array to label every point in the CMD with custom labels.
- * Fixed a bug in SampleObject.get_params(): if a triplet of ages was given, but the chosen isochrone model did not cover this age range, it used to crash. Now it returns nan with status code = 2 (same as if the photometry is thought to lie outside of the isochrone dynamical age-mass range).
- * in IsochroneGrid.plot_iso_grid(), two new keywords 'close' and 'mass_units' allow one to export the plot and to change the x-axis unit.
+   - a new keyword ``fontsize_parameters`` allows specifying several plotting parameters, mostly related to the size of the various elements of the plot;
+   - the keyword ``label_points`` now accepts a numpy array to label every point in the CMD with custom labels.
+ * Fixed a bug in :py:func:`SampleObject.get_params`: if a triplet of ages was given, but the chosen isochrone model did not cover this age range, it used to crash. Now it returns nan with status code = 2 (same as if the photometry is thought to lie outside of the isochrone dynamical age-mass range).
+ * in :py:func:`IsochroneGrid.plot_iso_grid`, two new keywords ``close`` and ``mass_units`` allow one to export the plot and to change the x-axis unit.
 
 Version 1.3.0
  * Unresolved binaries can now be fitted assuming a mass ratio or a flux ratio.
@@ -35,39 +45,39 @@ Version 1.3.0
    - input .fits header is now inherited by output file;
    - a verbose description of the input setting is stored in the output file's header;
    - possibility to add coronagraphic mask; if set, mask radius is automatically recovered for SPHERE and GPI;
-   - age range can now be defined as a Gaussian (specified by 'age' and 'age_error') or a box [age_opt, age_min, age_max];
+   - age range can now be defined as a Gaussian (specified by ``age`` and ``age_error``) or a box [age_opt, age_min, age_max];
    - added possibility to compute extinction as usually done in MADYS (integration of 3D maps).
  * Added Gaia DR3 ra and dec error to the automatic research done by SampleObject at initialization.  
  * Added Hipparcos catalog (van Leeuwen et al. 2007) to the automatic research done by SampleObject at initialization.
  * Added long-term Gaia DR3 - Hipparcos proper motion to SampleObject's instance.phot_table computed as in Kervella et al. (2022).
- * Added a new type of 'id_type' for SampleObject instances: 'HIP'. Use it if ALL input stars have input names from the Hipparcos catalog (e.g., HIP 31414). In such cases, setting to 'other' will work, but some cross-matches between Gaia and Hipparcos might not be recovered. 
+ * Added a new type of ``id_type`` for SampleObject instances: 'HIP'. Use it if ALL input stars have input names from the Hipparcos catalog (e.g., HIP 31414). In such cases, setting to 'other' will work, but some cross-matches between Gaia and Hipparcos might not be recovered. 
  * Improved ADQL catalog queries, with higher completeness rates of catalog cross-matches.
  * Improved general readability of the code following Docstring Conventions (PEP 8).
 
 Version 1.2.0
  * A more accurate parameter derivation was introduced when providing [age_opt, age_min, age_max] triplets.
- * SampleObject: default value for keyword 'allwise_cross_match' is now False unless n_objects < 100. 
+ * SampleObject: default value for keyword ``allwise_cross_match`` is now False unless n_objects < 100. 
  * The program now raises a ValueError if no Gaia data are available for all queried objects.
- * Better control of plotting options (transparency, symsize) in SampleObject.CMD.
- * Added verbose description of minimum_error and cuts to FitParams.average_results().
+ * Better control of plotting options (transparency, symsize) in :py:func:`SampleObject.CMD`.
+ * Added verbose description of minimum_error and cuts to :py:func:`FitParams.average_results`.
  * Created a new classmethod to SampleObject that allows for merging several instances into a single one.
  * Fixed minor bugs caused by the v1.0.0 -> v1.1.0 upgrade.
 
 Version 1.1.2
- * Added '__eq__' dunder method (equality) to the SampleObject class. Two SampleObject instances are considered equal if the queried objects (as specified by the attribute ID) are the same and have the same ordering.
- * Fixed minor bugs (related to the '__repr__' method) caused by the v1.0.0 -> v1.1.0 upgrade.
+ * Added ``__eq__`` dunder method (equality) to the SampleObject class. Two SampleObject instances are considered equal if the queried objects (as specified by the attribute ID) are the same and have the same ordering.
+ * Fixed minor bugs (related to the ``__repr__`` method) caused by the v1.0.0 -> v1.1.0 upgrade.
 
 Version 1.1.0
  * Created new class, CurveObject, to derive mass limits from contrast curves.
  * Created an attribute of type astropy.Table for SampleObject instances, named quality_table; it contains information on whether and why a photometric measurement has been retained or discarded.
  * Added two methods in FitParams and SampleObject classes that handle import/export of a FitParams instance into a .h5 file.
- * Renamed 'isochrone_grid' attribute in FitParams class as 'exec_command'; added new attribute named 'model_grid', equivalent to that of the ModelHandler class.
- * Speeded up SampleObject.get_params() and ModelHandler.available().
- * Added 'additional_columns' specified in SampleObject.get_params() to output saved to file by FitParams.to_file().
+ * Renamed ``isochrone_grid`` attribute in FitParams class as ``exec_command``; added new attribute named ``model_grid``, equivalent to that of the ModelHandler class.
+ * Speeded up :py:func:`SampleObject.get_params` and :py:func:`ModelHandler.available`.
+ * Added ``additional_columns`` specified in :py:func:`SampleObject.get_params` to output saved to file by :py:func:`FitParams.to_file`.
  * Improved the quality of the logs.
- * Changed default value of keywords 'x_log' and 'y_log' from False to True in function IsochroneGrid.plot_iso_grid().
+ * Changed default value of keywords ``x_log`` and ``y_log`` from False to True in function :py:func:`IsochroneGrid.plot_iso_grid`.
  * Added dundler methods __repr__ and __eq__ to class FitParams.
- * Automatically set keyword 'ext_map' to None if a manual E(B-V) vector is provided in SampleObject initialization.
+ * Automatically set keyword ``ext_map`` to None if a manual E(B-V) vector is provided in SampleObject initialization.
  * Fixed minor bugs caused by the v0.5.0-beta -> v1.0.0 upgrade.
 
 Version 1.0.0
@@ -92,13 +102,13 @@ Version 1.0.0
  * Fixed a bug in :py:func:`IsochroneGrid.plot_iso_grid` and :py:func:`IsochroneGrid.plot_isochrones` that did not allow plot of models with undefined age (i.e., pm13).
 
 Version 0.5.0-beta
- * Added the possibility to take into account uncertainties on E(B-V) values, which can now be provided at inizialization through a dedicated keyword 'ebv_err'.
+ * Added the possibility to take into account uncertainties on E(B-V) values, which can now be provided at inizialization through a dedicated keyword ``ebv_err``.
  * Fixed bug preventing in a few cases to provide as input an array of multiple FeH.
 
 Version 0.4.1-beta
  * Sloan Digital Sky Survey added to the list of queryable surveys. Its filters are now available with the following models: PARSEC, MIST, AMES-Dusty, AMES-Cond, BT-Settl, NextGen.
  * Inserted possibility to obtain information about available filters for a certain model.
- * Fixed bug preventing overplotting of tracks upon isochrones in the function plot_isochrones().
+ * Fixed bug preventing overplotting of tracks upon isochrones in the function :py:func:`plot_isochrones`.
  * Fixed bug impeding the correct handling of missing PANSTARRS filters.
 
 Version 0.3.1-beta
