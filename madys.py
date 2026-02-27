@@ -36,7 +36,6 @@ import numpy as np
 import pandas as pd
 from scipy.interpolate import interp1d, RectBivariateSpline, RBFInterpolator, RegularGridInterpolator
 from scipy.ndimage import label, center_of_mass
-from skimage.restoration import inpaint
 import time
 from astropy import units as u
 from astropy.constants import M_jup,M_sun,R_jup,R_sun
@@ -70,7 +69,7 @@ except ModuleNotFoundError:
 gaia = GaiaArchive()
 
 dt = h5py.special_dtype(vlen=str)
-MADYS_VERSION = 'v2.1.0'
+MADYS_VERSION = 'v2.1.1'
 
 
 stored_data = {'models': {'data': {}, 'parameters':{}}}
@@ -1173,13 +1172,6 @@ class ModelHandler(object):
         with open(PIK,'rb') as f:
             filter_dict = pickle.load(f)
         stored_data['filters'] = filter_dict
-
-
-import numpy as np
-from scipy.interpolate import RegularGridInterpolator
-from skimage.restoration import inpaint
-
-
 
 class IsochroneGrid(object):
 
@@ -9497,8 +9489,6 @@ class DetectionMap(object):
                             lower_age_limit=lower_age_limit, **kwargs
                            )
 
-        print('qqqqqqqqqqqqqqqq', iso)
-        
         if include_teff:
             i_teff = iso.filters == 'logT'
             iso_teff = iso.data[:, :, i_teff][:, :, 0]
@@ -9733,6 +9723,8 @@ class DetectionMap(object):
         Additionally, if self.file_type='contrast_map' and to_file!=False, it also produces and saves an azimuthally averaged 1D (sep) curve / 2D (lambda, sep) curve.
             Input:
             - model_version: string, required. A valid model_version for MADYS. Use ModelHandler.available() to return a list of available models.
+            - quantities: string or list, optional. Quantities to be returned. Set it to 'mass' to return mass curves, 'Teff' to return Teff curves, ['mass', 'Teff'] to return both.
+              Default: 'mass'.
             - mask_radius: int or float or NoneType, optional. Coronagraphic mask radius (mas). Possible values are:
                 - None: no mask is used;
                 - 0: the program tries to guess the appropriate mask radius. If not found, no mask is used.
@@ -10342,6 +10334,7 @@ class DetectionMap(object):
             - dpm: numpy array, required. Output of DImode_from_contrasts() to be saved.
             - model_version: string, required. Name of the model used for the computation.
             - output_file: path-like, required. Full path to the output file.
+            - dtype: string, optional. Select either 'mass' or 'Teff'. Default: 'mass'.
             Output:
               no output is returned, apart from the saved file.
         """
@@ -10372,14 +10365,20 @@ class DetectionMap(object):
         if self.__dict__['minimum_contrast'] is not None:
             min_contrast = self.__dict__['minimum_contrast']
         header['CTR_MIN'] = (min_contrast, 'lowest acceptable contrast')
-        header['BAND'] = (self.__dict__['band'], 'photometric band')
+        if isinstance(self.__dict__['band'], str):
+            header['BAND'] = (self.__dict__['band'], 'photometric band')
+        else:
+            header['BAND'] = ('[{0}]'.format(', '.join(self.__dict__['band'])), 'photometric bands')
         header['PLX'] = (st['parallax'], 'parallax [mas]')
         header['PLX_ERR'] = (st['parallax_error'], 'parallax error [mas]')
         header['APP_MAG'] = (st['app_mag'], 'stellar apparent magnitude in the chosen band')
         header['APP_EMAG'] = (st['app_mag_error'], 'error on stellar apparent magnitude')
         header['AGE'] = (st['age'], 'stellar age [Myr]')
-        header['AGE_MIN'] = (st['age_min'], 'lower value for stellar age [Myr]')
-        header['AGE_MAX'] = (st['age_max'], 'upper value for stellar age [Myr]')
+        if 'age_min' in st.keys():
+            header['AGE_MIN'] = (st['age_min'], 'lower value for stellar age [Myr]')
+            header['AGE_MAX'] = (st['age_max'], 'upper value for stellar age [Myr]')
+        else:
+            header['AGE_ERR'] = (st['age_error'], 'error on stellar age [Myr]')
         header['EBV'] = (st['ebv'], 'E(B-V) [mag]')
         header['EBV_ERR'] = (st['ebv_error'], 'error on E(B-V) [mag]')
         header['MODEL'] = (model_version, f'model used for the contrast-{dtype} conversion')
@@ -10387,10 +10386,15 @@ class DetectionMap(object):
         header['X_MAX'] = (dmc_p['x_max'], 'EXODMC: maximum separation [au]')
         header['N_X'] = (dmc_p['x_nsteps'], 'EXODMC: no. of separation steps')
         header['X_LOG'] = (dmc_p['logx'], 'EXODMC: is separation log-spaced')
-        header['Y_MIN'] = (dmc_p['y_min'], f'EXODMC: minimum {dtype} [{q_unit}]')
-        header['Y_MAX'] = (dmc_p['y_max'], f'EXODMC: maximum {dtype} [{q_unit}]')
-        header['N_Y'] = (dmc_p['y_nsteps'], 'EXODMC: no. of {dtype} steps')
-        header['Y_LOG'] = (dmc_p['logy'], 'EXODMC: is {dtype} log-spaced')
+        header['Y_MIN'] = (dmc_p['y_min'], f'EXODMC: minimum mass [M_Jup]')
+        header['Y_MAX'] = (dmc_p['y_max'], f'EXODMC: maximum mass [M_Jup]')
+        header['N_Y'] = (dmc_p['y_nsteps'], f'EXODMC: no. of mass steps')
+        header['Y_LOG'] = (dmc_p['logy'], f'EXODMC: is mass log-spaced')
+        if dtype == 'Teff':
+            header['TEFF_MIN'] = (dmc_p['Teff_min'], f'EXODMC: minimum Teff [K]')
+            header['TEFF_MAX'] = (dmc_p['Teff_max'], f'EXODMC: maximum Teff [K]')
+            header['N_TEFF'] = (dmc_p['Teff_nsteps'], f'EXODMC: no. of Teff steps')
+            header['TEFF_LOG'] = (dmc_p['logTeff'], f'EXODMC: is Teff log-spaced')
         if dmc_p['norb'] != 1000:
             header['NORB'] = (dmc_p['norb'], 'EXODMC: no. of orbits')
         if dmc_p['e_dist'] != 'gauss':
@@ -10410,7 +10414,15 @@ class DetectionMap(object):
 
         header['HISTORY'] = madys_header
 
-        hdu = fits.PrimaryHDU(dpm, header)
+        n_filters = len(dpm.keys())
+        for i in range(n_filters):
+            if i == 0:
+                s = dpm[list(dpm.keys())[i]][f'{dtype}_dpm'].shape
+                final_data_shape = (n_filters, ) + s
+                final_data = np.zeros(final_data_shape)
+            final_data[i] = dpm[list(dpm.keys())[i]][f'{dtype}_dpm']
+        
+        hdu = fits.PrimaryHDU(final_data, header)
         hdu.writeto(output_file, overwrite=True)
         
     def plot_completeness_map(self, map_dict, dtype='mass', band=None,
@@ -10620,8 +10632,7 @@ class DetectionMap(object):
 
         return contour_dict
         
-        
-        
+
         
 ModelHandler.setup(check_updates=False)
 ModelHandler._load_local_models()
