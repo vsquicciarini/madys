@@ -19,6 +19,8 @@ Finally, several dedicated plotting functions are included to allow a visual per
 Latest news:
 ------------
 
+Feb 27, 2026 - Version v2.1.1 published! Fixed minor bugs introduced in v2.1.0.
+
 Feb 10, 2026 - Version v2.1.0 published! Several updates in the DetectionMap class: it is now possible to compute physical maps and detection probability maps as a function of Teff instead of mass; added new functions for advanced plotting of these maps; now possible to account for the fact the outermost part of a non-circular field of view are not fully covered by an observation; fixed minor bugs.
 
 Nov 17, 2025 - Version v2.0.0 published! A new class, DetectionMap, now handles the conversion of contrast curves to mass curves and detection probability maps, including the possibility to extrapolate outside a model's dynamical range; added new patchwork models connecting BEX and ATMO/Ames-Dusty/Ames-Cond; expanded roster of available filters for several substellar models; improved ADQL queries; added several new plotting functions.
