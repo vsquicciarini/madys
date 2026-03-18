@@ -69,7 +69,7 @@ except ModuleNotFoundError:
 gaia = GaiaArchive()
 
 dt = h5py.special_dtype(vlen=str)
-MADYS_VERSION = 'v2.1.1'
+MADYS_VERSION = 'v2.1.2'
 
 
 stored_data = {'models': {'data': {}, 'parameters':{}}}
@@ -6384,7 +6384,7 @@ class SampleObject(object):
     ############################################# extinction #################################################
 
     @staticmethod
-    def _download_ext_map(ext_map):
+    def _download_ext_map(ext_map, include_error_map=False):
 
         if ext_map is None: return
 
@@ -6392,6 +6392,7 @@ class SampleObject(object):
         if os.path.exists(path_ext) is False: os.mkdir(path_ext) # if the folder does not exist, it creates it
         opl = os.path.join(path_ext,'leike_mean_std.h5')
         ops = os.path.join(path_ext,'stilism_feb2019.h5')
+        opl_err = os.path.join(path_ext,'leike_samples.h5')
 
         #if chosen map is not there it fetches it from cds
         if ((ext_map == 'leike') & (os.path.exists(opl) is False)):
@@ -6405,11 +6406,31 @@ class SampleObject(object):
                     break
                 else:
                     print("Invalid choice. Please select 'Y' or 'N'.")
-            if str.lower(value)=='n': raise KeyboardInterrupt('Please restart the program, setting ext_map=None.')
+            if str.lower(value)=='n': 
+                raise KeyboardInterrupt('Please restart the program, setting ext_map=None.')
             else:
                 urllib.request.urlretrieve('https://cdsarc.cds.unistra.fr/ftp/J/A+A/639/A138/mean_std.h5.gz', opl+'.gz')
                 with gzip.open(opl+'.gz', 'r') as f_in, open(opl, 'wb') as f_out: shutil.copyfileobj(f_in, f_out)
                 os.remove(opl+'.gz')
+                print('Extinction map correctly downloaded.')
+
+        if (ext_map == 'leike') & (os.path.exists(opl_err) is False) & include_error_map:
+            print('You would like to use the samples map by Leike et al. (2020) for error computation, but the file '+opl_err+' seems missing. ')
+            while 1:
+                value = input("Do you want me to download the map (size=13.0 GB)? [Y/N]:\n")
+                if str.lower(value)=='y':
+                    print('Downloading the map...')
+                    break
+                elif str.lower(value)=='n':
+                    break
+                else:
+                    print("Invalid choice. Please select 'Y' or 'N'.")
+            if str.lower(value)=='n': 
+                raise KeyboardInterrupt('Please consider setting "error" to False when computing extinction.')
+            else:
+                urllib.request.urlretrieve('https://cdsarc.cds.unistra.fr/ftp/J/A+A/639/A138/samples.h5.gz', opl_err+'.gz')
+                with gzip.open(opl_err+'.gz', 'r') as f_in, open(opl_err, 'wb') as f_out: shutil.copyfileobj(f_in, f_out)
+                os.remove(opl_err+'.gz')
                 print('Extinction map correctly downloaded.')
 
         if ((ext_map == 'stilism') & (os.path.exists(ops) is False)):
@@ -6529,7 +6550,7 @@ class SampleObject(object):
         if (par is not None) & (d is not None): 
             raise NameError('Only one between parallax and distance must be supplied!')
 
-        SampleObject._download_ext_map(ext_map)
+        SampleObject._download_ext_map(ext_map, include_error_map=error)
 
         if ext_map is None:
             if ra is not None:
@@ -6549,7 +6570,9 @@ class SampleObject(object):
             fname = 'leike_mean_std.h5'
         elif (ext_map == 'leike') & (error == True): 
             fname = 'leike_samples.h5'
-        if (ext_map == 'stilism'): 
+        elif (ext_map == 'stilism') & (error == True):
+            raise NotImplementedError('The "stilism" extinction map does not currently allow for uncertainty computation. Please change the value of "ext_map" or set "error" to False.')
+        elif (ext_map == 'stilism') & (error == False): 
             fname = 'stilism_feb2019.h5'
 
         paths = [x[0] for x in os.walk(madys_path)]
@@ -8906,8 +8929,7 @@ class DetectionMap(object):
         else:
             logTeff = False
         
-        exodmc_obj = DMC.exodmc(self.object, 1000/par)
-        exodmc_obj.set_grid(**exodmc_parameters)
+        exodmc_obj = DMC.exodmc(self.object, 1000/par, **exodmc_parameters)
         exodmc_obj.Teff_min = Teff_min
         exodmc_obj.Teff_max = Teff_max
         exodmc_obj.Teff_nsteps = nTeff
@@ -9595,6 +9617,8 @@ class DetectionMap(object):
             if verbose is True: 
                 print(obj.ID[0], "time elapsed - {:0>2}:{:0>2}:{:05.2f}".format(int(hours),int(minutes),seconds))
 
+            model_undefined = np.tile(np.isnan(map_contrast[:, int(n_ages/2)]), len(obj.sma)).reshape(len(obj.sma), len(obj.M2))
+            
             outputs = {}
             outputs['mass_dpm'] = det_prob
             outputs['sma_array'] = obj.sma
@@ -9604,6 +9628,10 @@ class DetectionMap(object):
             if include_teff:
                 outputs['Teff_dpm'] = det_prob2
                 outputs['Teff_array'] = 10**iso_teff_grid
+            outputs['upper_extrapolation'] = changed_pixels
+            outputs['model_undefined'] = model_undefined
+            
+            
             i_band_dict = outputs
             all_bands_dict[b] = i_band_dict
 
@@ -10054,6 +10082,7 @@ class DetectionMap(object):
         else:
             th_model = IsochroneGrid(model_version, self.band, search_model=False, **kwargs)
         iso_mass, iso_age, iso_filt, iso_data = th_model.masses, th_model.ages, th_model.filters, th_model.data
+        
         if include_teff:
             i_teff = iso_filt == 'logT'
             iso_teff = iso_data[:, :, i_teff][:, :, 0]
@@ -10112,7 +10141,8 @@ class DetectionMap(object):
                         break
 
                     diff = np.searchsorted(iso_row, altered_mag_limits[:,j])-1
-                    diff = np.where((altered_mag_limits[:,j]-iso_row[diff])>(iso_row[diff+1]-altered_mag_limits[:,j]),diff+1,diff)
+                    diff_alt = np.where(diff < (len(iso_row)-1), diff+1, diff)
+                    diff = np.where((altered_mag_limits[:,j]-iso_row[diff])>(iso_row[diff_alt]-altered_mag_limits[:,j]),diff_alt,diff)
                     is_mag_not_nan = (np.isnan(iso_row[diff])==False) & (np.isnan(altered_mag_limits[:,j])==False)
 
                     if include_mass:
@@ -10150,6 +10180,7 @@ class DetectionMap(object):
 
                 comp_failed_upper, comp_failed_lower = False, False
                 for j in range(n_try):
+                    
                     if np.isnan(np.nanmin(iso_data[:,j,0])): continue
                     iso_index = iso_indices[:,j]
                     iso_row = iso_data[iso_index,j,0]
@@ -10176,7 +10207,8 @@ class DetectionMap(object):
                         break
 
                     diff = np.searchsorted(iso_row, altered_mag_limits[:,j])-1
-                    diff = np.where((altered_mag_limits[:,j]-iso_row[diff])>(iso_row[diff+1]-altered_mag_limits[:,j]),diff+1,diff)
+                    diff_alt = np.where(diff < (len(iso_row)-1), diff+1, diff)
+                    diff = np.where((altered_mag_limits[:,j]-iso_row[diff])>(iso_row[diff_alt]-altered_mag_limits[:,j]),diff_alt,diff)
                     is_mag_not_nan = (np.isnan(iso_row[diff])==False) & (np.isnan(altered_mag_limits[:,j])==False)
 
                     reshuffled_masses[j,is_mag_not_nan] = iso_mass_log[iso_index[diff]][is_mag_not_nan]
@@ -10397,18 +10429,20 @@ class DetectionMap(object):
             header['TEFF_LOG'] = (dmc_p['logTeff'], f'EXODMC: is Teff log-spaced')
         if dmc_p['norb'] != 1000:
             header['NORB'] = (dmc_p['norb'], 'EXODMC: no. of orbits')
-        if dmc_p['e_dist'] != 'gauss':
-            header['E_DIST'] = (dmc_p['e_dist'], 'EXODMC: eccentricity distribution')
-        if dmc_p['e_mu'] != 0:
+        header['E_DIST'] = (dmc_p['e_dist'], 'EXODMC: eccentricity distribution')
+        if 'e_mu' in dmc_p:
             header['E_MU'] = (dmc_p['e_mu'], 'EXODMC: mean eccentricity')
-        if dmc_p['e_sigma'] != 0.3:
+        if 'e_sigma' in dmc_p:
             header['E_STD'] = (dmc_p['e_sigma'], 'EXODMC: std. dev. of eccentricity')
-        if dmc_p['e_min'] != 0:
-            header['E_MIN'] = (dmc_p['e_min'], 'EXODMC: no. of orbits')
-        if dmc_p['e_max'] != 1:
-            header['E_MAX'] = (dmc_p['e_max'], 'EXODMC: no. of orbits')
-        if dmc_p['i_dist'] != 'cos_i':
-            header['I_DIST'] = (dmc_p['i_dist'], 'EXODMC: inclination distribution')
+        if 'e_min' in dmc_p:
+            header['E_MIN'] = (dmc_p['e_min'], 'EXODMC: minimum eccentricity')
+        if 'e_max' in dmc_p:
+            header['E_MAX'] = (dmc_p['e_max'], 'EXODMC: maximum eccentricity')
+        header['I_DIST'] = (dmc_p['i_dist'], 'EXODMC: inclination distribution')
+        if 'i_mu' in dmc_p:
+            header['I_MU'] = (dmc_p['i_mu'], 'EXODMC: mean inclination [rad]')
+        if 'i_sigma' in dmc_p:
+            header['I_STD'] = (dmc_p['i_sigma'], 'EXODMC: std. dev. of inclination [rad]')
 
         madys_header = 'This file is a detection probability map. Generated using MADYS {0} on {1}.'.format(MADYS_VERSION, time.strftime("%Y-%m-%d %H:%M:%S", time.gmtime()))
 
@@ -10555,9 +10589,10 @@ class DetectionMap(object):
             CB.ax.set_yticklabels([r"{:.0f}$\%$".format(i) for i in CB.get_ticks()]) # set ticks of your format
 
         if show_model_limits:
-            cs = ax.contourf(obj.sma, obj.M2, np.tile(np.isnan(data[:, int(n_ages/2)]), len(obj.sma)).reshape(len(obj.sma), len(obj.M2)).T, levels=[0.5, 1], hatches=['.', ''], colors='white', alpha=0.1)
+            n_ages = len(data[0])
+            cs = ax.contourf(obj.sma, obj.M2, dat['model_undefined'].T, levels=[0.5, 1], hatches=['.', ''], colors='white', alpha=0.1)
             cs.set_edgecolor('red')
-            cs2 = ax.contourf(obj.sma, obj.M2, changed_pixels.T, levels=[0.5, 1], hatches=['////', ''], colors='white', alpha=0.2)
+            cs2 = ax.contourf(obj.sma, obj.M2, dat['upper_extrapolation'].T, levels=[0.5, 1], hatches=['////', ''], colors='white', alpha=0.2)
             cs2.set_edgecolor('green')
 
         if fig_xlim is None:
@@ -10631,8 +10666,8 @@ class DetectionMap(object):
         plt.close()
 
         return contour_dict
+       
         
-
         
 ModelHandler.setup(check_updates=False)
 ModelHandler._load_local_models()

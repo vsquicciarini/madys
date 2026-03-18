@@ -63,7 +63,7 @@ Change range or resolution of grid over companions are generated.
 	- ngen: float, optional. Number of orbital elements sets to be generated for each point in the grid.
 		All orbital parameters are uniformly distributed by default, except for the eccentricity. Default: 1000.
 	- e_params: dict, optional. Specifies the parameters needed to define the eccentricity distribution. If used, the following keys can/must be present:
-            - shape: string, required. Desired eccentricity distribution. Can be uniform ('uniform') or Gaussian ('gauss')
+            - shape: string, required. Desired eccentricity distribution. Can be uniform ('uniform') or Gaussian ('gauss').
             - mean: float, optional. Only used if shape = 'gauss'. Mean of the gaussian eccentricity distribution.
             - sigma: float, optional. Only used if shape = 'gauss'. Standard deviation of the gaussian eccentricity distribution.
             - min: float, optional. Only used if shape = 'uniform'. Lower eccentricity value to be considered.
@@ -103,7 +103,7 @@ class exodmc(object):
         self.set_grid(**kwargs)
 
     def set_grid(self, x_min=0.1, x_max=1000., nx=100, logx=False, y_min=0.1, y_max=100., ny=100, logy=False, ngen=1000, 
-                 e_params={'shape': 'gauss', 'mean': 0, 'sigma': 0.3},
+                 e_params={'shape': 'gauss', 'mean': 0., 'sigma': 0.3},
                  i_params={'shape': 'cos_i'},
                  rho_visibility=None
                  ):
@@ -120,21 +120,27 @@ class exodmc(object):
 
         self.norb = ngen
         self.e_dist = e_params['shape']
-        self.e_mu = e_params['mean']
-        self.e_sigma = e_params['sigma']
-        if 'min' in e_params:
-            self.e_min = e_params['min']
+        if self.e_dist == 'gauss':
+            self.e_mu = e_params['mean'] if 'mean' in e_params else 0.
+            self.e_sigma = e_params['sigma'] if 'sigma' in e_params else 0.3
+        elif self.e_dist == 'uniform':
+            self.e_min = e_params['min'] if 'min' in e_params else 0.
+            self.e_max = e_params['max'] if 'max' in e_params else 1.
         else:
-            self.e_min = 0
-        if 'max' in e_params:
-            self.e_max = e_params['max']
-        else:
-            self.e_max = 1
-        
+            raise ValueError("e_params['shape'] must be 'gauss' or 'uniform'.")
+
         self.i_dist = i_params['shape']
-        if 'mean' in i_params:
-            self.i_mu = i_params['mean']
-            self.i_sigma = i_params['sigma']
+
+        if self.i_dist == 'cos_i':
+            pass
+        elif self.i_dist == 'gauss':
+            try:
+                self.i_mu = i_params['mean']
+                self.i_sigma = i_params['sigma']
+            except KeyError:
+                raise KeyError("For i_params['shape']='gauss', both 'mean' and 'sigma' must be provided.")
+        else:
+            raise ValueError("i_params['shape'] must be 'gauss' or 'cos_i'.")       
 
         self.sma = np.linspace(self.x_min, self.x_max, self.x_nsteps)
         if self.logx is True: self.sma = np.logspace(np.log10(self.x_min), np.log10(self.x_max), self.x_nsteps)
@@ -146,8 +152,6 @@ class exodmc(object):
             self.ecc = cropped_gaussian(self.e_mu, self.e_sigma, self.norb)
         elif self.e_dist == 'uniform':
             self.ecc = self.e_min + (self.e_max - self.e_min) * rn.random_sample(self.norb)
-        else:
-            raise ValueError("e_params['shape'] must be 'gauss' or 'uniform'.")
             
         ecc_expr = (1+self.ecc)/(1-self.ecc)
         self.Omega_Node = rn.random_sample(self.norb)*2.*np.pi # Longitude of node ranges between 0 and 2pi
@@ -159,8 +163,6 @@ class exodmc(object):
             self.irad = np.arccos(cosi)
         elif self.i_dist == 'gauss':
             self.irad = np.abs(rn.normal(self.i_mu, self.i_sigma, self.norb))
-        else:
-            raise ValueError("e_params['shape'] must be 'gauss' or 'cos_i'.")
         
         self.T0 = rn.random_sample(self.norb) # T peri in fraction of period
 
