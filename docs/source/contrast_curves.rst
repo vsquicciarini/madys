@@ -217,7 +217,7 @@ Detection limits in the temperature space can be determined in the same way as m
 
    teff_limits_dict = curve.compute_physical_limits('atmo2020-ceq', quantities='Teff')
 
-In analogy with their mass curves, these curves are stored under the keywords ``Teff_map_1D``, ``Teff_map_1D_min``, ``Teff_map_1D_max`` (and ``Teff_map_2D``, ``Teff_map_2D_min``, ``Teff_map_2D_max`` if the input map is 2D). It is possible to compute mass and Teff limits in one shot, by setting ``quantities``=['mass', 'Teff'].
+In analogy with their mass curves, these curves are stored under the keywords ``Teff_map_1D``, ``Teff_map_1D_min``, ``Teff_map_1D_max`` (and ``Teff_map_2D``, ``Teff_map_2D_min``, ``Teff_map_2D_max`` if the input map is 2D). It is possible to compute mass and Teff limits in one shot, by setting ``quantities`` = ['mass', 'Teff'].
 
 
 Detection probability maps: advanced
